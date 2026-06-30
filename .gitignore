@@ -1,0 +1,26 @@
+# dependencies
+node_modules
+node_modules/.tmp
+
+# build output
+dist
+dist-ssr
+*.local
+
+# env (never commit secrets)
+.env
+.env.*
+!.env.example
+
+# editor / os
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# vercel
+.vercel
+
+# logs
+*.log
+npm-debug.log*
