@@ -62,17 +62,18 @@
 }
 
 @theme {
-  /* 브랜드 컬러 (나인브릿지 그대로 — 협회톤 차별화는 후속 Phase) */
-  --color-primary-50: #f0f7fb;
-  --color-primary-100: #e0eff7;
-  --color-primary-200: #b8dbed;
-  --color-primary-300: #8fc7e3;
-  --color-primary-400: #5aa8d1;
-  --color-primary-500: #3071a5;
-  --color-primary-600: #265d8a;
-  --color-primary-700: #1e4d6b;
-  --color-primary-800: #173d54;
-  --color-primary-900: #112e3f;
+  /* 브랜드 컬러 — 협회 딥네이비 팔레트 (Phase 2.5). 주색 = 600 = #1e3a5f.
+     토큰 이름 구조 유지, 값만 교체해 전체 자동 반영. (300/500/700 은 인접 보간) */
+  --color-primary-50: #eef2f7;
+  --color-primary-100: #c9d6e6;
+  --color-primary-200: #93aecb;
+  --color-primary-300: #6a8cb2;
+  --color-primary-400: #3f6a99;
+  --color-primary-500: #2e5078;
+  --color-primary-600: #1e3a5f;
+  --color-primary-700: #17304e;
+  --color-primary-800: #152a46;
+  --color-primary-900: #0d1b2e;
 
   /* 애니메이션 */
   --animate-fade-in: fadeIn 0.5s ease-out;
@@ -94,9 +95,12 @@
 }
 
 :root {
-  --color-primary: #3071a5;
-  --color-primary-dark: #265d8a;
-  --color-primary-light: #4a90c2;
+  /* 시맨틱 브랜드 토큰 (Phase 2.5 딥네이비) */
+  --color-primary: #1e3a5f;        /* 주색: 헤더·버튼·활성·CTA */
+  --color-primary-dark: #152a46;   /* hover/press */
+  --color-primary-light: #3f6a99;  /* 보조 블루·링크 */
+  --color-signature: #a65546;      /* 테라코타 — 극소량 포인트만 */
+  --color-frost: #4fb3c4;          /* 프로스트 시안 — 극소량(활성 탭 언더라인) */
 }
 
 * {
@@ -112,7 +116,7 @@ body {
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #e8eff5;
+  background-color: #f8fafc; /* 슬레이트 중립 (기존 블루틴트 제거) */
 }
 
 /* 폰트 클래스 */
@@ -151,8 +155,9 @@ body {
   background-color: #ffffff;
   border-radius: 12px;
   padding: 30px 40px;
-  border: 0;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.08);
+  border: 1px solid #eef1f5;
+  /* 그림자 강도 낮춤 (Phase 2.5 — 딱딱하지 않되 은은하게) */
+  box-shadow: 0 1px 2px rgba(15,27,46,0.03), 0 3px 10px rgba(15,27,46,0.04);
 }
 
 /* ------------------------------------------------------------------
