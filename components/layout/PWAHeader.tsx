@@ -2,15 +2,14 @@
 
 import React from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { UserRound } from 'lucide-react'
 
 interface PWAHeaderProps {
   variant?: 'mobile' | 'desktop'
 }
 
-// Phase 2.5+: 딥네이비 솔리드 헤더(전체 화이트 톤의 유일한 컬러 포인트).
-// 협회 로고(네이비 헤더용 변형 — 컬러 마크 + 흰 워드마크) 이미지 사용. 우측 마이페이지 진입 → /my.
+// Phase 2.5: 딥네이비 솔리드 헤더(그라데이션 제거). 워드마크·높이·레이아웃 유지.
+// 우측에 마이페이지 아이콘 진입(데스크탑·모바일 공통) → /my. 로고 자산/세부구성은 후속 사용자 지시.
 export default function PWAHeader({ variant = 'mobile' }: PWAHeaderProps) {
   const isDesktop = variant === 'desktop'
 
@@ -20,15 +19,21 @@ export default function PWAHeader({ variant = 'mobile' }: PWAHeaderProps) {
         isDesktop ? 'pt-[20px]' : 'sticky top-0 z-50'
       }`}
     >
-      <Link href="/" className="flex items-center min-w-0" aria-label="체육교육회 홈">
-        <Image
-          src="/logo/pea-logo-header.png"
-          alt="체육교육회 — Physical Education Association"
-          width={1111}
-          height={357}
-          priority
-          className={`w-auto ${isDesktop ? 'h-[44px]' : 'h-[38px]'}`}
-        />
+      <Link href="/" className="flex items-baseline gap-3 min-w-0">
+        <span
+          className={`font-score font-[600] tracking-[1px] ${
+            isDesktop ? 'text-[20px]' : 'text-[18px]'
+          }`}
+        >
+          체육교육회
+        </span>
+        <p
+          className={`font-light tracking-wide opacity-70 truncate ${
+            isDesktop ? 'text-[14px]' : 'text-[12.5px]'
+          }`}
+        >
+          함께 배우고 함께 성장합니다
+        </p>
       </Link>
 
       {/* 마이페이지 진입 (데·모 공통, 헤더 우측) */}
