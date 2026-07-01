@@ -1,0 +1,22 @@
+@import 'tailwindcss';
+
+/* Phase 0b: 최소 셋업만. 나인브릿지 브랜드 토큰(컬러/화이트박스/폰트 스케일)은 Phase 2에서 이식. */
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family:
+    system-ui,
+    -apple-system,
+    'Apple SD Gothic Neo',
+    'Malgun Gothic',
+    sans-serif;
+}

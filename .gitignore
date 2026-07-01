@@ -2,9 +2,11 @@
 node_modules
 node_modules/.tmp
 
-# build output
-dist
-dist-ssr
+# next.js build output
+.next
+out
+next-env.d.ts
+*.tsbuildinfo
 *.local
 
 # env (never commit secrets)
