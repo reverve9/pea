@@ -1,25 +1,21 @@
 'use client'
 
 import { useState } from 'react'
-import AppShell from '@/components/layout/AppShell'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import PageTitle from '@/components/common/PageTitle'
 import { TabButton } from '@/components/common/Button'
 import { LoadingState, EmptyState } from '@/components/common/StateView'
-import {
-  MasterDetailProvider,
-  MasterDetailList,
-  MasterDetailDetail,
-} from '@/components/shell/MasterDetail'
 import NoticeCard from '@/components/features/NoticeCard'
-import NoticeDetail from '@/components/features/NoticeDetail'
 import FaqAccordion from '@/components/features/FaqAccordion'
 import InquiryBoardShell from '@/components/features/InquiryBoardShell'
 import { useQuery } from '@/lib/useQuery'
 import { getNotices, getFaqs } from '@/lib/queries'
 import type { Notice, Faq } from '@/lib/types'
 
-// §3-5 커뮤니티: 공지(master-detail 실데이터) · FAQ(아코디언 실데이터) · 문의 2종(셸만).
-// 4개 서브보드는 탭으로 전환. 공지 탭만 master-detail 사용(리스트=main / 상세=extended·모바일모달).
+// §3-5 커뮤니티 리스트(PWA 페인). Phase 2.6: 공지 상세는 URL 라우트(/community/notices/[id])로 이관 —
+// 카드 클릭 = Link, 선택 하이라이트 = usePathname(URL 이 선택 상태의 SSOT). 상세 렌더는 @detail 슬롯 담당.
+// FAQ(아코디언)·문의 2종(셸)은 리스트 페인 안에서 그대로. AppShell 은 community/layout 이 감싼다.
 type Tab = 'notices' | 'faq' | 'general' | 'cert'
 
 const TABS: { key: Tab; label: string }[] = [
@@ -31,44 +27,45 @@ const TABS: { key: Tab; label: string }[] = [
 
 export default function CommunityPage() {
   const [tab, setTab] = useState<Tab>('notices')
+  const pathname = usePathname()
   const notices = useQuery<Notice[]>(getNotices, [])
   const faqs = useQuery<Faq[]>(getFaqs, [])
 
-  const tabBar = (
-    <div className="flex flex-wrap gap-2 px-4 pb-3">
-      {TABS.map((t) => (
-        <TabButton key={t.key} active={tab === t.key} onClick={() => setTab(t.key)}>
-          {t.label}
-        </TabButton>
-      ))}
-    </div>
-  )
-
-  // main(좌측/모바일) 콘텐츠 — 탭별
-  const main = (
+  return (
     <div className="pb-8">
       <PageTitle title="COMMUNITY" subtitle="커뮤니티" />
-      {tabBar}
+
+      <div className="flex flex-wrap gap-2 px-4 pb-3">
+        {TABS.map((t) => (
+          <TabButton key={t.key} active={tab === t.key} onClick={() => setTab(t.key)}>
+            {t.label}
+          </TabButton>
+        ))}
+      </div>
 
       {tab === 'notices' &&
         (notices.loading ? (
           <LoadingState />
+        ) : notices.data.length === 0 ? (
+          <EmptyState label="등록된 공지가 없습니다." />
         ) : (
-          <>
-            <MasterDetailList<Notice>
-              items={notices.data}
-              getKey={(n) => n.id}
-              renderCard={(n, { selected }) => <NoticeCard notice={n} selected={selected} />}
-              emptyLabel="등록된 공지가 없습니다."
-            />
-            {/* 모바일 상세 모달(데스크탑은 우측 페인) */}
-            <MasterDetailDetail<Notice>
-              variant="mobile"
-              items={notices.data}
-              getKey={(n) => n.id}
-              renderDetail={(n) => <NoticeDetail notice={n} />}
-            />
-          </>
+          <div className="space-y-3 px-4">
+            {notices.data.map((n) => {
+              const href = `/community/notices/${n.id}`
+              const selected = pathname === href
+              return (
+                <Link
+                  key={n.id}
+                  href={href}
+                  scroll={false}
+                  aria-current={selected ? 'page' : undefined}
+                  className="block"
+                >
+                  <NoticeCard notice={n} selected={selected} />
+                </Link>
+              )
+            })}
+          </div>
         ))}
 
       {tab === 'faq' && (
@@ -87,35 +84,5 @@ export default function CommunityPage() {
         </div>
       )}
     </div>
-  )
-
-  // extended(데스크탑 780) — 공지 탭은 상세, 그 외는 보조 안내
-  const extended =
-    tab === 'notices' ? (
-      <MasterDetailDetail<Notice>
-        variant="desktop"
-        items={notices.data}
-        getKey={(n) => n.id}
-        renderDetail={(n) => <NoticeDetail notice={n} />}
-        placeholder={
-          <div className="flex items-center justify-center min-h-[300px]">
-            <EmptyState label="좌측에서 공지를 선택하세요." />
-          </div>
-        }
-      />
-    ) : tab === 'faq' ? (
-      <div className="flex items-center justify-center min-h-[300px]">
-        <EmptyState label="자주 묻는 질문을 확인해 보세요." />
-      </div>
-    ) : (
-      <div className="flex items-center justify-center min-h-[300px]">
-        <EmptyState label="본인확인 후 문의 내역을 확인할 수 있습니다." />
-      </div>
-    )
-
-  return (
-    <MasterDetailProvider>
-      <AppShell main={main} extended={extended} />
-    </MasterDetailProvider>
   )
 }
