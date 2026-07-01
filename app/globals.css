@@ -123,6 +123,7 @@ body {
 .font-raleway { font-family: 'Raleway', sans-serif; }
 
 /* 커스텀 스크롤바 */
+.custom-scrollbar { scrollbar-gutter: stable; }
 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
@@ -130,7 +131,7 @@ body {
 
 @media (max-width: 768px) {
   .custom-scrollbar::-webkit-scrollbar { display: none; }
-  .custom-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .custom-scrollbar { -ms-overflow-style: none; scrollbar-width: none; scrollbar-gutter: auto; }
 }
 
 /* 선택 영역 / 포커스 */
