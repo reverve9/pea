@@ -4,14 +4,24 @@
 import type { BadgeColor } from '@/components/common/Badge'
 import type { CourseStatus, ScheduleType, NoticeCategory } from './types'
 
-// 과정 상태 → 라벨 + 배지색
+// 과정 상태 → 라벨 + 배지색 (Phase 2.5 딥네이비 톤 키)
 export const COURSE_STATUS: Record<CourseStatus, { label: string; color: BadgeColor }> = {
-  open: { label: '접수중', color: 'green' },
-  preparing: { label: '개설 준비중', color: 'orange' },
-  closed: { label: '마감', color: 'gray' },
+  open: { label: '접수중', color: 'navy' },
+  preparing: { label: '개설 준비중', color: 'amber' },
+  closed: { label: '마감', color: 'slate' },
 }
 
-// 일정 유형 → 라벨 + 배지색 (달력 범례/차수 표시용)
+// 신청 status → 라벨 + 배지색 (§2). 확정 2종(paid/completed)만 배경 채도 진하게. Phase 4 마이페이지에서 사용.
+export type ApplicationStatus = 'pending' | 'paid' | 'completed' | 'cancelled' | 'refunded'
+export const APPLICATION_STATUS: Record<ApplicationStatus, { label: string; color: BadgeColor }> = {
+  pending: { label: '입금대기', color: 'amber' },
+  paid: { label: '입금확인', color: 'navy' },
+  completed: { label: '연수완료', color: 'emerald' },
+  cancelled: { label: '취소', color: 'slate' },
+  refunded: { label: '환불완료', color: 'terracotta' },
+}
+
+// 일정 유형 → 라벨 + 배지색 (달력 범례/차수 표시용 — §5 범위밖, 레거시 색 키 유지)
 export const SCHEDULE_TYPE: Record<ScheduleType, { label: string; color: BadgeColor }> = {
   jikmu: { label: '직무연수', color: 'orange' },
   weekday_2n: { label: '주중 2박', color: 'blue' },
@@ -21,9 +31,9 @@ export const SCHEDULE_TYPE: Record<ScheduleType, { label: string; color: BadgeCo
 
 // 공지 카테고리 → 라벨 + 배지색
 export const NOTICE_CATEGORY: Record<NoticeCategory, { label: string; color: BadgeColor }> = {
-  general: { label: '일반', color: 'blue' },
-  program: { label: '프로그램', color: 'orange' },
-  result: { label: '결과발표', color: 'green' },
+  general: { label: '일반', color: 'slate' },
+  program: { label: '프로그램', color: 'navy' },
+  result: { label: '결과발표', color: 'emerald' },
 }
 
 // 원화 포맷: 303000 → "303,000원"
