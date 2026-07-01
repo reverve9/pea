@@ -20,7 +20,7 @@ export default function MyPage() {
           <section className="px-4">
             <WhiteBox className="p-6 text-center">
               <div className="w-14 h-14 rounded-full bg-[#eef2f7] flex items-center justify-center mx-auto mb-4">
-                <ShieldCheck size={26} className="text-[#5b7cae]" />
+                <ShieldCheck size={26} className="text-[#1e3a5f]" />
               </div>
               <h3 className="fluid-body font-[500] text-[#1f2937]">본인확인이 필요합니다</h3>
               <p className="fluid-nav-label text-[#6b7280] mt-2 leading-relaxed">
@@ -44,7 +44,7 @@ export default function MyPage() {
             <ul className="space-y-2">
               {FEATURES.map((f) => (
                 <li key={f} className="flex items-center gap-2 fluid-body text-[#4b5563]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#5b7cae]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#1e3a5f]" />
                   {f}
                 </li>
               ))}

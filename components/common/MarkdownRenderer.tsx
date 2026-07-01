@@ -21,7 +21,7 @@ export default function MarkdownRenderer({ content, className = '' }: MarkdownRe
             <img {...props} alt={props.alt ?? ''} className="max-w-full h-auto rounded-[8px] my-4" loading="lazy" />
           ),
           a: (props) => (
-            <a {...props} className="text-[#3071a5] hover:underline" target="_blank" rel="noopener noreferrer" />
+            <a {...props} className="text-[#3f6a99] hover:underline" target="_blank" rel="noopener noreferrer" />
           ),
           h1: (props) => <h1 {...props} className="text-[24px] font-bold text-[#1f2937] mt-6 mb-3" />,
           h2: (props) => <h2 {...props} className="text-[20px] font-bold text-[#1f2937] mt-5 mb-2" />,
@@ -42,7 +42,7 @@ export default function MarkdownRenderer({ content, className = '' }: MarkdownRe
             )
           },
           blockquote: (props) => (
-            <blockquote {...props} className="border-l-4 border-[#3071a5] pl-4 my-4 text-[#6b7280] italic" />
+            <blockquote {...props} className="border-l-4 border-[#1e3a5f] pl-4 my-4 text-[#6b7280] italic" />
           ),
           hr: (props) => <hr {...props} className="border-[#e5e7eb] my-6" />,
           strong: (props) => <strong {...props} className="font-semibold text-[#1f2937]" />,

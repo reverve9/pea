@@ -19,13 +19,13 @@ type Track = {
 const TRACKS: Track[] = [
   {
     key: 'jikmu',
-    icon: <GraduationCap size={22} className="text-[#b87a5a]" />,
+    icon: <GraduationCap size={22} className="text-[#1e3a5f]" />,
     title: '직무연수 신청',
     desc: '교원 스키·스노보드 지도법 직무연수(2박) 신청 과정입니다.',
   },
   {
     key: 'jayul',
-    icon: <Boxes size={22} className="text-[#5b7cae]" />,
+    icon: <Boxes size={22} className="text-[#1e3a5f]" />,
     title: '자율패키지 신청',
     desc: '주중·주말 일정과 인원을 선택하는 자율패키지 신청 과정입니다.',
   },
@@ -41,7 +41,7 @@ function TrackCard({ track }: { track: Track }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h3 className="fluid-body font-[500] text-[#1f2937]">{track.title}</h3>
-            <Badge color="gray" size="sm">
+            <Badge color="slate" size="sm">
               준비중
             </Badge>
           </div>
@@ -68,7 +68,7 @@ export default function ApplyPage() {
             </div>
             <p className="fluid-nav-label text-[#9ca3af] mt-4 px-1 leading-relaxed">
               신청서 작성 · 인원 · 금액 계산 기능은 준비 중입니다. 일정과 비용은{' '}
-              <span className="text-[#5b7cae]">연수안내</span> 에서 먼저 확인하실 수 있습니다.
+              <span className="text-[#3f6a99]">연수안내</span> 에서 먼저 확인하실 수 있습니다.
             </p>
           </section>
         </div>

@@ -11,11 +11,11 @@ export default function NoticeCard({ notice, selected }: { notice: Notice; selec
   const cat = NOTICE_CATEGORY[notice.category]
   const date = formatDate((notice.published_at ?? notice.created_at).slice(0, 10))
   return (
-    <div className={`white-box p-3 transition-shadow ${selected ? 'ring-2 ring-[#5b7cae]' : ''}`}>
+    <div className={`white-box p-3 transition-shadow ${selected ? 'ring-2 ring-[#1e3a5f]' : ''}`}>
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <div className="flex items-center gap-1.5">
           {notice.is_pinned && (
-            <Pin size={13} className="text-[#b87a5a]" fill="currentColor" />
+            <Pin size={13} className="text-[#a65546]" fill="currentColor" />
           )}
           <Badge color={cat.color} size="sm">
             {cat.label}

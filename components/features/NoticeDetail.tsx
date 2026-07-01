@@ -14,7 +14,7 @@ export default function NoticeDetail({ notice }: { notice: Notice }) {
   return (
     <article>
       <div className="flex items-center gap-2 mb-2">
-        {notice.is_pinned && <Pin size={14} className="text-[#b87a5a]" fill="currentColor" />}
+        {notice.is_pinned && <Pin size={14} className="text-[#a65546]" fill="currentColor" />}
         <Badge color={cat.color} size="sm">
           {cat.label}
         </Badge>
