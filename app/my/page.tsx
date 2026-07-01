@@ -2,13 +2,13 @@ import AppShell from '@/components/layout/AppShell'
 import PageTitle from '@/components/common/PageTitle'
 import Maintenance from '@/components/common/Maintenance'
 
-// 홈 자리표시자. 실제 콘텐츠(히어로·연수 하이라이트 등)는 후속 Phase 2b.
-export default function HomePage() {
+// 마이페이지 자리표시자. 실제 조회(OTP 게이트 + 신청내역)는 후속 Phase 4.
+export default function MyPage() {
   return (
     <AppShell
       main={
         <>
-          <PageTitle title="HOME" subtitle="체육교육회" />
+          <PageTitle title="MY" subtitle="마이페이지" />
           <Maintenance />
         </>
       }

@@ -1,22 +1,169 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+@import url('https://fonts.googleapis.com/css2?family=Do+Hyeon&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@100;200;300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@100;200;300;400;500;600;700;800;900&display=swap');
 @import 'tailwindcss';
 
-/* Phase 0b: 최소 셋업만. 나인브릿지 브랜드 토큰(컬러/화이트박스/폰트 스케일)은 Phase 2에서 이식. */
+/* 에스코어드림 폰트 1-9 전체 */
+@font-face {
+  font-family: 'S-CoreDream';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/S-CoreDream-1Thin.woff') format('woff');
+  font-weight: 100;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'S-CoreDream';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/S-CoreDream-2ExtraLight.woff') format('woff');
+  font-weight: 200;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'S-CoreDream';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/S-CoreDream-3Light.woff') format('woff');
+  font-weight: 300;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'S-CoreDream';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/S-CoreDream-4Regular.woff') format('woff');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'S-CoreDream';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/S-CoreDream-5Medium.woff') format('woff');
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'S-CoreDream';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/S-CoreDream-6Bold.woff') format('woff');
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'S-CoreDream';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/S-CoreDream-7ExtraBold.woff') format('woff');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'S-CoreDream';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/S-CoreDream-8Heavy.woff') format('woff');
+  font-weight: 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'S-CoreDream';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/S-CoreDream-9Black.woff') format('woff');
+  font-weight: 900;
+  font-display: swap;
+}
+
+@theme {
+  /* 브랜드 컬러 (나인브릿지 그대로 — 협회톤 차별화는 후속 Phase) */
+  --color-primary-50: #f0f7fb;
+  --color-primary-100: #e0eff7;
+  --color-primary-200: #b8dbed;
+  --color-primary-300: #8fc7e3;
+  --color-primary-400: #5aa8d1;
+  --color-primary-500: #3071a5;
+  --color-primary-600: #265d8a;
+  --color-primary-700: #1e4d6b;
+  --color-primary-800: #173d54;
+  --color-primary-900: #112e3f;
+
+  /* 애니메이션 */
+  --animate-fade-in: fadeIn 0.5s ease-out;
+  --animate-slide-up: slideUp 0.5s ease-out;
+  --animate-slide-in-right: slideInRight 0.3s ease-out;
+
+  @keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+  @keyframes slideUp {
+    0% { opacity: 0; transform: translateY(20px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slideInRight {
+    0% { opacity: 0; transform: translateX(20px); }
+    100% { opacity: 1; transform: translateX(0); }
+  }
+}
 
 :root {
-  color-scheme: light;
+  --color-primary: #3071a5;
+  --color-primary-dark: #265d8a;
+  --color-primary-light: #4a90c2;
 }
 
-html,
-body {
-  margin: 0;
-  padding: 0;
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  font-family:
-    system-ui,
-    -apple-system,
-    'Apple SD Gothic Neo',
-    'Malgun Gothic',
-    sans-serif;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #e8eff5;
+}
+
+/* 폰트 클래스 */
+.font-score { font-family: 'S-CoreDream', sans-serif; }
+.font-dohyeon { font-family: 'Do Hyeon', sans-serif; }
+.font-poppins { font-family: 'Poppins', sans-serif; }
+.font-montserrat { font-family: 'Montserrat', sans-serif; }
+.font-raleway { font-family: 'Raleway', sans-serif; }
+
+/* 커스텀 스크롤바 */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+@media (max-width: 768px) {
+  .custom-scrollbar::-webkit-scrollbar { display: none; }
+  .custom-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+/* 선택 영역 / 포커스 */
+::selection { background: rgba(48, 113, 165, 0.2); }
+:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+
+/* Safe Area */
+.safe-area-top { padding-top: env(safe-area-inset-top); }
+.safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+/* Extended 영역 화이트박스 */
+.white-box {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 30px 40px;
+  border: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.08);
+}
+
+/* ------------------------------------------------------------------
+   모바일 fluid clamp 유틸 (원칙2)
+   - 전환점 768px. <768 단일컬럼에서 fluid, 데스크탑(≥768, 고정폭)은 clamp
+     상한값에 걸려 자동으로 고정된다(vw 기준이 뷰포트라 광폭에서 max 도달).
+   - 순수 vw 금지: 모든 clamp 중간값에 rem 을 섞어 브라우저 zoom 접근성 보존.
+   ------------------------------------------------------------------ */
+.fluid-page-title { font-size: clamp(1.375rem, 1.05rem + 1.55vw, 1.6875rem); } /* 22 → 27px */
+.fluid-subtitle   { font-size: clamp(0.8125rem, 0.74rem + 0.35vw, 0.9375rem); } /* 13 → 15px */
+.fluid-body       { font-size: clamp(0.875rem, 0.83rem + 0.25vw, 0.9375rem); }  /* 14 → 15px */
+.fluid-nav-label  { font-size: clamp(0.625rem, 0.6rem + 0.12vw, 0.6875rem); }   /* 10 → 11px */
+.fluid-gap        { gap: clamp(0.5rem, 0.35rem + 0.7vw, 0.75rem); }
+.fluid-px         { padding-left: clamp(0.75rem, 0.4rem + 1.6vw, 1rem); padding-right: clamp(0.75rem, 0.4rem + 1.6vw, 1rem); }
+
+/* 화이트박스 패딩도 모바일에서 fluid (줄길이 대비 여백 압축) */
+@media (max-width: 768px) {
+  .white-box { padding: clamp(18px, 4vw, 30px) clamp(20px, 5vw, 40px); }
 }

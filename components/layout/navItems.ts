@@ -1,0 +1,25 @@
+import type { LucideIcon } from 'lucide-react'
+import { Building2, GraduationCap, ClipboardPen, UserRound, MessagesSquare } from 'lucide-react'
+
+// 네비게이션 5개 (기관소개/연수안내/연수신청/마이페이지/커뮤니티).
+// 나인브릿지의 "큰 영문 + 작은 한글" 패턴 유지. 실제 App Router 라우트.
+export interface NavItem {
+  href: string
+  label: string // 영문 보조 표기
+  labelKo: string // 한글
+  icon: LucideIcon
+}
+
+export const NAV_ITEMS: NavItem[] = [
+  { href: '/about', label: 'ABOUT', labelKo: '기관소개', icon: Building2 },
+  { href: '/courses', label: 'COURSES', labelKo: '연수안내', icon: GraduationCap },
+  { href: '/apply', label: 'APPLY', labelKo: '연수신청', icon: ClipboardPen },
+  { href: '/my', label: 'MY', labelKo: '마이페이지', icon: UserRound },
+  { href: '/community', label: 'COMMUNITY', labelKo: '커뮤니티', icon: MessagesSquare },
+]
+
+// 현재 경로가 특정 네비 항목에 속하는지 (하위 경로 포함).
+export function isNavActive(pathname: string, href: string): boolean {
+  if (href === '/') return pathname === '/'
+  return pathname === href || pathname.startsWith(`${href}/`)
+}
