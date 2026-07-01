@@ -21,15 +21,16 @@ const sizeStyles = {
   lg: 'px-6 py-3 text-[15px]',
 }
 
+// Phase 2.5 딥네이비: 주색 #1e3a5f / hover #152a46 / disabled 슬레이트 #94a3b8.
 const variantStyles = {
   primary:
-    'bg-[#5b7cae] text-white hover:bg-[#4a6b9d] disabled:bg-[#7c8a96] disabled:cursor-not-allowed',
+    'bg-[#1e3a5f] text-white hover:bg-[#152a46] disabled:bg-[#94a3b8] disabled:cursor-not-allowed',
   secondary:
-    'bg-[#4a6b9d]/10 text-[#5b7cae] hover:bg-[#4a6b9d]/20 disabled:bg-[#7c8a96]/10 disabled:text-[#7c8a96] disabled:cursor-not-allowed',
+    'bg-[#1e3a5f]/10 text-[#1e3a5f] hover:bg-[#1e3a5f]/20 disabled:bg-[#94a3b8]/10 disabled:text-[#94a3b8] disabled:cursor-not-allowed',
   outline:
-    'border border-[#5b7cae] text-[#5b7cae] hover:bg-[#5b7cae]/10 disabled:border-[#7c8a96] disabled:text-[#7c8a96] disabled:cursor-not-allowed',
+    'border border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f]/10 disabled:border-[#cbd5e1] disabled:text-[#94a3b8] disabled:cursor-not-allowed',
   ghost:
-    'text-[#5b7cae] hover:bg-[#5b7cae]/10 disabled:text-[#7c8a96] disabled:cursor-not-allowed',
+    'text-[#1e3a5f] hover:bg-[#1e3a5f]/10 disabled:text-[#94a3b8] disabled:cursor-not-allowed',
 }
 
 export function Button({
@@ -72,10 +73,10 @@ export function TabButton({
   className = '',
 }: TabButtonProps) {
   const styles = disabled
-    ? 'bg-white text-[#7c8a96] border-[#e5e7eb] cursor-not-allowed'
+    ? 'bg-white text-[#94a3b8] border-[#e2e8f0] cursor-not-allowed'
     : active
-      ? 'bg-[#5b7cae] text-white border-[#5b7cae]'
-      : 'bg-white text-[#6b7280] border-[#e5e7eb] hover:border-[#4a6b9d] hover:text-[#4a6b9d]'
+      ? 'bg-[#1e3a5f] text-white border-[#1e3a5f]'
+      : 'bg-white text-[#475569] border-[#e2e8f0] hover:border-[#3f6a99] hover:text-[#3f6a99]'
   return (
     <button
       onClick={onClick}
@@ -104,9 +105,9 @@ export function TagButton({
   className = '',
 }: TagButtonProps) {
   const styles = disabled
-    ? 'bg-gray-100 text-[#7c8a96] cursor-not-allowed'
+    ? 'bg-gray-100 text-[#94a3b8] cursor-not-allowed'
     : active
-      ? 'bg-[#5b7cae] text-white'
+      ? 'bg-[#1e3a5f] text-white'
       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
   return (
     <button
