@@ -26,7 +26,7 @@ export default function PWANavBar() {
 
   return (
     <nav className="fixed bottom-[40px] z-50" style={navStyle}>
-      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100">
+      <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-[0_4px_16px_rgba(15,27,46,0.08)] border border-[#e2e8f0]">
         <div className="flex items-center justify-around py-2.5 px-2">
           {NAV_ITEMS.map((item) => {
             const active = isNavActive(pathname, item.href)
@@ -37,9 +37,9 @@ export default function PWANavBar() {
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
                 className={`flex flex-col items-center justify-center gap-[6px] py-1 rounded-xl transition-all duration-200 w-[62px]
-                  ${active ? 'text-[#b87a5a] scale-[1.15]' : 'text-gray-500 hover:text-[#b87a5a] hover:scale-[1.15]'}`}
+                  ${active ? 'text-[#1e3a5f] scale-[1.15]' : 'text-[#94a3b8] hover:text-[#3f6a99] hover:scale-[1.1]'}`}
               >
-                <Icon size={20} strokeWidth={1.2} />
+                <Icon size={20} strokeWidth={1.4} />
                 <span className="fluid-nav-label font-light tracking-wide leading-none">
                   {item.labelKo}
                 </span>
