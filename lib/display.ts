@@ -2,7 +2,7 @@
 // 순수 함수만. 스타일 없음.
 
 import type { BadgeColor } from '@/components/common/Badge'
-import type { CourseStatus, ScheduleType } from './types'
+import type { CourseStatus, ScheduleType, NoticeCategory } from './types'
 
 // 과정 상태 → 라벨 + 배지색
 export const COURSE_STATUS: Record<CourseStatus, { label: string; color: BadgeColor }> = {
@@ -17,6 +17,13 @@ export const SCHEDULE_TYPE: Record<ScheduleType, { label: string; color: BadgeCo
   weekday_2n: { label: '주중 2박', color: 'blue' },
   weekend_2n: { label: '주말 2박', color: 'green' },
   weekend_1n: { label: '주말 1박', color: 'gray' },
+}
+
+// 공지 카테고리 → 라벨 + 배지색
+export const NOTICE_CATEGORY: Record<NoticeCategory, { label: string; color: BadgeColor }> = {
+  general: { label: '일반', color: 'blue' },
+  program: { label: '프로그램', color: 'orange' },
+  result: { label: '결과발표', color: 'green' },
 }
 
 // 원화 포맷: 303000 → "303,000원"

@@ -107,6 +107,11 @@ interface DetailProps<T> {
   getKey: (item: T) => string
   renderDetail: (item: T) => ReactNode
   placeholder?: ReactNode
+  // 렌더 범위: 'both'(기본) | 'desktop'(인라인만) | 'mobile'(모달만).
+  // AppShell 의 extended 슬롯은 `hidden md:block` 이라 그 안에서는 모바일 모달이
+  // display:none 조상에 갇힌다 → extended 엔 variant="desktop", 모바일 가시 영역엔
+  // variant="mobile" 로 나눠 배치한다.
+  variant?: 'both' | 'desktop' | 'mobile'
 }
 
 // 상세: 데스크탑은 우측 확장 페인에 인라인, 모바일은 하단 모달.
@@ -115,6 +120,7 @@ export function MasterDetailDetail<T>({
   getKey,
   renderDetail,
   placeholder,
+  variant = 'both',
 }: DetailProps<T>) {
   const { selectedKey, clear } = useMasterDetail()
   const isMobile = useIsMobile()
@@ -158,8 +164,8 @@ export function MasterDetailDetail<T>({
 
   return (
     <>
-      {desktop}
-      {mobileModal}
+      {variant !== 'mobile' && desktop}
+      {variant !== 'desktop' && mobileModal}
     </>
   )
 }
