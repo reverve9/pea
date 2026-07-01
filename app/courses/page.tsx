@@ -1,18 +1,46 @@
+'use client'
+
 import AppShell from '@/components/layout/AppShell'
 import PageTitle from '@/components/common/PageTitle'
-import Maintenance from '@/components/common/Maintenance'
+import SectionTitle from '@/components/common/SectionTitle'
+import { LoadingState } from '@/components/common/StateView'
+import ScheduleCalendar from '@/components/features/ScheduleCalendar'
+import PriceTable from '@/components/features/PriceTable'
+import { useQuery } from '@/lib/useQuery'
+import { getSessions, getPriceItems } from '@/lib/queries'
+import type { SessionWithCourse, PriceItem } from '@/lib/types'
 
-// 연수안내 자리표시자. 실제 콘텐츠(비용표·일정 달력 렌더)는 후속 Phase 2b.
+// §3-2 연수안내: 연수일정 달력(sessions) + 비용표(price_items). 읽기 전용.
+// extended(780)는 데스크탑 전용 → 비용표는 모바일(main·md:hidden)/데스크탑(extended)로 나눠 배치.
 export default function CoursesPage() {
+  const sessions = useQuery<SessionWithCourse[]>(getSessions, [])
+  const prices = useQuery<PriceItem[]>(getPriceItems, [])
+
   return (
     <AppShell
       main={
-        <>
+        <div className="pb-8">
           <PageTitle title="COURSES" subtitle="연수안내" />
-          <Maintenance />
-        </>
+
+          {/* 연수일정 달력 */}
+          <section className="px-4 mb-8">
+            <SectionTitle title="연수 일정" en="Schedule" />
+            {sessions.loading ? <LoadingState /> : <ScheduleCalendar sessions={sessions.data} />}
+          </section>
+
+          {/* 비용 안내 — 모바일 전용(데스크탑은 우측 페인에서 노출) */}
+          <section className="px-4 md:hidden">
+            <SectionTitle title="비용 안내" en="Fees" />
+            {prices.loading ? <LoadingState /> : <PriceTable items={prices.data} />}
+          </section>
+        </div>
       }
-      extended={<Maintenance size="large" />}
+      extended={
+        <div>
+          <SectionTitle title="비용 안내" en="Fees" />
+          {prices.loading ? <LoadingState /> : <PriceTable items={prices.data} />}
+        </div>
+      }
     />
   )
 }
