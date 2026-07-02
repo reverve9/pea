@@ -31,11 +31,11 @@ export default function PWAHeader({ variant = 'mobile' }: PWAHeaderProps) {
         />
       </Link>
 
-      {/* 마이페이지 진입 (데·모 공통, 헤더 우측). 밝은 파스텔 우측 배경 → 네이비 원형 칩 + 흰 아이콘으로 대비 확보(로고 원형 마크와 호응). 아이콘 세트=lucide(앱 전역 통일). */}
+      {/* 마이페이지 진입 (데·모 공통, 헤더 우측). 밝은 파스텔 우측 배경 → 흰 원형 칩 + 네이비 아이콘(반전, 로고 원형 마크와 호응). 아이콘 세트=lucide(앱 전역 통일). */}
       <Link
         href="/my"
         aria-label="마이페이지"
-        className={`shrink-0 grid place-items-center rounded-full bg-[#1e3a5f] text-white hover:bg-[#16293f] transition-colors ${
+        className={`shrink-0 grid place-items-center rounded-full bg-white text-[#1e3a5f] hover:bg-white/85 transition-colors ${
           isDesktop ? 'h-10 w-10' : 'h-9 w-9'
         }`}
       >
