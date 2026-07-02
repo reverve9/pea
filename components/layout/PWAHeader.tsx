@@ -9,14 +9,14 @@ interface PWAHeaderProps {
   variant?: 'mobile' | 'desktop'
 }
 
-// Phase 2.5+: 딥네이비 솔리드 헤더(전체 화이트 톤의 유일한 컬러 포인트).
-// 협회 로고(네이비 헤더용 변형 — 컬러 마크 + 흰 워드마크) 이미지 사용. 우측 마이페이지 진입 → /my.
+// Phase 2.5+: 헤더 배경 = 좌(짙은 슬레이트) → 우(파스텔 라벤더) 수평 그라데이션(참고 스크린샷).
+// 로고(흰 워드마크)는 어두운 좌측에, 마이 아이콘은 밝은 우측에 → 아이콘은 네이비로 대비 확보.
 export default function PWAHeader({ variant = 'mobile' }: PWAHeaderProps) {
   const isDesktop = variant === 'desktop'
 
   return (
     <header
-      className={`bg-[#1e3a5f] text-white px-4 h-[80px] flex items-center justify-between ${
+      className={`bg-[linear-gradient(90deg,#394053_0%,#49526B_50%,#A2AED0_100%)] text-white px-4 h-[80px] flex items-center justify-between ${
         isDesktop ? 'pt-[12px]' : 'sticky top-0 z-50'
       }`}
     >
@@ -31,14 +31,13 @@ export default function PWAHeader({ variant = 'mobile' }: PWAHeaderProps) {
         />
       </Link>
 
-      {/* 마이페이지 진입 (데·모 공통, 헤더 우측) */}
+      {/* 마이페이지 진입 (데·모 공통, 헤더 우측). 밝은 우측 배경 → 네이비 아이콘. 아이콘: lucide UserRound(=SF Symbol 아님). */}
       <Link
         href="/my"
         aria-label="마이페이지"
-        className="shrink-0 flex flex-col items-center gap-0.5 text-white/90 hover:text-white transition-colors"
+        className="shrink-0 flex items-center text-[#1e3a5f] hover:opacity-70 transition-opacity"
       >
-        <UserRound size={isDesktop ? 22 : 20} strokeWidth={1.5} />
-        <span className="text-[10px] font-light leading-none tracking-wide">마이</span>
+        <UserRound size={isDesktop ? 28 : 26} strokeWidth={1.75} />
       </Link>
     </header>
   )
