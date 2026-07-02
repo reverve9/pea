@@ -27,7 +27,7 @@ export default function PWAHeader({ variant = 'mobile' }: PWAHeaderProps) {
           width={1890}
           height={400}
           priority
-          className={`w-auto ${isDesktop ? 'h-[44px]' : 'h-[38px]'}`}
+          className={`w-auto ${isDesktop ? 'h-[36px]' : 'h-[34px]'}`}
         />
       </Link>
 
