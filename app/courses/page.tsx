@@ -8,6 +8,7 @@ import { PLACEHOLDER_SNS } from '@/lib/siteMeta'
 import { LoadingState } from '@/components/common/StateView'
 import ScheduleCalendar from '@/components/features/ScheduleCalendar'
 import PriceTable from '@/components/features/PriceTable'
+import CourseOverview from '@/components/features/CourseOverview'
 import { useQuery } from '@/lib/useQuery'
 import { getSessions, getPriceItems } from '@/lib/queries'
 import type { SessionWithCourse, PriceItem } from '@/lib/types'
@@ -22,16 +23,21 @@ export default function CoursesPage() {
     <AppShell
       main={
         <div className="pb-8">
-          <PageTitle title="연수안내" en="COURSES" />
+          <PageTitle title="연수안내" en="COURSE" />
           {/* 도입 리드 — 홈 슬로건/소개 레지스터(경량 font-300 + 넉넉한 행간 + 키워드만 강조). "볼드≠강조". */}
           <p className="px-4 pt-1 pb-8 font-score text-center text-[clamp(0.9375rem,3.9vw,1.0625rem)] font-[300] leading-[1.85] text-[#4b5563]">
             개설된 연수의 <span className="font-[500] text-[#1e3a5f]">일정과 비용</span>을 한눈에 안내합니다.<br />
             신청 전 회차와 유형을 확인하세요.
           </p>
 
+          {/* 연수 개요 — 모바일 전용(데스크탑은 우측 extended 페인에 표시) */}
+          <section className="px-4 mb-10 md:hidden">
+            <CourseOverview />
+          </section>
+
           {/* 연수일정 달력 */}
           <section className="px-4 mb-8">
-            <SectionTitle title="연수 일정" en="Schedule" />
+            <SectionTitle title="일정" en="Schedule" />
             {sessions.loading ? <LoadingState /> : <ScheduleCalendar sessions={sessions.data} />}
           </section>
 
@@ -45,6 +51,10 @@ export default function CoursesPage() {
       extended={
         <div>
           <ExtendedHeader title="연수안내" eyebrow="COURSE" sns={PLACEHOLDER_SNS} />
+          {/* 연수 개요 — 데스크탑 우측 페인(모바일은 좌측 main에 표시) */}
+          <div className="mb-10">
+            <CourseOverview />
+          </div>
           <SectionTitle title="비용 안내" en="Fees" />
           {prices.loading ? <LoadingState /> : <PriceTable items={prices.data} />}
         </div>

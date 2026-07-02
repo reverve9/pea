@@ -40,7 +40,7 @@ export default function PWANavBar() {
                   ${active ? 'text-[#1e3a5f] scale-[1.15]' : 'text-[#94a3b8] hover:text-[#3f6a99] hover:scale-[1.1]'}`}
               >
                 <Icon size={20} strokeWidth={1.4} />
-                <span className="fluid-nav-label font-light tracking-wide leading-none">
+                <span className="font-score fluid-nav-label font-light tracking-wide leading-none">
                   {item.labelKo}
                 </span>
               </Link>

@@ -60,7 +60,7 @@ export default function ApplyPage() {
     <AppShell
       main={
         <div className="pb-8">
-          <PageTitle title="연수신청" en="APPLY" />
+          <PageTitle title="신청" en="APPLICATION" />
           <section className="px-4">
             <SectionTitle title="신청 유형 선택" en="Choose" />
             <div className="space-y-3">
@@ -77,7 +77,7 @@ export default function ApplyPage() {
       }
       extended={
         <div>
-          <ExtendedHeader title="신청" eyebrow="APPLY" sns={PLACEHOLDER_SNS} />
+          <ExtendedHeader title="신청" eyebrow="APPLICATION" sns={PLACEHOLDER_SNS} />
           <SectionTitle title="신청 안내" en="Guide" />
           <WhiteBox className="p-6">
             <p className="fluid-body text-[#4b5563] leading-relaxed">

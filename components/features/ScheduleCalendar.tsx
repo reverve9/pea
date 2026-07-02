@@ -4,7 +4,6 @@ import React, { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Users } from 'lucide-react'
 import { Badge } from '@/components/common/Badge'
-import WhiteBox from '@/components/common/WhiteBox'
 import { EmptyState } from '@/components/common/StateView'
 import { SCHEDULE_TYPE, formatPeriod } from '@/lib/display'
 import type { SessionWithCourse, ScheduleType } from '@/lib/types'
@@ -78,24 +77,25 @@ export default function ScheduleCalendar({ sessions }: { sessions: SessionWithCo
   }
 
   return (
-    <div>
-      {/* 헤더: 월 네비 */}
-      <div className="flex items-center justify-between mb-3 px-1">
+    // 달력 자체가 카드박스(개요 카드와 동일 톤) — 외부 카드로 또 감싸지 않도록 컨테이너 자체를 카드로.
+    <div className="overflow-hidden rounded-[10px] border border-[#e5eaef] bg-[#f2f5f9]">
+      {/* 월 네비 */}
+      <div className="flex items-center justify-between border-b border-[#e5eaef] px-2 py-2.5">
         <button
           type="button"
           onClick={prevMonth}
-          className="p-1.5 rounded-full hover:bg-[#f3f4f6] text-[#6b7280]"
+          className="rounded-full p-1.5 text-[#6b7280] hover:bg-[#e8edf2]"
           aria-label="이전 달"
         >
           <ChevronLeft size={18} />
         </button>
-        <h4 className="fluid-body font-[500] text-[#1f2937] tabular-nums">
+        <h4 className="font-score text-[14px] font-[500] tabular-nums text-[#1f2937]">
           {year}. {String(month1).padStart(2, '0')}
         </h4>
         <button
           type="button"
           onClick={nextMonth}
-          className="p-1.5 rounded-full hover:bg-[#f3f4f6] text-[#6b7280]"
+          className="rounded-full p-1.5 text-[#6b7280] hover:bg-[#e8edf2]"
           aria-label="다음 달"
         >
           <ChevronRight size={18} />
@@ -103,7 +103,7 @@ export default function ScheduleCalendar({ sessions }: { sessions: SessionWithCo
       </div>
 
       {/* 범례 */}
-      <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3 px-1">
+      <div className="flex flex-wrap gap-x-3 gap-y-1 border-b border-[#e5eaef] px-3 py-2.5">
         {(Object.keys(SCHEDULE_HEX) as ScheduleType[]).map((t) => (
           <span key={t} className="inline-flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-[3px]" style={{ backgroundColor: SCHEDULE_HEX[t] }} />
@@ -113,7 +113,7 @@ export default function ScheduleCalendar({ sessions }: { sessions: SessionWithCo
       </div>
 
       {/* 그리드 */}
-      <WhiteBox className="p-2">
+      <div className="p-2">
         <div className="grid grid-cols-7">
           {WEEKDAYS.map((w, i) => (
             <div
@@ -169,11 +169,11 @@ export default function ScheduleCalendar({ sessions }: { sessions: SessionWithCo
             )
           })}
         </div>
-      </WhiteBox>
+      </div>
 
-      {/* 선택 차수 상세 */}
+      {/* 선택 차수 상세 — 카드 내부 섹션(구분선) */}
       {selected && (
-        <WhiteBox className="p-4 mt-3">
+        <div className="border-t border-[#e5eaef] p-4">
           <div className="flex items-start justify-between gap-2 mb-2">
             <div className="min-w-0">
               <p className="fluid-nav-label text-[#8a94a0]">{selected.course?.name ?? '연수'}</p>
@@ -196,7 +196,7 @@ export default function ScheduleCalendar({ sessions }: { sessions: SessionWithCo
           >
             신청 안내 보기 →
           </Link>
-        </WhiteBox>
+        </div>
       )}
     </div>
   )

@@ -18,7 +18,7 @@ export default function ExtendedHeader({ title, eyebrow, sns }: ExtendedHeaderPr
       <div className="flex items-end justify-between gap-3">
         {/* 국문 주 + 영문 서브 (baseline 정렬) */}
         <div className="flex items-baseline gap-2.5">
-          <h1 className="font-score text-[23px] font-[300] tracking-[-0.2px] leading-none text-[#1e3a5f]">
+          <h1 className="font-score text-[23px] font-[300] tracking-[2px] leading-none text-[#1e3a5f]">
             {title}
           </h1>
           {eyebrow && (

@@ -47,7 +47,7 @@ export default function PWATopNav() {
       style={isScrolled ? navStyle : undefined}
     >
       <div className="bg-white/95 backdrop-blur-sm shadow-[0_1px_2px_rgba(15,27,46,0.03)] border-b border-[#e2e8f0]/60">
-        <div className="flex items-stretch justify-around px-3 py-[14px]">
+        <div className="flex items-stretch justify-around px-3 py-[18px]">
           {NAV_ITEMS.map((item) => {
             const active = isNavActive(pathname, item.href)
             const isHovered = hovered === item.href
@@ -91,8 +91,8 @@ export default function PWATopNav() {
 
                 {/* 국문 라벨 (주) — 위, 크게. active 진하게 */}
                 <span
-                  className={`relative text-[16px] leading-none tracking-[0.01em]
-                    ${active ? 'font-semibold opacity-100' : 'font-medium opacity-85'}`}
+                  className={`relative font-score text-[15px] leading-none tracking-[1.5px]
+                    ${active ? 'font-medium opacity-100' : 'font-normal opacity-85'}`}
                 >
                   {item.labelKo}
                 </span>
