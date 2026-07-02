@@ -2,6 +2,7 @@ import AppShell from '@/components/layout/AppShell'
 import HomeExtended from '@/components/features/HomeExtended'
 import HomeGreeting from '@/components/features/HomeGreeting'
 import HomeCourses from '@/components/features/HomeCourses'
+import HomeStrengths from '@/components/features/HomeStrengths'
 import HomeFooter from '@/components/features/HomeFooter'
 
 // 홈. 페이지 타이틀 없음(홈은 네비 메뉴 아님).
@@ -15,7 +16,8 @@ export default function HomePage() {
         <div style={{ containerType: 'inline-size' }}>
           <HomeGreeting />
           <HomeCourses />
-          {/* 후속 위젯: 다가오는 차수 · (첫 회차 후) 갤러리 */}
+          {/* "왜 우리인가" 신뢰/강점 = 홈 요약의 확신 섹션(신규 기관용, top-funnel) */}
+          <HomeStrengths />
           <HomeFooter />
         </div>
       }
