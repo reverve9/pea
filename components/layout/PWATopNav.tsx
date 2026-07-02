@@ -14,8 +14,8 @@ export default function PWATopNav() {
   return (
     <nav className="sticky top-0 z-50">
       <div className="bg-white/95 backdrop-blur-sm shadow-[0_1px_2px_rgba(15,27,46,0.03)] border-b border-[#e2e8f0]/60">
-        {/* 아이콘+국문 2요소 → 바 높이는 기존(~70px) 유지되도록 패딩 축소 (py 10) */}
-        <div className="flex items-center justify-around px-3 py-[10px]">
+        {/* 아이콘 칩(34px)+국문 → 바 높이 ~70px 유지되도록 패딩 조정 (py 9) */}
+        <div className="flex items-center justify-around px-3 py-[9px]">
           {NAV_ITEMS.map((item) => {
             const active = isNavActive(pathname, item.href)
             const showEffect = active || hovered === item.href
@@ -27,7 +27,7 @@ export default function PWATopNav() {
                 aria-current={active ? 'page' : undefined}
                 onMouseEnter={() => setHovered(item.href)}
                 onMouseLeave={() => setHovered(null)}
-                className="relative flex flex-col items-center justify-center gap-[5px] py-1 px-2 text-[#1e3a5f] transition-all duration-200"
+                className="relative flex flex-col items-center justify-center gap-[6px] px-2 text-[#1e3a5f] transition-all duration-200"
               >
                 {/* 나인브릿지 원형 배경 글로우(시안 리컬러) — hover/active 시 scale·opacity 페이드 */}
                 <span
@@ -57,16 +57,17 @@ export default function PWATopNav() {
                   }}
                 />
 
-                {/* 아이콘(모바일 하단 네비와 통일) */}
-                <Icon
-                  size={22}
-                  strokeWidth={1.5}
-                  className={`relative ${active ? 'opacity-100' : 'opacity-60'}`}
-                />
-
-                {/* 국문 라벨: 아이콘이 있어 강조 완화 → 기본 300 / 선택 500. hover엔 글자 불변(글로우만) → active에만 */}
+                {/* 아이콘 원형 칩 — 선택: 네이비 채움+흰 아이콘 / 기본: 연한 틴트+뮤트 네이비. hover는 글로우만(칩은 active에만) */}
                 <span
-                  className={`relative text-[16px] tracking-[0.12em] leading-none
+                  className={`relative grid place-items-center h-[34px] w-[34px] rounded-full transition-colors
+                    ${active ? 'bg-[#1e3a5f] text-white' : 'bg-[#eaf0f6] text-[#3f5c7e]'}`}
+                >
+                  <Icon size={18} strokeWidth={1.6} />
+                </span>
+
+                {/* 국문 라벨: 칩이 강조를 맡아 축소(13px) + 기본 300 / 선택 500. hover엔 글자 불변 */}
+                <span
+                  className={`relative text-[13px] tracking-[0.12em] leading-none
                     ${active ? 'font-medium opacity-100' : 'font-light opacity-60'}`}
                 >
                   {item.labelKo}
