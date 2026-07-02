@@ -1,6 +1,7 @@
 import AppShell from '@/components/layout/AppShell'
 import HomeExtended from '@/components/features/HomeExtended'
 import HomeGreeting from '@/components/features/HomeGreeting'
+import HomeCourses from '@/components/features/HomeCourses'
 import HomeFooter from '@/components/features/HomeFooter'
 
 // 홈. 페이지 타이틀 없음(홈은 네비 메뉴 아님).
@@ -13,7 +14,8 @@ export default function HomePage() {
         // containerType: inline-size → 홈 좌측 전체가 cqi 기준 컨테이너(페인 폭). 하위 위젯·푸터 공유.
         <div style={{ containerType: 'inline-size' }}>
           <HomeGreeting />
-          {/* 후속 위젯: 다가오는 차수 · 주요 프로그램(썸네일) · (첫 회차 후) 갤러리 */}
+          <HomeCourses />
+          {/* 후속 위젯: 다가오는 차수 · (첫 회차 후) 갤러리 */}
           <HomeFooter />
         </div>
       }

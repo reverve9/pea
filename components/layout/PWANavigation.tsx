@@ -21,7 +21,7 @@ export default function PWANavigation({ children }: { children: React.ReactNode 
     return (
       <div className="relative flex flex-col min-h-screen">
         <PWAHeader variant="mobile" />
-        <main className="flex-1 overflow-y-auto pb-28">{children}</main>
+        <main className="flex-1 min-h-0 overflow-y-auto pb-28">{children}</main>
         <PWANavBar />
       </div>
     )
@@ -31,7 +31,7 @@ export default function PWANavigation({ children }: { children: React.ReactNode 
     <div className="relative flex flex-col min-h-screen">
       <PWAHeader variant="desktop" />
       <PWATopNav />
-      <main className="flex-1 overflow-y-auto">{children}</main>
+      <main className="flex-1 min-h-0 overflow-y-auto">{children}</main>
     </div>
   )
 }
