@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { NAV_ITEMS, isNavActive } from './navItems'
 
 // 데스크탑(≥768) 상단 스티키 네비. #pwa-wrapper 스크롤 컨테이너 안이라 순수 sticky top-0 로 고정.
-// 국문 메인 라벨(16px) + 나인브릿지 원형 배경 글로우(시안으로 리컬러) hover/active 효과. 언더라인 제거.
+// 국문 라벨(13px) + 아이콘 원형 칩 + 나인브릿지 시안 배경 글로우(유지). 칩 흡수: hover 시 칩 자체가 시안 틴트+소프트 시안 그림자로 반응.
 export default function PWATopNav() {
   const pathname = usePathname()
   const [hovered, setHovered] = useState<string | null>(null)
@@ -18,7 +18,8 @@ export default function PWATopNav() {
         <div className="flex items-center justify-around px-3 py-[9px]">
           {NAV_ITEMS.map((item) => {
             const active = isNavActive(pathname, item.href)
-            const showEffect = active || hovered === item.href
+            const isHovered = hovered === item.href
+            const showEffect = active || isHovered
             const Icon = item.icon
             return (
               <Link
@@ -57,10 +58,16 @@ export default function PWATopNav() {
                   }}
                 />
 
-                {/* 아이콘 원형 칩 — 선택: 네이비 채움+흰 아이콘 / 기본: 연한 틴트+뮤트 네이비. hover는 글로우만(칩은 active에만) */}
+                {/* 아이콘 원형 칩(글로우 흡수) — active: 네이비 채움 / hover: 시안 틴트+소프트 시안 그림자 / 기본: 연한 틴트+뮤트 네이비 */}
                 <span
-                  className={`relative grid place-items-center h-[34px] w-[34px] rounded-full transition-colors
-                    ${active ? 'bg-[#1e3a5f] text-white' : 'bg-[#eaf0f6] text-[#3f5c7e]'}`}
+                  className={`relative grid place-items-center h-[34px] w-[34px] rounded-full transition-all duration-300
+                    ${
+                      active
+                        ? 'bg-[#1e3a5f] text-white'
+                        : isHovered
+                          ? 'bg-[#dff1f4] text-[#2f8ba0] shadow-[0_0_14px_rgba(79,179,196,0.45)]'
+                          : 'bg-[#eaf0f6] text-[#3f5c7e]'
+                    }`}
                 >
                   <Icon size={18} strokeWidth={1.6} />
                 </span>
