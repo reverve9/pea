@@ -9,7 +9,8 @@ export default function HomeGreeting() {
   return (
     // 아이덴티티 도입부 — 카드 없음, 그라디언트 글로우 + 대형 헤드라인
     // 패딩: clamp(16 → 28), max 는 500px 페인 기준(5.6cqi=28 @500)
-    <section className="relative pt-[clamp(2rem,9cqi,3.5rem)] pb-12 px-[clamp(1rem,5.6cqi,1.75rem)]">
+    // ⚠ 상단 pt는 모바일 전용(셸 main엔 모바일 상단패딩 없음). 데스크탑은 셸 pt-12가 담당하므로 md:pt-0으로 제거(중복 방지).
+    <section className="relative pt-[clamp(2rem,9cqi,3.5rem)] md:pt-0 pb-12 px-[clamp(1rem,5.6cqi,1.75rem)]">
       <div
         aria-hidden
         className="pointer-events-none absolute -left-12 top-2 w-[56cqi] max-w-[280px] aspect-square"

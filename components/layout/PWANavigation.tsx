@@ -31,7 +31,8 @@ export default function PWANavigation({ children }: { children: React.ReactNode 
     <div className="relative flex flex-col min-h-screen">
       <PWAHeader variant="desktop" />
       <PWATopNav />
-      <main className="flex-1 min-h-0 overflow-y-auto">{children}</main>
+      {/* md:pt — 데스크탑은 PageTitle(md:hidden)이 없어 콘텐츠가 네비에 붙음 → 상단 여백을 공용으로 부여 */}
+      <main className="flex-1 min-h-0 overflow-y-auto pt-12">{children}</main>
     </div>
   )
 }

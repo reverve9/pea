@@ -23,8 +23,10 @@ export default function CoursesPage() {
       main={
         <div className="pb-8">
           <PageTitle title="연수안내" en="COURSES" />
-          <p className="px-4 -mt-1 mb-6 text-[clamp(0.8125rem,3.6vw,0.9375rem)] font-[300] leading-relaxed text-[#6b7280]">
-            개설된 연수의 일정과 비용을 안내합니다. 신청 전 회차·유형을 확인하세요.
+          {/* 도입 리드 — 홈 슬로건/소개 레지스터(경량 font-300 + 넉넉한 행간 + 키워드만 강조). "볼드≠강조". */}
+          <p className="px-4 pt-1 pb-8 font-score text-center text-[clamp(0.9375rem,3.9vw,1.0625rem)] font-[300] leading-[1.85] text-[#4b5563]">
+            개설된 연수의 <span className="font-[500] text-[#1e3a5f]">일정과 비용</span>을 한눈에 안내합니다.<br />
+            신청 전 회차와 유형을 확인하세요.
           </p>
 
           {/* 연수일정 달력 */}
