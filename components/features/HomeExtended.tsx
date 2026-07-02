@@ -43,7 +43,7 @@ export default function HomeExtended() {
         {/* CTA + SNS. 영역(max-w-640) 안에서 한 줄로 배치. */}
         <div className="flex items-center gap-2">
           <Link
-            href="/apply"
+            href="/application"
             className="flex items-center gap-1.5 px-4 py-2 bg-[#394053] text-white text-[13px] font-medium rounded-[4px] hover:bg-[#2d3444] transition-colors whitespace-nowrap"
           >
             <ClipboardPen size={16} strokeWidth={1.75} />

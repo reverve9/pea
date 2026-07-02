@@ -10,7 +10,7 @@ import type { SessionWithCourse, ScheduleType } from '@/lib/types'
 
 // §3-2 연수일정 달력 — 경량 직접 구현(무거운 위젯 미사용).
 // sessions 를 월 그리드에 표시: 차수는 시작일에 칩으로 앵커, 기간(starts~ends)은 셀 배경 틴트로.
-// 읽기 전용 — 칩 클릭 시 상세 표시(신청 이동은 /apply 자리표시자 링크).
+// 읽기 전용 — 칩 클릭 시 상세 표시(신청 이동은 /application 자리표시자 링크).
 
 // 일정유형별 색 (Badge 팔레트와 동일 hex — 데이터 구동이라 인라인 스타일 사용)
 const SCHEDULE_HEX: Record<ScheduleType, string> = {
@@ -191,7 +191,7 @@ export default function ScheduleCalendar({ sessions }: { sessions: SessionWithCo
             </p>
           </div>
           <Link
-            href="/apply"
+            href="/application"
             className="inline-block mt-3 fluid-nav-label font-[500] text-[#5b7cae] hover:underline"
           >
             신청 안내 보기 →
