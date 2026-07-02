@@ -14,11 +14,12 @@ export default function PWATopNav() {
   return (
     <nav className="sticky top-0 z-50">
       <div className="bg-white/95 backdrop-blur-sm shadow-[0_1px_2px_rgba(15,27,46,0.03)] border-b border-[#e2e8f0]/60">
-        {/* 국문 1줄로 줄었지만 메뉴바 높이는 기존 2줄(~70px)과 동일하게 유지 (py 13→23) */}
-        <div className="flex items-center justify-around px-3 py-[23px]">
+        {/* 아이콘+국문 2요소 → 바 높이는 기존(~70px) 유지되도록 패딩 축소 (py 10) */}
+        <div className="flex items-center justify-around px-3 py-[10px]">
           {NAV_ITEMS.map((item) => {
             const active = isNavActive(pathname, item.href)
             const showEffect = active || hovered === item.href
+            const Icon = item.icon
             return (
               <Link
                 key={item.href}
@@ -26,7 +27,7 @@ export default function PWATopNav() {
                 aria-current={active ? 'page' : undefined}
                 onMouseEnter={() => setHovered(item.href)}
                 onMouseLeave={() => setHovered(null)}
-                className="relative flex items-center justify-center py-1 px-2 transition-all duration-200"
+                className="relative flex flex-col items-center justify-center gap-[5px] py-1 px-2 text-[#1e3a5f] transition-all duration-200"
               >
                 {/* 나인브릿지 원형 배경 글로우(시안 리컬러) — hover/active 시 scale·opacity 페이드 */}
                 <span
@@ -56,10 +57,17 @@ export default function PWATopNav() {
                   }}
                 />
 
-                {/* 국문 메인 라벨: 기본 400 / 선택 600, 자간 확대. hover엔 글자 불변(글로우만) → 웨이트·투명도 모두 active에만 */}
+                {/* 아이콘(모바일 하단 네비와 통일) */}
+                <Icon
+                  size={22}
+                  strokeWidth={1.5}
+                  className={`relative ${active ? 'opacity-100' : 'opacity-60'}`}
+                />
+
+                {/* 국문 라벨: 아이콘이 있어 강조 완화 → 기본 300 / 선택 500. hover엔 글자 불변(글로우만) → active에만 */}
                 <span
-                  className={`relative text-[16px] tracking-[0.12em] text-[#1e3a5f] leading-none
-                    ${active ? 'font-semibold opacity-100' : 'font-normal opacity-60'}`}
+                  className={`relative text-[16px] tracking-[0.12em] leading-none
+                    ${active ? 'font-medium opacity-100' : 'font-light opacity-60'}`}
                 >
                   {item.labelKo}
                 </span>
