@@ -14,7 +14,8 @@ export default function PWATopNav() {
   return (
     <nav className="sticky top-0 z-50">
       <div className="bg-white/95 backdrop-blur-sm shadow-[0_1px_2px_rgba(15,27,46,0.03)] border-b border-[#e2e8f0]/60">
-        <div className="flex items-center justify-around px-3 py-[13px]">
+        {/* 국문 1줄로 줄었지만 메뉴바 높이는 기존 2줄(~70px)과 동일하게 유지 (py 13→23) */}
+        <div className="flex items-center justify-around px-3 py-[23px]">
           {NAV_ITEMS.map((item) => {
             const active = isNavActive(pathname, item.href)
             const showEffect = active || hovered === item.href
