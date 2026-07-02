@@ -17,9 +17,8 @@ const HERO_SLIDES: Slide[] = [
 
 export default function HomeGreeting() {
   return (
-    // containerType: inline-size → 하위 cqi 단위가 "페인 폭" 기준으로 스케일(뷰포트 아님).
-    // 500 미만=페인이 뷰포트라 유동 / 500 고정=값도 고정. 모바일 375~430 정확 대응.
-    <div style={{ containerType: 'inline-size' }}>
+    // cqi 컨테이너는 상위(app/page.tsx 홈 래퍼)에서 선언 — 페인 폭 기준 스케일 공유.
+    <div>
       {/* 상단 이미지 슬라이더 (풀블리드, aspect-ratio 로 폭 따라 스케일) */}
       <ImageSlider slides={HERO_SLIDES} />
 

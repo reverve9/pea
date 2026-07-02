@@ -14,7 +14,7 @@ export interface Slide {
 export default function ImageSlider({
   slides,
   interval = 5000,
-  aspectClass = 'aspect-[16/10]',
+  aspectClass = 'aspect-[2/1]',
 }: {
   slides: Slide[]
   interval?: number
@@ -41,7 +41,7 @@ export default function ImageSlider({
           <div key={i} className="relative min-w-full h-full">
             {s.src ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={s.src} alt={s.alt || ''} className="w-full h-full object-cover" />
+              <img src={s.src} alt={s.alt || ''} className="w-full h-full object-cover object-center" />
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#dbe4ee] to-[#eef2f6] text-[#9fb0c3]">
                 <Mountain size={40} strokeWidth={1.25} />
