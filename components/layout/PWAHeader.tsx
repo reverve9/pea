@@ -31,13 +31,15 @@ export default function PWAHeader({ variant = 'mobile' }: PWAHeaderProps) {
         />
       </Link>
 
-      {/* 마이페이지 진입 (데·모 공통, 헤더 우측). 밝은 우측 배경 → 네이비 아이콘. 아이콘: lucide UserRound(=SF Symbol 아님). */}
+      {/* 마이페이지 진입 (데·모 공통, 헤더 우측). 밝은 파스텔 우측 배경 → 네이비 원형 칩 + 흰 아이콘으로 대비 확보(로고 원형 마크와 호응). 아이콘 세트=lucide(앱 전역 통일). */}
       <Link
         href="/my"
         aria-label="마이페이지"
-        className="shrink-0 flex items-center text-[#1e3a5f] hover:opacity-70 transition-opacity"
+        className={`shrink-0 grid place-items-center rounded-full bg-[#1e3a5f] text-white hover:bg-[#16293f] transition-colors ${
+          isDesktop ? 'h-10 w-10' : 'h-9 w-9'
+        }`}
       >
-        <UserRound size={isDesktop ? 28 : 26} strokeWidth={1.75} />
+        <UserRound size={isDesktop ? 22 : 20} strokeWidth={1.75} />
       </Link>
     </header>
   )
