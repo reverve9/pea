@@ -16,7 +16,7 @@ export default function MyPage() {
     <AppShell
       main={
         <div className="pb-8">
-          <PageTitle title="MY" subtitle="마이페이지" />
+          <PageTitle title="마이페이지" en="MY" />
           <section className="px-4">
             <WhiteBox className="p-6 text-center">
               <div className="w-14 h-14 rounded-full bg-[#eef2f7] flex items-center justify-center mx-auto mb-4">

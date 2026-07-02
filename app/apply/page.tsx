@@ -60,7 +60,7 @@ export default function ApplyPage() {
     <AppShell
       main={
         <div className="pb-8">
-          <PageTitle title="APPLY" subtitle="연수신청" />
+          <PageTitle title="연수신청" en="APPLY" />
           <section className="px-4">
             <SectionTitle title="신청 유형 선택" en="Choose" />
             <div className="space-y-3">

@@ -20,7 +20,7 @@ export default function ProgramPage() {
     <AppShell
       main={
         <div className="pb-8">
-          <PageTitle title="PROGRAM" subtitle="프로그램" />
+          <PageTitle title="프로그램" en="PROGRAM" />
           <section className="px-4">
             <SectionTitle title="주요 프로그램" en="Programs" />
             {courses.loading ? (

@@ -22,7 +22,10 @@ export default function CoursesPage() {
     <AppShell
       main={
         <div className="pb-8">
-          <PageTitle title="COURSES" subtitle="연수안내" />
+          <PageTitle title="연수안내" en="COURSES" />
+          <p className="px-4 -mt-1 mb-6 text-[clamp(0.8125rem,3.6vw,0.9375rem)] font-[300] leading-relaxed text-[#6b7280]">
+            개설된 연수의 일정과 비용을 안내합니다. 신청 전 회차·유형을 확인하세요.
+          </p>
 
           {/* 연수일정 달력 */}
           <section className="px-4 mb-8">

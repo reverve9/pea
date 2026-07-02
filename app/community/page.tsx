@@ -33,7 +33,7 @@ export default function CommunityPage() {
 
   return (
     <div className="pb-8">
-      <PageTitle title="COMMUNITY" subtitle="커뮤니티" />
+      <PageTitle title="커뮤니티" en="COMMUNITY" />
 
       <div className="flex flex-wrap gap-2 px-4 pb-3">
         {TABS.map((t) => (

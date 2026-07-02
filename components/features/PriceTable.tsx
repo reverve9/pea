@@ -14,14 +14,14 @@ function PriceGroup({ title, items }: { title: string; items: PriceItem[] }) {
   if (items.length === 0) return null
   return (
     <div>
-      <h4 className="fluid-body font-[500] text-[#374151] mb-2 px-1">{title}</h4>
+      <h4 className="fluid-body font-[600] text-[#1e3a5f] mb-2 px-1">{title}</h4>
       <WhiteBox className="p-0 overflow-hidden">
         <table className="w-full">
           <tbody>
             {items.map((it, i) => (
               <tr key={it.id} className={i > 0 ? 'border-t border-[#f0f1f3]' : ''}>
                 <td className="fluid-body text-[#4b5563] px-4 py-2.5">{it.label}</td>
-                <td className="fluid-body font-[500] text-[#1f2937] px-4 py-2.5 text-right whitespace-nowrap tabular-nums">
+                <td className="fluid-body font-[600] text-[#1e3a5f] px-4 py-2.5 text-right whitespace-nowrap tabular-nums">
                   {formatKRW(it.amount)}
                 </td>
               </tr>
@@ -68,7 +68,7 @@ export default function PriceTable({ items }: { items: PriceItem[] }) {
 
       {pkg.length > 0 && (
         <div className="space-y-4">
-          <h4 className="fluid-body font-[500] text-[#374151] px-1">{CATEGORY_TITLE.pkg_price}</h4>
+          <h4 className="fluid-body font-[600] text-[#1e3a5f] px-1">{CATEGORY_TITLE.pkg_price}</h4>
           <div className="space-y-4 pl-1">
             {pkgBuckets.map(
               ({ bucket, rows }) => rows.length > 0 && <PriceGroup key={bucket} title={bucket} items={rows} />,

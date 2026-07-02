@@ -23,7 +23,7 @@ export default function AboutPage() {
     <AppShell
       main={
         <div className="pb-8">
-          <PageTitle title="ABOUT" subtitle="기관소개" />
+          <PageTitle title="기관소개" en="ABOUT" />
 
           {/* 인사말 */}
           <section className="px-4 mb-8">
