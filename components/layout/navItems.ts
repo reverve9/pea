@@ -14,7 +14,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { href: '/program', label: 'PROGRAM', labelKo: '프로그램', icon: GraduationCap },
   { href: '/courses', label: 'COURSE', labelKo: '연수안내', icon: CalendarDays },
-  { href: '/apply', label: 'APPLY', labelKo: '신청', icon: ClipboardPen },
+  { href: '/apply', label: 'APPLICATION', labelKo: '신청', icon: ClipboardPen },
   { href: '/community', label: 'COMMUNITY', labelKo: '커뮤니티', icon: MessagesSquare },
 ]
 

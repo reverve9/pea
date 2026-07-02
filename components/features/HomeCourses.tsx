@@ -22,34 +22,43 @@ const JIKMU = {
     { l: '과정', v: ['스키·스노보드 지도법', '현장 실습 (2박)'] },
     { l: '이수 혜택', v: ['출석 완료 시 NEIS 학점 등재 ·', '이수증 제공'] },
   ],
-  img: '', // TODO /home/course-jikmu.jpg
+  img: '/home/course-jikmu.jpg', // 실사(성인 카빙 06) 딥 네이비 듀오톤(보조). 3:5 750×1250. 없으면 ph 폴백.
+  tint: 0.32, // 이미지 위 브랜드 컬러(accent) 오버레이 오퍼시티 — 컬러를 주인공으로, 이미지는 결로.
   ph: 'from-[#2c3e57] to-[#16304f]',
 }
 const JAYUL = {
   no: 'COURSE 02',
   name: '자율패키지',
   desc: '교원 가족·지인 대상 자율 참여 패키지',
-  accent: '#3f7d5a', // 그린
+  accent: '#2f803a', // 그린(따뜻한 포레스트 — 네이비와 색상 분리). 이미지 오버레이·상세 텍스트 공용.
   pill: '패키지 할인가 · 학점 미인정',
-  pillClass: 'bg-[#e8f2ea] text-[#3f7d5a]',
+  pillClass: 'bg-[#e8f2ea] text-[#2f803a]',
   rows: [
     { l: '신청대상', v: ['전국 교원·교육전문직,', '공무원 가족 및 지인'] },
     { l: '성격', v: ['가족·지인 대상 패키지 할인가', '(학점 인정 안 됨)'] },
     { l: '일정', v: ['주중2박 · 주말2박 · 주말1박', '중 자유 선택'] },
     { l: '참고', v: ['미성년자 부모 동반 신청 필수', '참가/납부 확인서 발행 가능'] },
   ],
-  img: '', // TODO /home/course-jayul.jpg
+  img: '/home/course-jayul.jpg', // 실사(성인+아이 01) 딥 그린 듀오톤(보조). 3:5 750×1250. 없으면 ph 폴백.
+  tint: 0.40, // 이미지 위 브랜드 컬러(accent) 오버레이 오퍼시티 — 컬러를 주인공으로, 이미지는 결로.
   ph: 'from-[#3a7a5a] to-[#22463a]',
 }
 
 type Course = typeof JIKMU
 
+// 그라디언트를 항상 베이스로 깔고 그 위에 사진을 CSS 배경으로 얹는다(나인브릿지 방식).
+// → 이미지 파일이 없거나 404면 사진 레이어가 조용히 비어 그라디언트가 그대로 폴백된다(깨진 img 아이콘 없음).
 function Bg({ c }: { c: Course }) {
-  if (c.img) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={c.img} alt={c.name} className="absolute inset-0 w-full h-full object-cover object-center" />
-  }
-  return <div className={`absolute inset-0 bg-gradient-to-br ${c.ph}`} />
+  return (
+    <>
+      <div className={`absolute inset-0 bg-gradient-to-br ${c.ph}`} />
+      {c.img && (
+        <div aria-hidden className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${c.img})` }} />
+      )}
+      {/* 브랜드 컬러 오버레이(자연 풀컬러 백업 톤 통일용). 베이크 듀오톤이면 tint=0 이라 렌더 안 됨 */}
+      {c.img && c.tint > 0 && <div aria-hidden className="absolute inset-0" style={{ backgroundColor: c.accent, opacity: c.tint }} />}
+    </>
+  )
 }
 
 function PlusButton({ open, onClick, side, label }: { open: boolean; onClick: () => void; side: 'left' | 'right'; label: string }) {
@@ -58,7 +67,7 @@ function PlusButton({ open, onClick, side, label }: { open: boolean; onClick: ()
       onClick={onClick}
       aria-expanded={open}
       aria-label={label}
-      className={`absolute top-3 z-30 w-8 h-8 flex items-center justify-center ${side === 'right' ? 'right-3' : 'left-3'}`}
+      className={`absolute top-3 z-30 w-8 h-8 flex items-center justify-center rounded-full bg-black/30 backdrop-blur-sm border border-white/20 shadow-sm transition-colors hover:bg-black/45 ${side === 'right' ? 'right-3' : 'left-3'}`}
     >
       <span className="relative block w-6 h-6 transition-transform duration-300" style={{ transform: open ? 'rotate(45deg)' : 'rotate(0deg)' }}>
         <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[18px] h-[2.5px] bg-white rounded-sm" />
@@ -71,7 +80,7 @@ function PlusButton({ open, onClick, side, label }: { open: boolean; onClick: ()
 function BaseLabel({ c }: { c: Course }) {
   return (
     <>
-      <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 p-[clamp(0.875rem,4cqi,1.25rem)]">
         <p className="font-raleway text-[clamp(0.5625rem,2.4cqi,0.625rem)] font-[400] tracking-[2px] text-[#a9e0ea]">{c.no}</p>
         <h3 className="font-score text-[clamp(1.125rem,5.5cqi,1.375rem)] font-[500] text-white leading-tight mt-0.5">{c.name}</h3>
@@ -100,7 +109,7 @@ function Detail({ c, bg }: { c: Course; bg: Course }) {
   return (
     <>
       <Bg c={bg} />
-      <div className="absolute inset-0 bg-white/92" />
+      <div className="absolute inset-0 bg-white/85" />
       <div className="relative z-10 h-full flex flex-col p-[clamp(0.875rem,4cqi,1.25rem)]">
         <p className="font-raleway text-[clamp(0.5rem,2.2cqi,0.5625rem)] font-[400] tracking-[2px]" style={{ color: c.accent }}>{c.no}</p>
         <h3 className="font-score text-[clamp(1rem,4.8cqi,1.25rem)] font-[600] text-[#1e3a5f] leading-tight mt-0.5">{c.name}</h3>
