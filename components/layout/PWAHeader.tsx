@@ -17,7 +17,7 @@ export default function PWAHeader({ variant = 'mobile' }: PWAHeaderProps) {
   return (
     <header
       className={`bg-[#1e3a5f] text-white px-4 h-[80px] flex items-center justify-between ${
-        isDesktop ? 'pt-[20px]' : 'sticky top-0 z-50'
+        isDesktop ? 'pt-[12px]' : 'sticky top-0 z-50'
       }`}
     >
       <Link href="/" className="flex items-center min-w-0" aria-label="체육교육회 홈">
@@ -27,7 +27,7 @@ export default function PWAHeader({ variant = 'mobile' }: PWAHeaderProps) {
           width={1890}
           height={400}
           priority
-          className={`w-auto ${isDesktop ? 'h-[36px]' : 'h-[34px]'}`}
+          className={`w-auto ${isDesktop ? 'h-[40px]' : 'h-[38px]'}`}
         />
       </Link>
 
