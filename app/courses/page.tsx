@@ -3,6 +3,8 @@
 import AppShell from '@/components/layout/AppShell'
 import PageTitle from '@/components/common/PageTitle'
 import SectionTitle from '@/components/common/SectionTitle'
+import ExtendedHeader from '@/components/layout/ExtendedHeader'
+import { PLACEHOLDER_SNS } from '@/lib/siteMeta'
 import { LoadingState } from '@/components/common/StateView'
 import ScheduleCalendar from '@/components/features/ScheduleCalendar'
 import PriceTable from '@/components/features/PriceTable'
@@ -37,6 +39,7 @@ export default function CoursesPage() {
       }
       extended={
         <div>
+          <ExtendedHeader title="프로그램" eyebrow="PROGRAM" sns={PLACEHOLDER_SNS} />
           <SectionTitle title="비용 안내" en="Fees" />
           {prices.loading ? <LoadingState /> : <PriceTable items={prices.data} />}
         </div>

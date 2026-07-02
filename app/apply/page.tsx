@@ -7,6 +7,8 @@ import PageTitle from '@/components/common/PageTitle'
 import SectionTitle from '@/components/common/SectionTitle'
 import WhiteBox from '@/components/common/WhiteBox'
 import { Badge } from '@/components/common/Badge'
+import ExtendedHeader from '@/components/layout/ExtendedHeader'
+import { PLACEHOLDER_SNS } from '@/lib/siteMeta'
 
 // §3-3 연수신청: 선택페이지 골격만(직무연수 / 자율패키지 분기). 자리표시자 — 실제 폼·금액계산은 Phase 3.
 type Track = {
@@ -75,6 +77,7 @@ export default function ApplyPage() {
       }
       extended={
         <div>
+          <ExtendedHeader title="신청" eyebrow="APPLY" sns={PLACEHOLDER_SNS} />
           <SectionTitle title="신청 안내" en="Guide" />
           <WhiteBox className="p-6">
             <p className="fluid-body text-[#4b5563] leading-relaxed">
