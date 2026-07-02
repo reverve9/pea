@@ -1,19 +1,51 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { NAV_ITEMS, isNavActive } from './navItems'
 
-// 데스크탑(≥768) 상단 스티키 네비. #pwa-wrapper 스크롤 컨테이너 안이라 순수 sticky top-0 로 고정.
-// 나인브릿지 텍스트 메뉴 원형(아이콘 없음) + 언어 위계만 반전: 국문(주) 위 / 영문(서브) 아래.
-// 배경 시안 글로우는 나인브릿지 원본대로 active/hover 시 텍스트 뒤에 페이드. 모바일 하단바(아이콘+국문)는 별개 유지.
+// 데스크탑(≥768) 상단 네비.
+// ⚠️ 순수 CSS sticky 는 이 레이아웃에서 안 붙는다: #pwa-wrapper 안쪽 div 에 overflow-x-hidden 이
+// 걸려 스크롤 컨테이너가 하나 더 생기는데(그 div 자체는 스크롤 안 함) sticky 가 거기에 묶여 그냥 흘러가버린다.
+// 나인브릿지 원본과 동일하게 JS 로 #pwa-wrapper 스크롤을 감지해 80px 넘으면 fixed 로 전환한다.
+// 비주얼(텍스트 메뉴·국문 주/영문 서브·시안 글로우)은 PEA 확정본 유지.
 export default function PWATopNav() {
   const pathname = usePathname()
   const [hovered, setHovered] = useState<string | null>(null)
+  const [isScrolled, setIsScrolled] = useState(false)
+  const [navStyle, setNavStyle] = useState<{ left: string; width: string }>({ left: '0px', width: '100%' })
+
+  useEffect(() => {
+    const pwaWrapper = document.getElementById('pwa-wrapper')
+
+    const updatePosition = () => {
+      if (!pwaWrapper) return
+      const rect = pwaWrapper.getBoundingClientRect()
+      setNavStyle({ left: `${rect.left}px`, width: `${rect.width}px` })
+    }
+
+    const handleScroll = () => {
+      if (!pwaWrapper) return
+      setIsScrolled(pwaWrapper.scrollTop > 80)
+    }
+
+    updatePosition()
+    handleScroll()
+    window.addEventListener('resize', updatePosition)
+    pwaWrapper?.addEventListener('scroll', handleScroll)
+
+    return () => {
+      window.removeEventListener('resize', updatePosition)
+      pwaWrapper?.removeEventListener('scroll', handleScroll)
+    }
+  }, [])
 
   return (
-    <nav className="sticky top-0 z-50">
+    <nav
+      className={`z-50 ${isScrolled ? 'fixed top-0' : 'sticky top-0'}`}
+      style={isScrolled ? navStyle : undefined}
+    >
       <div className="bg-white/95 backdrop-blur-sm shadow-[0_1px_2px_rgba(15,27,46,0.03)] border-b border-[#e2e8f0]/60">
         <div className="flex items-stretch justify-around px-3 py-[14px]">
           {NAV_ITEMS.map((item) => {
