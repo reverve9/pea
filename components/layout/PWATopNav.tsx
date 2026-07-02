@@ -56,11 +56,10 @@ export default function PWATopNav() {
                   }}
                 />
 
-                {/* 국문 메인 라벨: 기본 400 / 선택 600, 자간 확대. 웨이트는 active에만(hover 리플로우 방지) */}
+                {/* 국문 메인 라벨: 기본 400 / 선택 600, 자간 확대. hover엔 글자 불변(글로우만) → 웨이트·투명도 모두 active에만 */}
                 <span
-                  className={`relative text-[16px] tracking-[0.12em] text-[#1e3a5f] leading-none transition-opacity duration-200
-                    ${active ? 'font-semibold' : 'font-normal'}
-                    ${showEffect ? 'opacity-100' : 'opacity-60'}`}
+                  className={`relative text-[16px] tracking-[0.12em] text-[#1e3a5f] leading-none
+                    ${active ? 'font-semibold opacity-100' : 'font-normal opacity-60'}`}
                 >
                   {item.labelKo}
                 </span>
