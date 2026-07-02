@@ -19,7 +19,7 @@ export default function CommunityLayout({
       main={children}
       extended={
         <div>
-          <ExtendedHeader title="공지 및 소식" eyebrow="NEWS" sns={PLACEHOLDER_SNS} />
+          <ExtendedHeader title="커뮤니티" eyebrow="COMMUNITY" sns={PLACEHOLDER_SNS} />
           {detail}
         </div>
       }

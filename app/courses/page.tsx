@@ -39,7 +39,7 @@ export default function CoursesPage() {
       }
       extended={
         <div>
-          <ExtendedHeader title="프로그램" eyebrow="PROGRAM" sns={PLACEHOLDER_SNS} />
+          <ExtendedHeader title="연수안내" eyebrow="COURSE" sns={PLACEHOLDER_SNS} />
           <SectionTitle title="비용 안내" en="Fees" />
           {prices.loading ? <LoadingState /> : <PriceTable items={prices.data} />}
         </div>
