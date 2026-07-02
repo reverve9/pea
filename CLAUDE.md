@@ -21,4 +21,5 @@
 
 ### 하지 말 것
 - 섹션이 few·fixed인 페이지(기관소개 등)에 마스터-디테일 스왑을 씌우지 말 것 → 좌측이 비거나 좌우 콘텐츠가 중복됨.
-- `MasterDetail.tsx`(Phase 2a), `ScheduleCalendar.tsx`는 재작성/수정 금지.
+- `MasterDetail.tsx`(Phase 2a)는 재작성/수정 금지.
+- `ScheduleCalendar.tsx`는 Phase 3에서 오너 지시로 전면 재작성됨(월 탭 + 타입색 range 바 + 신청인원). 더 이상 동결 아님 — 일반 컴포넌트처럼 수정 가능.

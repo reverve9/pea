@@ -1,180 +1,277 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, ChevronRight, Users } from 'lucide-react'
+import { Users } from 'lucide-react'
 import { Badge } from '@/components/common/Badge'
 import { EmptyState } from '@/components/common/StateView'
 import { SCHEDULE_TYPE, formatPeriod } from '@/lib/display'
 import type { SessionWithCourse, ScheduleType } from '@/lib/types'
 
-// §3-2 연수일정 달력 — 경량 직접 구현(무거운 위젯 미사용).
-// sessions 를 월 그리드에 표시: 차수는 시작일에 칩으로 앵커, 기간(starts~ends)은 셀 배경 틴트로.
-// 읽기 전용 — 칩 클릭 시 상세 표시(신청 이동은 /application 자리표시자 링크).
+// §3-2 연수일정 달력 — 디자인 참고(8.13) 비주얼 + 실제 일정(8.15) 데이터.
+// 원칙:
+//  - 셀 안에 텍스트를 넣지 않는다(좁은 페인에서 truncate돼 지저분함). 셀엔 날짜만.
+//  - 각 차수 기간 = 날짜 아래 컬러 바(샤프 사각형). 동시 진행 차수는 레인으로 스택(Gantt식).
+//  - 색은 "타입별". 텍스트 정보는 하단 범례가 담당.
+//  - 단일 월 뷰 + 상단 월 탭(세션 있는 달만). 표준 달력처럼 앞뒤 인접월 날짜를 흐리게 노출 →
+//    월 경계 걸친 차수(1/31~2/2)가 1월 뷰에서도 잘리지 않고 이어져 보임. 차수 추가 시 탭 자동 증가.
+//  - 바 클릭 → 해당 차수 상세(날짜·정원·신청) 카드 내부 섹션에 노출.
 
-// 일정유형별 색 (Badge 팔레트와 동일 hex — 데이터 구동이라 인라인 스타일 사용)
+// 타입별 색 — 4유형 차별성·가독성 우선(쿨→웜으로 확실히 분리). 직무=네이비(CourseTypes 통일·앵커).
 const SCHEDULE_HEX: Record<ScheduleType, string> = {
-  jikmu: '#b87a5a',
-  weekday_2n: '#5b7cae',
-  weekend_2n: '#6b9b7a',
-  weekend_1n: '#7c8a96',
+  jikmu: '#1e3a5f', // 직무연수 — 네이비(플래그십, 가장 진함)
+  weekday_2n: '#2f8fa8', // 주중 2박 — 틸(시안 계열, 네이비와 확실히 구분)
+  weekend_2n: '#549a4e', // 주말 2박 — 그린
+  weekend_1n: '#d18a3c', // 주말 1박 — 앰버
+}
+
+// 범례 전용 라벨 — 자율 3종은 상위 유형(자율PKG)을 명시해 정확히 구분(공유 SCHEDULE_TYPE 배지는 짧게 유지).
+const LEGEND_LABEL: Record<ScheduleType, string> = {
+  jikmu: '직무연수',
+  weekday_2n: '자율PKG (주중2박)',
+  weekend_2n: '자율PKG (주말2박)',
+  weekend_1n: '자율PKG (주말1박)',
 }
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
+const MS_WEEK = 7 * 24 * 3600 * 1000
+const LANE_H = 11 // 바 한 레인의 세로 간격(px)
 
-// 'YYYY-MM-DD' → 비교용 숫자키 (YYYYMMDD)
-function keyOf(y: number, m1: number, d: number): number {
-  return y * 10000 + m1 * 100 + d
-}
-function parseKey(iso: string): number {
+// 'YYYY-MM-DD' → 로컬 Date(0시)
+function toDate(iso: string): Date {
   const [y, m, d] = iso.split('-').map(Number)
-  return keyOf(y, m, d)
+  return new Date(y, m - 1, d)
+}
+function addDays(dt: Date, n: number): Date {
+  const r = new Date(dt)
+  r.setDate(r.getDate() + n)
+  return r
+}
+// 그 주의 일요일(주 시작)
+function startOfWeek(dt: Date): Date {
+  return addDays(dt, -dt.getDay())
+}
+const maxD = (...ds: Date[]): Date => ds.reduce((a, b) => (a.getTime() >= b.getTime() ? a : b))
+const minD = (...ds: Date[]): Date => ds.reduce((a, b) => (a.getTime() <= b.getTime() ? a : b))
+
+interface Segment {
+  session: SessionWithCourse
+  startCol: number // 0(일)~6(토)
+  endCol: number
+  lane: number
+}
+interface Week {
+  days: Date[]
+  segs: Segment[]
+  laneCount: number
 }
 
 export default function ScheduleCalendar({ sessions }: { sessions: SessionWithCourse[] }) {
-  // 시작 월: 가장 이른 차수의 월(없으면 현재)
-  const earliest = useMemo(() => {
-    if (sessions.length === 0) return new Date()
-    const sorted = [...sessions].sort((a, b) => a.starts_on.localeCompare(b.starts_on))
-    const [y, m] = sorted[0].starts_on.split('-').map(Number)
-    return new Date(y, m - 1, 1)
-  }, [sessions])
-
-  const [view, setView] = useState({ year: earliest.getFullYear(), month0: earliest.getMonth() })
+  const [monthIdx, setMonthIdx] = useState(0)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  const { year, month0 } = view
-  const month1 = month0 + 1
+  // 레인 정렬용 안정 정렬 + 세션이 걸친 (year, month) 목록
+  const { ordered, months } = useMemo(() => {
+    const ordered = [...sessions].sort(
+      (a, b) => a.starts_on.localeCompare(b.starts_on) || a.sort_order - b.sort_order,
+    )
+    const keys = new Map<string, { y: number; m: number }>()
+    for (const s of sessions) {
+      const start = toDate(s.starts_on)
+      const end = toDate(s.ends_on)
+      let cur = new Date(start.getFullYear(), start.getMonth(), 1)
+      const endMonth = new Date(end.getFullYear(), end.getMonth(), 1)
+      while (cur.getTime() <= endMonth.getTime()) {
+        keys.set(`${cur.getFullYear()}-${cur.getMonth()}`, { y: cur.getFullYear(), m: cur.getMonth() })
+        cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1)
+      }
+    }
+    const months = [...keys.values()].sort((a, b) => a.y - b.y || a.m - b.m)
+    return { ordered, months }
+  }, [sessions])
 
-  // 이 달의 셀 배열(선행 공백 + 1..말일)
-  const cells = useMemo(() => {
-    const firstWeekday = new Date(year, month0, 1).getDay()
-    const daysInMonth = new Date(year, month0 + 1, 0).getDate()
-    const arr: (number | null)[] = Array(firstWeekday).fill(null)
-    for (let d = 1; d <= daysInMonth; d++) arr.push(d)
-    while (arr.length % 7 !== 0) arr.push(null)
-    return arr
-  }, [year, month0])
+  const idx = Math.min(monthIdx, Math.max(months.length - 1, 0))
+  const activeMonth = months[idx]
+
+  // 선택된 달의 주 그리드(앞뒤 인접월 날짜 포함 — 바는 그 셀까지 이어짐)
+  const weeks: Week[] = useMemo(() => {
+    if (!activeMonth) return []
+    const { y, m } = activeMonth
+    const gridStart = startOfWeek(new Date(y, m, 1))
+    const weekCount =
+      Math.round((startOfWeek(new Date(y, m + 1, 0)).getTime() - gridStart.getTime()) / MS_WEEK) + 1
+
+    return Array.from({ length: weekCount }, (_, w) => {
+      const days = Array.from({ length: 7 }, (_, i) => addDays(gridStart, w * 7 + i))
+      const weekStart = days[0]
+      const weekEnd = days[6]
+
+      // 이 주에 걸치는 세션 → 세그먼트(주 경계로만 clamp = 인접월 오버플로 셀까지 노출)
+      const segs: Segment[] = []
+      for (const s of ordered) {
+        const visStart = maxD(toDate(s.starts_on), weekStart)
+        const visEnd = minD(toDate(s.ends_on), weekEnd)
+        if (visStart.getTime() > visEnd.getTime()) continue
+        segs.push({ session: s, startCol: visStart.getDay(), endCol: visEnd.getDay(), lane: 0 })
+      }
+
+      // 레인 배정(greedy) — 겹치면 아래 레인으로
+      const laneEnd: number[] = []
+      for (const seg of segs) {
+        let lane = laneEnd.findIndex((end) => end < seg.startCol)
+        if (lane === -1) {
+          lane = laneEnd.length
+          laneEnd.push(seg.endCol)
+        } else {
+          laneEnd[lane] = seg.endCol
+        }
+        seg.lane = lane
+      }
+
+      return { days, segs, laneCount: Math.max(laneEnd.length, 1) }
+    })
+  }, [activeMonth, ordered])
+
+  // 선택 상태는 일시적 — 바 밖(다른 곳)을 클릭하면 해제.
+  useEffect(() => {
+    if (selectedId === null) return
+    const onDocClick = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('[data-schedule-bar]')) setSelectedId(null)
+    }
+    document.addEventListener('click', onDocClick)
+    return () => document.removeEventListener('click', onDocClick)
+  }, [selectedId])
 
   const selected = sessions.find((s) => s.id === selectedId) ?? null
+  // ⚠ 신청 인원은 후속 어드민 연동 전 placeholder(applied_count 없으면 0).
+  const applied = selected
+    ? ((selected as unknown as { applied_count?: number }).applied_count ?? 0)
+    : 0
+  const remaining = selected ? Math.max(selected.capacity - applied, 0) : 0
 
-  const prevMonth = () =>
-    setView((v) => (v.month0 === 0 ? { year: v.year - 1, month0: 11 } : { ...v, month0: v.month0 - 1 }))
-  const nextMonth = () =>
-    setView((v) => (v.month0 === 11 ? { year: v.year + 1, month0: 0 } : { ...v, month0: v.month0 + 1 }))
-
-  if (sessions.length === 0) {
+  if (sessions.length === 0 || !activeMonth) {
     return <EmptyState label="등록된 연수 일정이 없습니다." />
   }
 
-  // 셀 기준: 시작 차수 / 커버 여부
-  const sessionsStartingOn = (day: number) =>
-    sessions.filter((s) => parseKey(s.starts_on) === keyOf(year, month1, day))
-  const coveringColor = (day: number): string | null => {
-    const k = keyOf(year, month1, day)
-    const s = sessions.find((s) => parseKey(s.starts_on) <= k && k <= parseKey(s.ends_on))
-    return s ? SCHEDULE_HEX[s.schedule_type] : null
-  }
-
   return (
-    // 달력 자체가 카드박스(개요 카드와 동일 톤) — 외부 카드로 또 감싸지 않도록 컨테이너 자체를 카드로.
+    // 달력 자체가 카드박스(개요 카드와 동일 톤).
     <div className="overflow-hidden rounded-[10px] border border-[#e5eaef] bg-[#f2f5f9]">
-      {/* 월 네비 */}
-      <div className="flex items-center justify-between border-b border-[#e5eaef] px-2 py-2.5">
-        <button
-          type="button"
-          onClick={prevMonth}
-          className="rounded-full p-1.5 text-[#6b7280] hover:bg-[#e8edf2]"
-          aria-label="이전 달"
-        >
-          <ChevronLeft size={18} />
-        </button>
-        <h4 className="font-score text-[14px] font-[500] tabular-nums text-[#1f2937]">
-          {year}. {String(month1).padStart(2, '0')}
-        </h4>
-        <button
-          type="button"
-          onClick={nextMonth}
-          className="rounded-full p-1.5 text-[#6b7280] hover:bg-[#e8edf2]"
-          aria-label="다음 달"
-        >
-          <ChevronRight size={18} />
-        </button>
-      </div>
-
-      {/* 범례 */}
-      <div className="flex flex-wrap gap-x-3 gap-y-1 border-b border-[#e5eaef] px-3 py-2.5">
-        {(Object.keys(SCHEDULE_HEX) as ScheduleType[]).map((t) => (
-          <span key={t} className="inline-flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-[3px]" style={{ backgroundColor: SCHEDULE_HEX[t] }} />
-            <span className="fluid-nav-label text-[#6b7280]">{SCHEDULE_TYPE[t].label}</span>
-          </span>
-        ))}
-      </div>
-
-      {/* 그리드 */}
-      <div className="p-2">
-        <div className="grid grid-cols-7">
-          {WEEKDAYS.map((w, i) => (
-            <div
-              key={w}
-              className={`text-center fluid-nav-label font-[500] py-1.5 ${
-                i === 0 ? 'text-[#c0685a]' : i === 6 ? 'text-[#5b7cae]' : 'text-[#9ca3af]'
-              }`}
-            >
-              {w}
-            </div>
-          ))}
-          {cells.map((day, idx) => {
-            if (day === null) return <div key={`e${idx}`} className="min-h-[52px]" />
-            const starts = sessionsStartingOn(day)
-            const cover = coveringColor(day)
-            const weekday = idx % 7
+      {/* 월 탭 — 세션 있는 달만. 직접 점프(한 칸씩 넘기기 아님). */}
+      <div className="flex items-center gap-2 border-b border-[#e5eaef] px-3 py-1.5">
+        <span className="font-score text-[12px] font-[400] tabular-nums text-[#9ca3af]">
+          {activeMonth.y}
+        </span>
+        <div className="flex overflow-x-auto">
+          {months.map((mo, i) => {
+            const on = i === idx
             return (
-              <div
-                key={day}
-                className="min-h-[52px] border-t border-[#f3f4f6] p-1 align-top"
-                style={cover ? { backgroundColor: cover + '12' } : undefined}
+              <button
+                key={`${mo.y}-${mo.m}`}
+                type="button"
+                onClick={() => {
+                  setMonthIdx(i)
+                  setSelectedId(null)
+                }}
+                className={`border-b-2 px-2.5 py-1 font-score text-[13px] font-[500] tabular-nums transition-colors ${
+                  on
+                    ? 'border-[#1e3a5f] text-[#1e3a5f]'
+                    : 'border-transparent text-[#9ca3af] hover:text-[#6b7280]'
+                }`}
               >
-                <div
-                  className={`text-right fluid-nav-label tabular-nums pr-0.5 ${
-                    weekday === 0 ? 'text-[#c0685a]' : weekday === 6 ? 'text-[#5b7cae]' : 'text-[#9ca3af]'
-                  }`}
-                >
-                  {day}
-                </div>
-                <div className="space-y-0.5 mt-0.5">
-                  {starts.map((s) => {
-                    const hex = SCHEDULE_HEX[s.schedule_type]
-                    const active = s.id === selectedId
-                    return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => setSelectedId(active ? null : s.id)}
-                        className="block w-full text-left rounded-[3px] px-1 py-0.5 leading-tight transition-opacity hover:opacity-80"
-                        style={{
-                          backgroundColor: hex + (active ? '' : '22'),
-                          color: active ? '#fff' : hex,
-                          borderLeft: `2px solid ${hex}`,
-                        }}
-                        title={`${s.label} · ${s.course?.name ?? ''}`}
-                      >
-                        <span className="fluid-nav-label font-[500] block truncate">{s.label}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
+                {mo.m + 1}월
+              </button>
             )
           })}
         </div>
       </div>
 
+      {/* 요일 헤더 */}
+      <div className="grid grid-cols-7 px-2 pt-2">
+        {WEEKDAYS.map((w, i) => (
+          <div
+            key={w}
+            className={`pb-1.5 text-center text-[clamp(0.75rem,0.71rem+0.22vw,0.8125rem)] font-[500] ${
+              i === 0 ? 'text-[#c0685a]' : i === 6 ? 'text-[#5b7cae]' : 'text-[#9ca3af]'
+            }`}
+          >
+            {w}
+          </div>
+        ))}
+      </div>
+
+      {/* 주별 행 */}
+      <div className="px-2 pb-3">
+        {weeks.map((week, wi) => (
+          <div key={wi} className="border-t border-[#eceff3] first:border-t-0">
+            {/* 날짜 숫자 — 인접월 날짜는 흐리게 */}
+            <div className="grid grid-cols-7">
+              {week.days.map((d, i) => {
+                const inMonth = d.getMonth() === activeMonth.m && d.getFullYear() === activeMonth.y
+                const color = !inMonth
+                  ? 'text-[#c8ccd2]'
+                  : i === 0
+                    ? 'text-[#c0685a]'
+                    : i === 6
+                      ? 'text-[#5b7cae]'
+                      : 'text-[#6b7280]'
+                return (
+                  <div
+                    key={i}
+                    className={`px-1 pt-1.5 text-right text-[clamp(0.75rem,0.71rem+0.22vw,0.8125rem)] tabular-nums ${color}`}
+                  >
+                    {d.getDate()}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* 차수 바(레인 스택) — 절대배치, 컬럼 폭 기준 %. 샤프 사각형(라운드 없음). */}
+            <div className="relative mt-0.5 mb-1.5" style={{ height: week.laneCount * LANE_H }}>
+              {week.segs.map((seg) => {
+                const hex = SCHEDULE_HEX[seg.session.schedule_type]
+                const active = seg.session.id === selectedId
+                const dimmed = selectedId !== null && !active
+                const len = seg.endCol - seg.startCol + 1
+                return (
+                  <button
+                    key={seg.session.id}
+                    type="button"
+                    data-schedule-bar
+                    onClick={() => setSelectedId(active ? null : seg.session.id)}
+                    title={`${seg.session.label} · ${seg.session.course?.name ?? ''}`}
+                    aria-label={seg.session.label}
+                    className="absolute h-[6px] transition-opacity"
+                    style={{
+                      left: `calc(${(seg.startCol / 7) * 100}% + 2px)`,
+                      width: `calc(${(len / 7) * 100}% - 4px)`,
+                      top: seg.lane * LANE_H,
+                      backgroundColor: hex,
+                      opacity: dimmed ? 0.32 : 1,
+                      outline: active ? '1.5px solid #1e293b' : undefined,
+                      outlineOffset: active ? '1.5px' : undefined,
+                    }}
+                  />
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* 범례 — 타입 색↔라벨 (텍스트 담당) */}
+      <div className="flex flex-wrap gap-x-3.5 gap-y-1.5 border-t border-[#e5eaef] px-4 py-3">
+        {(Object.keys(SCHEDULE_HEX) as ScheduleType[]).map((t) => (
+          <span key={t} className="inline-flex items-center gap-1.5">
+            <span className="h-[6px] w-4" style={{ backgroundColor: SCHEDULE_HEX[t] }} />
+            <span className="fluid-nav-label text-[#6b7280]">{LEGEND_LABEL[t]}</span>
+          </span>
+        ))}
+      </div>
+
       {/* 선택 차수 상세 — 카드 내부 섹션(구분선) */}
       {selected && (
-        <div className="border-t border-[#e5eaef] p-4">
-          <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="border-t border-[#e5eaef] bg-white/60 p-4">
+          <div className="mb-2 flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="fluid-nav-label text-[#8a94a0]">{selected.course?.name ?? '연수'}</p>
               <h4 className="fluid-body font-[500] text-[#1f2937]">{selected.label}</h4>
@@ -183,18 +280,23 @@ export default function ScheduleCalendar({ sessions }: { sessions: SessionWithCo
               {SCHEDULE_TYPE[selected.schedule_type].label}
             </Badge>
           </div>
-          <div className="fluid-body text-[#4b5563] space-y-1">
+          <div className="fluid-body space-y-1 text-[#4b5563]">
             <p>{formatPeriod(selected.starts_on, selected.ends_on, selected.nights)}</p>
-            <p className="inline-flex items-center gap-1.5">
+            <p className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
               <Users size={14} className="text-[#9ca3af]" />
-              정원 {selected.capacity}명
+              <span className="tabular-nums">
+                현재 신청인원 {applied}/{selected.capacity}
+              </span>
+              <span className="text-[clamp(0.6875rem,0.66rem+0.12vw,0.75rem)] text-[#8a94a0] tabular-nums">
+                (신청가능인원 {remaining})
+              </span>
             </p>
           </div>
           <Link
             href="/application"
-            className="inline-block mt-3 fluid-nav-label font-[500] text-[#5b7cae] hover:underline"
+            className="mt-3 inline-block fluid-nav-label font-[500] text-[#5b7cae] hover:underline"
           >
-            신청 안내 보기 →
+            신청하러 가기 →
           </Link>
         </div>
       )}
