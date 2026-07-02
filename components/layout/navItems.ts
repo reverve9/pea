@@ -12,10 +12,10 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { href: '/about', label: 'ABOUT', labelKo: '기관소개', icon: Building2 },
-  { href: '/courses', label: 'COURSES', labelKo: '연수안내', icon: GraduationCap },
-  { href: '/apply', label: 'APPLY', labelKo: '연수신청', icon: ClipboardPen },
-  { href: '/community', label: 'COMMUNITY', labelKo: '커뮤니티', icon: MessagesSquare },
+  { href: '/about', label: 'HOME', labelKo: '소개', icon: Building2 },
+  { href: '/courses', label: 'PROGRAM', labelKo: '프로그램', icon: GraduationCap },
+  { href: '/apply', label: 'APPLY', labelKo: '신청', icon: ClipboardPen },
+  { href: '/community', label: 'NEWS', labelKo: '공지 및 소식', icon: MessagesSquare },
 ]
 
 // 현재 경로가 특정 네비 항목에 속하는지 (하위 경로 포함).
