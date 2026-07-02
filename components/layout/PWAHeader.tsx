@@ -16,7 +16,7 @@ export default function PWAHeader({ variant = 'mobile' }: PWAHeaderProps) {
 
   return (
     <header
-      className={`bg-[linear-gradient(90deg,#394053_0%,#49526B_50%,#A2AED0_100%)] text-white px-4 h-[80px] flex items-center justify-between ${
+      className={`bg-gradient-to-r from-[#394053] via-[#49526B] to-[#A2AED0] text-white px-4 h-[80px] flex items-center justify-between ${
         isDesktop ? 'pt-[12px]' : 'sticky top-0 z-50'
       }`}
     >
