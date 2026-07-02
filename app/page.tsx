@@ -1,18 +1,18 @@
 import AppShell from '@/components/layout/AppShell'
-import PageTitle from '@/components/common/PageTitle'
-import Maintenance from '@/components/common/Maintenance'
 import HomeExtended from '@/components/features/HomeExtended'
+import HomeGreeting from '@/components/features/HomeGreeting'
 
-// 홈. 우측(확장 페인) = 브랜드 히어로(HomeExtended, 나인브릿지 홈 우측 스타일).
-// 좌측(PWA 페인) 위젯(최신뉴스·다가오는차수·최신갤러리·기관소개)은 후속 작업 → 현재 자리표시자.
+// 홈. 페이지 타이틀 없음(홈은 네비 메뉴 아님).
+// 우측(확장 페인, 데스크탑) = 소개글 브랜드 히어로(HomeExtended).
+// 좌측(PWA 페인, 데·모 공통) = 인사말 첫 섹션 + 후속 위젯(다가오는 차수·주요 프로그램 등).
 export default function HomePage() {
   return (
     <AppShell
       main={
-        <>
-          <PageTitle title="HOME" subtitle="체육교육회" />
-          <Maintenance />
-        </>
+        <div className="pb-8">
+          <HomeGreeting />
+          {/* 후속 위젯: 다가오는 차수 · 주요 프로그램(썸네일) · (첫 회차 후) 갤러리 */}
+        </div>
       }
       extended={<HomeExtended />}
     />
