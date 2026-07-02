@@ -136,9 +136,11 @@ export default function HomeCourses() {
   const [open, setOpen] = useState<'jikmu' | 'jayul' | null>(null)
 
   return (
-    <section>
+    // 히어로(인사말·흰 배경)와 경계 구분: 연수종류 섹션에 옅은 네이비 틴트 밴드 + 상단 구분선.
+    // 카피는 이미지 위 유지(제목→콘텐츠 순서). 아래 푸터는 자체 회색 박스라 다시 차별화됨.
+    <section className="bg-[#eef3f8] border-t border-[#e2e9f1]">
       {/* 카피 (이미지 위, S-Core Dream) */}
-      <div className="px-[clamp(1.5rem,7cqi,2.75rem)] pt-[clamp(1.5rem,7cqi,2.5rem)] pb-[clamp(1.25rem,6cqi,2rem)]">
+      <div className="px-[clamp(1.5rem,7cqi,2.75rem)] pt-[clamp(1rem,4.5cqi,1.5rem)] pb-[clamp(0.875rem,4cqi,1.25rem)]">
         <p className="font-score text-[clamp(1rem,4.6cqi,1.1875rem)] font-[300] text-[#374151] leading-relaxed">두 가지 방식으로,</p>
         <p className="font-score text-[clamp(1.0625rem,5cqi,1.3125rem)] font-[700] text-[#1e3a5f]">겨울 스포츠 지도 전문성을 시작하세요.</p>
       </div>
