@@ -59,18 +59,18 @@ export default function HomeFooter() {
               alt="체육교육회 — Physical Education Association"
               width={1890}
               height={400}
-              className="relative w-[clamp(130px,42cqi,160px)] h-auto opacity-90"
+              className="relative w-[clamp(130px,32cqi,160px)] h-auto opacity-90"
             />
           </div>
 
           {/* 기관명 + 태그라인 */}
-          <p className="text-[clamp(0.8125rem,3.4cqi,0.9375rem)] font-[600] text-[#333]">
+          <p className="text-[clamp(0.8125rem,3cqi,0.9375rem)] font-[600] text-[#333]">
             {ORG.name}
             <span className="ml-1.5 font-[300] text-[#666]">· {ORG.tagline}</span>
           </p>
 
           {/* 기관정보 전항목 */}
-          <div className="mt-2 space-y-[1px] text-[clamp(0.75rem,3cqi,0.8125rem)] font-[300] text-[#4b5563] leading-relaxed">
+          <div className="mt-2 space-y-[1px] text-[clamp(0.75rem,2.6cqi,0.8125rem)] font-[300] text-[#4b5563] leading-relaxed">
             <p>
               {ORG.address} | 대표자: {ORG.ceo}
             </p>

@@ -15,10 +15,10 @@ export default function HomeStrengths() {
   return (
     <section className="px-[clamp(1.5rem,7cqi,2.75rem)] py-[clamp(2rem,9cqi,3rem)]">
       <div className="mb-[clamp(1rem,4.5cqi,1.5rem)]">
-        <p className="font-score text-[clamp(1.0625rem,5cqi,1.3125rem)] font-[700] text-[#1e3a5f] leading-tight">
+        <p className="font-score text-[clamp(1.0625rem,4.2cqi,1.3125rem)] font-[700] text-[#1e3a5f] leading-tight">
           왜 체육교육회인가
         </p>
-        <p className="text-[clamp(0.75rem,3.2cqi,0.875rem)] font-[300] text-[#6b7280] mt-1">
+        <p className="text-[clamp(0.75rem,2.8cqi,0.875rem)] font-[300] text-[#6b7280] mt-1">
           공식성 · 실익 · 현장성을 갖춘 직무연수
         </p>
       </div>
@@ -29,14 +29,14 @@ export default function HomeStrengths() {
             key={no}
             className="flex items-start gap-[clamp(0.875rem,4cqi,1.25rem)] py-[clamp(0.875rem,4cqi,1.25rem)] border-b border-[#eaeef3] last:border-0"
           >
-            <span className="font-raleway text-[clamp(1.375rem,6.5cqi,1.875rem)] font-[600] leading-none text-[#4fb3c4] tabular-nums tracking-[0.02em] pt-[0.1em]">
+            <span className="font-raleway text-[clamp(1.375rem,6cqi,1.875rem)] font-[600] leading-none text-[#4fb3c4] tabular-nums tracking-[0.02em] pt-[0.1em]">
               {no}
             </span>
             <div className="min-w-0">
-              <p className="font-score text-[clamp(0.9375rem,4.4cqi,1.0625rem)] font-[700] text-[#1e3a5f] leading-tight">
+              <p className="font-score text-[clamp(0.9375rem,3.4cqi,1.0625rem)] font-[700] text-[#1e3a5f] leading-tight">
                 {title}
               </p>
-              <p className="text-[clamp(0.75rem,3.2cqi,0.875rem)] font-[300] text-[#6b7280] mt-0.5">{desc}</p>
+              <p className="text-[clamp(0.75rem,2.8cqi,0.875rem)] font-[300] text-[#6b7280] mt-0.5">{desc}</p>
             </div>
           </li>
         ))}

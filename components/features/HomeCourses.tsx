@@ -82,9 +82,9 @@ function BaseLabel({ c }: { c: Course }) {
     <>
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 p-[clamp(0.875rem,4cqi,1.25rem)]">
-        <p className="font-raleway text-[clamp(0.5625rem,2.4cqi,0.625rem)] font-[400] tracking-[2px] text-[#a9e0ea]">{c.no}</p>
-        <h3 className="font-score text-[clamp(1.125rem,5.5cqi,1.375rem)] font-[500] text-white leading-tight mt-0.5">{c.name}</h3>
-        <p className="text-[clamp(0.6875rem,3cqi,0.8125rem)] font-[300] text-white/85 leading-snug mt-1">{c.desc}</p>
+        <p className="font-raleway text-[clamp(0.5625rem,2cqi,0.625rem)] font-[400] tracking-[2px] text-[#a9e0ea]">{c.no}</p>
+        <h3 className="font-score text-[clamp(1.125rem,4.4cqi,1.375rem)] font-[500] text-white leading-tight mt-0.5">{c.name}</h3>
+        <p className="text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[300] text-white/85 leading-snug mt-1">{c.desc}</p>
       </div>
     </>
   )
@@ -111,18 +111,18 @@ function Detail({ c, bg }: { c: Course; bg: Course }) {
       <Bg c={bg} />
       <div className="absolute inset-0 bg-white/85" />
       <div className="relative z-10 h-full flex flex-col p-[clamp(0.875rem,4cqi,1.25rem)]">
-        <p className="font-raleway text-[clamp(0.5rem,2.2cqi,0.5625rem)] font-[400] tracking-[2px]" style={{ color: c.accent }}>{c.no}</p>
-        <h3 className="font-score text-[clamp(1rem,4.8cqi,1.25rem)] font-[600] text-[#1e3a5f] leading-tight mt-0.5">{c.name}</h3>
+        <p className="font-raleway text-[clamp(0.5rem,1.8cqi,0.5625rem)] font-[400] tracking-[2px]" style={{ color: c.accent }}>{c.no}</p>
+        <h3 className="font-score text-[clamp(1rem,4cqi,1.25rem)] font-[600] text-[#1e3a5f] leading-tight mt-0.5">{c.name}</h3>
 
-        <span className={`self-start mt-2 px-2 py-0.5 rounded-full text-[clamp(0.625rem,2.7cqi,0.75rem)] font-[500] ${c.pillClass}`}>
+        <span className={`self-start mt-2 px-2 py-0.5 rounded-full text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[500] ${c.pillClass}`}>
           {c.pill}
         </span>
 
         <dl className="mt-2.5 space-y-2">
           {c.rows.map((r) => (
             <div key={r.l}>
-              <dt className="text-[clamp(0.625rem,2.8cqi,0.75rem)] font-[600] tracking-[0.5px]" style={{ color: c.accent }}>{r.l}</dt>
-              <dd className="text-[clamp(0.6875rem,3cqi,0.8125rem)] font-[300] text-[#374151] leading-snug mt-0.5">
+              <dt className="text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[600] tracking-[0.5px]" style={{ color: c.accent }}>{r.l}</dt>
+              <dd className="text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[300] text-[#374151] leading-snug mt-0.5">
                 <Value segs={r.v} />
               </dd>
             </div>
@@ -131,7 +131,7 @@ function Detail({ c, bg }: { c: Course; bg: Course }) {
 
         <Link
           href="/courses"
-          className="group/btn mt-auto flex items-center justify-between gap-2 rounded-lg bg-[#1e3a5f]/[0.06] px-4 py-2.5 text-[clamp(0.75rem,3.2cqi,0.875rem)] font-[500] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white transition-colors"
+          className="group/btn mt-auto flex items-center justify-between gap-2 rounded-lg bg-[#1e3a5f]/[0.06] px-4 py-2.5 text-[clamp(0.75rem,2.8cqi,0.875rem)] font-[500] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white transition-colors"
         >
           <span className="tracking-wide">연수안내 보기</span>
           <ArrowRight size={15} className="shrink-0 transition-transform duration-300 group-hover/btn:translate-x-0.5" />
@@ -150,8 +150,8 @@ export default function HomeCourses() {
     <section className="bg-[#eef3f8] border-t border-[#e2e9f1]">
       {/* 카피 (이미지 위, S-Core Dream) */}
       <div className="px-[clamp(1.5rem,7cqi,2.75rem)] pt-[clamp(1rem,4.5cqi,1.5rem)] pb-[clamp(0.875rem,4cqi,1.25rem)]">
-        <p className="font-score text-[clamp(1rem,4.6cqi,1.1875rem)] font-[300] text-[#374151] leading-relaxed">두 가지 방식으로,</p>
-        <p className="font-score text-[clamp(1.0625rem,5cqi,1.3125rem)] font-[700] text-[#1e3a5f]">겨울 스포츠 지도 전문성을 시작하세요.</p>
+        <p className="font-score text-[clamp(1rem,3.8cqi,1.1875rem)] font-[300] text-[#374151] leading-relaxed">두 가지 방식으로,</p>
+        <p className="font-score text-[clamp(1.0625rem,4.2cqi,1.3125rem)] font-[700] text-[#1e3a5f]">겨울 스포츠 지도 전문성을 시작하세요.</p>
       </div>
 
       {/* 2열 그리드 (크로스 컬럼 확장) */}

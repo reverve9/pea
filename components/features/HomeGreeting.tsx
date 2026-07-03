@@ -18,13 +18,13 @@ export default function HomeGreeting() {
       />
 
       {/* 헤드라인: clamp(20 → 24), 6cqi=30 @500 이라 24 에서 캡 */}
-      <h2 className="relative font-score text-[clamp(1.25rem,6cqi,1.5rem)] font-[300] text-[#1e3a5f] leading-[1.4] tracking-[-0.2px] mb-6">
+      <h2 className="relative font-score text-[clamp(1.25rem,4.8cqi,1.5rem)] font-[300] text-[#1e3a5f] leading-[1.4] tracking-[-0.2px] mb-6">
         현장 중심의 <span className="font-[700]">실천 교육</span>으로<br />
         학교 체육의 <span className="font-[700]">미래</span>를 열어갑니다.
       </h2>
 
       {/* 본문: clamp(14 → 15) */}
-      <div className="relative text-[clamp(0.875rem,3.4cqi,0.9375rem)] font-[300] text-[#4b5563] leading-[1.85] space-y-3">
+      <div className="relative text-[clamp(0.875rem,3cqi,0.9375rem)] font-[300] text-[#4b5563] leading-[1.85] space-y-3">
         <p>안녕하십니까. 체육교육회입니다.</p>
         <p>
           본 회는 <span className="font-[500] text-[#374151]">서울특별시교육청 지정 특수분야 직무연수기관</span>으로서,
