@@ -30,7 +30,7 @@ export default function CoursesPage() {
   const months = useMemo(() => scheduleMonths(sessions.data ?? []), [sessions.data])
 
   // 좌 마스터에서 차수 클릭 → 그 차수의 시작월로 캘린더 점프 + 행 하이라이트.
-  const selectSession = (id: string) => {
+  const selectSession = (id: string | null) => {
     setSelSession(id)
     const s = (sessions.data ?? []).find((x) => x.id === id)
     if (!s) return
@@ -107,6 +107,8 @@ export default function CoursesPage() {
                 sessions={sessions.data}
                 monthIdx={monthIdx}
                 onMonthChange={setMonthIdx}
+                selectedId={selSession}
+                onSelect={selectSession}
               />
             )}
           </div>

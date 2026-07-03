@@ -92,6 +92,12 @@ export default function CommunityPage() {
   const left = (
     <div className="pb-8">
       <PageTitle title="커뮤니티" en="COMMUNITY" />
+      {/* 도입 리드 — 연수안내·신청과 동일 레지스터(font-score 300 · 중앙 · 행간 1.85 · 키워드만 네이비 강조) */}
+      <p className="px-4 pt-1 pb-8 font-score text-center text-[clamp(0.9375rem,3.9vw,1.0625rem)] font-[300] leading-[1.85] text-[#4b5563]">
+        <span className="font-[500] text-[#1e3a5f]">공지사항</span>과{' '}
+        <span className="font-[500] text-[#1e3a5f]">자주 묻는 질문</span>을 확인하세요.<br />
+        궁금한 점은 1:1 문의로 남겨주실 수 있습니다.
+      </p>
       {notices.loading ? (
         <LoadingState />
       ) : (

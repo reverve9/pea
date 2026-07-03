@@ -106,11 +106,15 @@ export default function ScheduleCalendar({
   sessions,
   monthIdx: monthIdxProp,
   onMonthChange,
+  selectedId: selectedIdProp,
+  onSelect,
   showMonthTabs = true,
 }: {
   sessions: SessionWithCourse[]
   monthIdx?: number
   onMonthChange?: (i: number) => void
+  selectedId?: string | null
+  onSelect?: (id: string | null) => void
   showMonthTabs?: boolean
 }) {
   const [monthIdxState, setMonthIdxState] = useState(0)
@@ -120,7 +124,14 @@ export default function ScheduleCalendar({
     if (controlled) onMonthChange?.(i)
     else setMonthIdxState(i)
   }
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  // 선택 차수(하단 상세 아코디언) — 제어형이면 부모(좌 마스터와 공유)가 소유, 아니면 내부 상태(모바일 단독).
+  const [selectedIdState, setSelectedIdState] = useState<string | null>(null)
+  const controlledSel = selectedIdProp !== undefined
+  const selectedId = controlledSel ? selectedIdProp : selectedIdState
+  const setSelectedId = (id: string | null) => {
+    if (controlledSel) onSelect?.(id)
+    else setSelectedIdState(id)
+  }
 
   // 레인 정렬용 안정 정렬 + 세션이 걸친 (year, month) 목록(마스터와 공유하는 scheduleMonths 사용)
   const { ordered, months } = useMemo(() => {
@@ -172,16 +183,17 @@ export default function ScheduleCalendar({
     })
   }, [activeMonth, ordered])
 
-  // 월이 바뀌면(탭 클릭이든 좌 마스터 제어든) 선택 바 해제.
+  // 월이 바뀌면 선택 바 해제 — 단, 제어형(좌 마스터가 월+선택을 함께 세팅)에선 선택 유지.
   useEffect(() => {
-    setSelectedId(null)
-  }, [monthIdx])
+    if (!controlledSel) setSelectedIdState(null)
+  }, [monthIdx, controlledSel])
 
-  // 선택 상태는 일시적 — 바 밖(다른 곳)을 클릭하면 해제.
+  // 선택은 일시적 — 선택영역(달력 바 / 좌 마스터 차수) 밖을 클릭하면 해제 → 하단 상세 닫힘 + 달력 전역 활성 복귀.
   useEffect(() => {
     if (selectedId === null) return
     const onDocClick = (e: MouseEvent) => {
-      if (!(e.target as HTMLElement).closest('[data-schedule-bar]')) setSelectedId(null)
+      const t = e.target as HTMLElement
+      if (!t.closest('[data-schedule-bar]') && !t.closest('[data-schedule-pick]')) setSelectedId(null)
     }
     document.addEventListener('click', onDocClick)
     return () => document.removeEventListener('click', onDocClick)

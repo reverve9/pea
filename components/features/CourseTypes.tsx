@@ -387,7 +387,7 @@ export function CourseTypeCards({
   onSelect: (k: string | null) => void
 }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {TYPES.map((t) => {
         const on = t.key === selected
         return (
@@ -399,7 +399,7 @@ export function CourseTypeCards({
             className="block w-full rounded-[10px] border border-[#e5eaef] text-left transition-colors"
             style={{ background: on ? t.accent + '14' : '#f2f5f9' }}
           >
-            <div className="flex items-center gap-3 px-4 py-3">
+            <div className="flex items-center gap-3 px-4 py-4">
               <span
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
                 style={{ background: t.accent + '14' }}

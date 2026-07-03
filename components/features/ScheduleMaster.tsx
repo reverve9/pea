@@ -88,6 +88,8 @@ function TypeAccordion({
   const sorted = [...group.sessions].sort(
     (a, b) => a.starts_on.localeCompare(b.starts_on) || a.sort_order - b.sort_order,
   )
+  // 이 그룹의 차수가 선택되면 헤더 카드에 유형색 틴트 — 유형 좌카드 선택 피드백과 동일.
+  const groupSelected = group.sessions.some((s) => s.id === selectedId)
   return (
     <div className="overflow-hidden rounded-[10px] border border-[#e5eaef] bg-[#f2f5f9]">
       {/* 유형 헤더 — 유형명(유형색) + 차수 수 + 셰브론 */}
@@ -95,7 +97,8 @@ function TypeAccordion({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left"
+        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors"
+        style={{ background: groupSelected ? group.color + '14' : undefined }}
       >
         {/* 아이콘 + 타이틀 + 서브(연수대상) — 유형 좌카드와 동일 포맷으로 통일 */}
         <span
@@ -129,6 +132,7 @@ function TypeAccordion({
               <button
                 key={s.id}
                 type="button"
+                data-schedule-pick
                 onClick={() => onSelect(s.id)}
                 aria-pressed={on}
                 className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors"
