@@ -3,6 +3,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@100;200;300;400;500;600;700;800;900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@100;200;300;400;500;600;700;800;900&display=swap');
+/* Pretendard — body 기본 폰트로 선언돼 있으나 실제 로드가 없어 시스템 폴백이던 것을 실 로드(동적 서브셋). */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.css');
 @import 'tailwindcss';
 
 /* 에스코어드림 폰트 1-9 전체 */
@@ -125,6 +127,7 @@ body {
 .font-poppins { font-family: 'Poppins', sans-serif; }
 .font-montserrat { font-family: 'Montserrat', sans-serif; }
 .font-raleway { font-family: 'Raleway', sans-serif; }
+.font-pretendard { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; }
 
 /* 커스텀 스크롤바 (오른쪽 780 콘텐츠 페인용 — 4px 폭 점유) */
 .custom-scrollbar::-webkit-scrollbar { width: 4px; }

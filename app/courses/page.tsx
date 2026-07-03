@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import AppShell from '@/components/layout/AppShell'
 import PageTitle from '@/components/common/PageTitle'
 import SectionTitle from '@/components/common/SectionTitle'
 import ExtendedHeader from '@/components/layout/ExtendedHeader'
 import { PLACEHOLDER_SNS } from '@/lib/siteMeta'
 import { LoadingState } from '@/components/common/StateView'
-import ScheduleCalendar from '@/components/features/ScheduleCalendar'
+import ScheduleCalendar, { scheduleMonths } from '@/components/features/ScheduleCalendar'
+import ScheduleMaster from '@/components/features/ScheduleMaster'
 import CourseOverview from '@/components/features/CourseOverview'
 import {
   CourseTypesMobile,
@@ -19,12 +20,26 @@ import { useQuery } from '@/lib/useQuery'
 import { getSessions } from '@/lib/queries'
 import type { SessionWithCourse } from '@/lib/types'
 
-// §3-2 연수안내 — 데스크탑 셸: 좌 500 = 사이드바(도입·일정·유형 요약 마스터) / 우 780 = 메인(개요·유형 상세).
-// 유형: 좌 요약카드(마스터) → 우 아코디언(디테일, 선택 시 최상단 스크롤). 상태는 페이지에서 공유.
-// ⚠ 일정은 아직 좌측 캘린더 그대로(다음 단계에서 캘린더 우측 이동 + 좌 월별요약 마스터로 재배치 예정).
+// §3-2 연수안내 — 데스크탑 셸: 좌 500 = 사이드바(도입·일정·유형 요약 마스터) / 우 780 = 메인(개요·일정·유형 상세).
+// 마스터-디테일 페어링(좌↔우): 도입↔개요 · 일정 월별마스터↔캘린더 · 유형 좌카드↔아코디언.
+// 선택 상태(월·유형)는 페이지에서 공유. 모바일은 좌 main 단일컬럼(캘린더=자체 월탭, 마스터 없음).
 export default function CoursesPage() {
   const sessions = useQuery<SessionWithCourse[]>(getSessions, [])
-  const [selectedType, setSelectedType] = useState(DEFAULT_TYPE_KEY)
+  const [selectedType, setSelectedType] = useState<string | null>(DEFAULT_TYPE_KEY)
+  const [monthIdx, setMonthIdx] = useState(0)
+  const [selSession, setSelSession] = useState<string | null>(null)
+  const months = useMemo(() => scheduleMonths(sessions.data ?? []), [sessions.data])
+
+  // 좌 마스터에서 차수 클릭 → 그 차수의 시작월로 캘린더 점프 + 행 하이라이트.
+  const selectSession = (id: string) => {
+    setSelSession(id)
+    const s = (sessions.data ?? []).find((x) => x.id === id)
+    if (!s) return
+    const y = Number(s.starts_on.slice(0, 4))
+    const m = Number(s.starts_on.slice(5, 7)) - 1
+    const idx = months.findIndex((mo) => mo.y === y && mo.m === m)
+    if (idx >= 0) setMonthIdx(idx)
+  }
 
   return (
     <AppShell
@@ -42,10 +57,25 @@ export default function CoursesPage() {
             <CourseOverview />
           </section>
 
-          {/* 연수일정 달력 */}
+          {/* 연수일정 — 모바일: 캘린더(자체 월탭). 데스크탑: 월별 요약 마스터(우측 캘린더 제어). */}
           <section className="px-4 mb-8">
-            <SectionTitle title="일정" en="Schedule" />
-            {sessions.loading ? <LoadingState /> : <ScheduleCalendar sessions={sessions.data} />}
+            <SectionTitle title="일정" en="Schedule" rail />
+            {sessions.loading ? (
+              <LoadingState />
+            ) : (
+              <>
+                <div className="md:hidden">
+                  <ScheduleCalendar sessions={sessions.data} />
+                </div>
+                <div className="hidden md:block">
+                  <ScheduleMaster
+                    sessions={sessions.data}
+                    selectedId={selSession}
+                    onSelect={selectSession}
+                  />
+                </div>
+              </>
+            )}
           </section>
 
           {/* 유형 — 모바일: 카드 → 중앙 팝업 모달(건드리지 않음) */}
@@ -56,7 +86,7 @@ export default function CoursesPage() {
 
           {/* 유형 — 데스크탑 좌측 마스터(요약 카드). 우측 아코디언을 제어. */}
           <section className="px-4 hidden md:block">
-            <SectionTitle title="유형" en="Types" />
+            <SectionTitle title="유형" en="Types" rail />
             <CourseTypeCards selected={selectedType} onSelect={setSelectedType} />
           </section>
         </div>
@@ -67,6 +97,19 @@ export default function CoursesPage() {
           {/* 연수 개요 — 데스크탑 우측 페인(모바일은 좌측 main에 표시) */}
           <div className="mb-10">
             <CourseOverview />
+          </div>
+          {/* 연수일정 캘린더 — 데스크탑 우측. 좌 마스터의 차수 클릭으로 월 점프 + 자체 월탭으로도 브라우징. */}
+          <div className="mb-10">
+            <SectionTitle title="일정" en="Schedule" />
+            {sessions.loading ? (
+              <LoadingState />
+            ) : (
+              <ScheduleCalendar
+                sessions={sessions.data}
+                monthIdx={monthIdx}
+                onMonthChange={setMonthIdx}
+              />
+            )}
           </div>
           {/* 유형 상세 — 데스크탑 우측 아코디언(좌 카드가 제어, 선택 시 최상단 스크롤) */}
           <SectionTitle title="유형" en="Types" />

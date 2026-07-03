@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import SectionTitle from '@/components/common/SectionTitle'
+import Text from '@/components/common/Text'
 
 // /courses 연수 개요 — 클라이언트 계획안(연수 계획 · 연수 개요 ①) 내용을 우리 디자인 시스템으로 재구성.
 // 스크린샷의 노랑/초록 raw 목업 스타일은 버리고 내용만 이식(네이비·시안·font-score).
@@ -58,19 +59,17 @@ function PackageBody({ t }: { t: (typeof TYPES)[number] }) {
   return (
     <>
       <div className="mb-3">
-        <p className="font-score text-[11.5px] font-[400] text-[#9ca3af] mb-1">연수대상</p>
-        <p className="font-score text-[13px] font-[300] leading-relaxed text-[#374151]">
+        <Text as="p" variant="label" className="mb-1">연수대상</Text>
+        <Text as="p" variant="body">
           {t.target}
           {t.targetNote && (
-            <span className="block text-[11.5px] text-[#9ca3af]">* {t.targetNote}</span>
+            <Text as="span" variant="caption" className="block">* {t.targetNote}</Text>
           )}
-        </p>
+        </Text>
       </div>
       <div>
-        <p className="font-score text-[11.5px] font-[400] text-[#9ca3af] mb-1">연수인정</p>
-        <p className="font-score text-[13px] font-[300] leading-relaxed text-[#374151]">
-          {t.credit}
-        </p>
+        <Text as="p" variant="label" className="mb-1">연수인정</Text>
+        <Text as="p" variant="body">{t.credit}</Text>
       </div>
     </>
   )
@@ -89,14 +88,22 @@ export default function CourseOverview() {
         <dl className="space-y-3 p-4">
           {FACTS.map((f) => (
             <div key={f.label} className="flex gap-3">
-              <dt className="w-[42px] shrink-0 pt-[1px] font-score text-[13px] font-[500] text-[#2f8ba0]">
+              <Text as="dt" variant="label" color="#2f8ba0" className="w-[42px] shrink-0 pt-[1px]">
                 {f.label}
-              </dt>
-              <dd className="font-score text-[14px] font-[300] leading-relaxed text-[#374151]">
+              </Text>
+              <Text as="dd" variant="body">
                 {f.value}
-                {f.url && <span className="ml-2 text-[12.5px] text-[#2f8ba0]">{f.url}</span>}
-                {f.sub && <span className="block text-[12.5px] text-[#9ca3af]">{f.sub}</span>}
-              </dd>
+                {f.url && (
+                  <Text as="span" variant="sub" color="#2f8ba0" className="ml-2">
+                    {f.url}
+                  </Text>
+                )}
+                {f.sub && (
+                  <Text as="span" variant="sub" className="block">
+                    {f.sub}
+                  </Text>
+                )}
+              </Text>
             </div>
           ))}
         </dl>

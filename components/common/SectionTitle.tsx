@@ -7,13 +7,16 @@ import React, { ReactNode } from 'react'
 export default function SectionTitle({
   title,
   right,
+  rail = false,
 }: {
   title: string
   en?: string
   right?: ReactNode
+  // rail: 데스크탑 좌측(마스터/인덱스) 전용 컴팩트 뮤트 라벨. 모바일은 항상 정식 타이틀 유지.
+  rail?: boolean
 }) {
   // 영문(en)은 의도적으로 렌더 안 함 — 영문/시안 아이브로우는 페이지 헤더(정체성) 전용, 섹션 라벨은 국문만.
-  return (
+  const full = (
     <div className="flex items-end justify-between gap-2 px-1 mb-3">
       <div>
         {/* 포인트 바 — 시그니처 시안 액센트 */}
@@ -24,5 +27,18 @@ export default function SectionTitle({
       </div>
       {right}
     </div>
+  )
+  if (!rail) return full
+  // 좌측 인덱스 톤 — 우측 콘텐츠의 정식 타이틀과 위계 차별화(바 없음, 작고 뮤트, 자간).
+  return (
+    <>
+      <div className="md:hidden">{full}</div>
+      <div className="mb-3 hidden items-center justify-between gap-2 px-1 md:flex">
+        <span className="font-score text-[12px] font-[500] uppercase tracking-[1.5px] text-[#9ca3af]">
+          {title}
+        </span>
+        {right}
+      </div>
+    </>
   )
 }

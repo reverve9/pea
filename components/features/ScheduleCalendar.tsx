@@ -18,7 +18,8 @@ import type { SessionWithCourse, ScheduleType } from '@/lib/types'
 //  - 바 클릭 → 해당 차수 상세(날짜·정원·신청) 카드 내부 섹션에 노출.
 
 // 타입별 색 — 4유형 차별성·가독성 우선(쿨→웜으로 확실히 분리). 직무=네이비(CourseTypes 통일·앵커).
-const SCHEDULE_HEX: Record<ScheduleType, string> = {
+// export — 좌 월별 마스터(ScheduleMonthMaster)가 같은 색 언어(타입 칩) 재사용.
+export const SCHEDULE_HEX: Record<ScheduleType, string> = {
   jikmu: '#1e3a5f', // 직무연수 — 네이비(플래그십, 가장 진함)
   weekday_2n: '#2f8fa8', // 주중 2박 — 틸(시안 계열, 네이비와 확실히 구분)
   weekend_2n: '#549a4e', // 주말 2박 — 그린
@@ -66,28 +67,67 @@ interface Week {
   laneCount: number
 }
 
-export default function ScheduleCalendar({ sessions }: { sessions: SessionWithCourse[] }) {
-  const [monthIdx, setMonthIdx] = useState(0)
+export interface CalMonth {
+  y: number
+  m: number
+}
+
+// 세션이 걸친 (year, month) 목록 — 월 경계 넘는 차수는 걸친 달마다 포함. 정렬됨.
+// 좌 월별 마스터와 캘린더가 같은 인덱스를 공유하도록 export(둘 다 이 함수로 산출 → index 정합).
+export function scheduleMonths(sessions: SessionWithCourse[]): CalMonth[] {
+  const keys = new Map<string, CalMonth>()
+  for (const s of sessions) {
+    const start = toDate(s.starts_on)
+    const end = toDate(s.ends_on)
+    let cur = new Date(start.getFullYear(), start.getMonth(), 1)
+    const endMonth = new Date(end.getFullYear(), end.getMonth(), 1)
+    while (cur.getTime() <= endMonth.getTime()) {
+      keys.set(`${cur.getFullYear()}-${cur.getMonth()}`, { y: cur.getFullYear(), m: cur.getMonth() })
+      cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1)
+    }
+  }
+  return [...keys.values()].sort((a, b) => a.y - b.y || a.m - b.m)
+}
+
+// 해당 (y, m) 달에 걸치는(구간이 겹치는) 세션 — 마스터의 "N개 차수"·타입칩 요약용.
+export function sessionsInMonth(sessions: SessionWithCourse[], y: number, m: number): SessionWithCourse[] {
+  const first = new Date(y, m, 1).getTime()
+  const last = new Date(y, m + 1, 0).getTime()
+  return sessions.filter((s) => {
+    const st = toDate(s.starts_on).getTime()
+    const en = toDate(s.ends_on).getTime()
+    return st <= last && en >= first
+  })
+}
+
+// monthIdx/onMonthChange 를 주면 controlled(좌 마스터가 월 제어), 안 주면 내부 상태(모바일 자체 탭).
+// showMonthTabs=false → 상단 월 탭 숨김(데스크탑, 마스터가 제어) + 활성월 정적 헤더로 대체.
+export default function ScheduleCalendar({
+  sessions,
+  monthIdx: monthIdxProp,
+  onMonthChange,
+  showMonthTabs = true,
+}: {
+  sessions: SessionWithCourse[]
+  monthIdx?: number
+  onMonthChange?: (i: number) => void
+  showMonthTabs?: boolean
+}) {
+  const [monthIdxState, setMonthIdxState] = useState(0)
+  const controlled = monthIdxProp !== undefined
+  const monthIdx = controlled ? monthIdxProp : monthIdxState
+  const setMonthIdx = (i: number) => {
+    if (controlled) onMonthChange?.(i)
+    else setMonthIdxState(i)
+  }
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  // 레인 정렬용 안정 정렬 + 세션이 걸친 (year, month) 목록
+  // 레인 정렬용 안정 정렬 + 세션이 걸친 (year, month) 목록(마스터와 공유하는 scheduleMonths 사용)
   const { ordered, months } = useMemo(() => {
     const ordered = [...sessions].sort(
       (a, b) => a.starts_on.localeCompare(b.starts_on) || a.sort_order - b.sort_order,
     )
-    const keys = new Map<string, { y: number; m: number }>()
-    for (const s of sessions) {
-      const start = toDate(s.starts_on)
-      const end = toDate(s.ends_on)
-      let cur = new Date(start.getFullYear(), start.getMonth(), 1)
-      const endMonth = new Date(end.getFullYear(), end.getMonth(), 1)
-      while (cur.getTime() <= endMonth.getTime()) {
-        keys.set(`${cur.getFullYear()}-${cur.getMonth()}`, { y: cur.getFullYear(), m: cur.getMonth() })
-        cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1)
-      }
-    }
-    const months = [...keys.values()].sort((a, b) => a.y - b.y || a.m - b.m)
-    return { ordered, months }
+    return { ordered, months: scheduleMonths(sessions) }
   }, [sessions])
 
   const idx = Math.min(monthIdx, Math.max(months.length - 1, 0))
@@ -132,6 +172,11 @@ export default function ScheduleCalendar({ sessions }: { sessions: SessionWithCo
     })
   }, [activeMonth, ordered])
 
+  // 월이 바뀌면(탭 클릭이든 좌 마스터 제어든) 선택 바 해제.
+  useEffect(() => {
+    setSelectedId(null)
+  }, [monthIdx])
+
   // 선택 상태는 일시적 — 바 밖(다른 곳)을 클릭하면 해제.
   useEffect(() => {
     if (selectedId === null) return
@@ -156,34 +201,39 @@ export default function ScheduleCalendar({ sessions }: { sessions: SessionWithCo
   return (
     // 달력 자체가 카드박스(개요 카드와 동일 톤).
     <div className="overflow-hidden rounded-[10px] border border-[#e5eaef] bg-[#f2f5f9]">
-      {/* 월 탭 — 세션 있는 달만. 직접 점프(한 칸씩 넘기기 아님). */}
-      <div className="flex items-center gap-2 border-b border-[#e5eaef] px-3 py-1.5">
-        <span className="font-score text-[12px] font-[400] tabular-nums text-[#9ca3af]">
-          {activeMonth.y}
-        </span>
-        <div className="flex overflow-x-auto">
-          {months.map((mo, i) => {
-            const on = i === idx
-            return (
-              <button
-                key={`${mo.y}-${mo.m}`}
-                type="button"
-                onClick={() => {
-                  setMonthIdx(i)
-                  setSelectedId(null)
-                }}
-                className={`border-b-2 px-2.5 py-1 font-score text-[13px] font-[500] tabular-nums transition-colors ${
-                  on
-                    ? 'border-[#1e3a5f] text-[#1e3a5f]'
-                    : 'border-transparent text-[#9ca3af] hover:text-[#6b7280]'
-                }`}
-              >
-                {mo.m + 1}월
-              </button>
-            )
-          })}
+      {/* 월 탭 — 세션 있는 달만. 직접 점프. showMonthTabs=false(데스크탑)면 좌 마스터가 제어하므로 정적 헤더로. */}
+      {showMonthTabs ? (
+        <div className="flex items-center gap-2 border-b border-[#e5eaef] px-3 py-1.5">
+          <span className="font-score text-[12px] font-[400] tabular-nums text-[#9ca3af]">
+            {activeMonth.y}
+          </span>
+          <div className="flex overflow-x-auto">
+            {months.map((mo, i) => {
+              const on = i === idx
+              return (
+                <button
+                  key={`${mo.y}-${mo.m}`}
+                  type="button"
+                  onClick={() => setMonthIdx(i)}
+                  className={`border-b-2 px-2.5 py-1 font-score text-[13px] font-[500] tabular-nums transition-colors ${
+                    on
+                      ? 'border-[#1e3a5f] text-[#1e3a5f]'
+                      : 'border-transparent text-[#9ca3af] hover:text-[#6b7280]'
+                  }`}
+                >
+                  {mo.m + 1}월
+                </button>
+              )
+            })}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="border-b border-[#e5eaef] px-4 py-2">
+          <span className="font-score text-[13px] font-[500] tabular-nums text-[#1e3a5f]">
+            {activeMonth.y}년 {activeMonth.m + 1}월
+          </span>
+        </div>
+      )}
 
       {/* 요일 헤더 */}
       <div className="grid grid-cols-7 px-2 pt-2">
