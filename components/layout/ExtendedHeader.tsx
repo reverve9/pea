@@ -3,18 +3,15 @@
 import React from 'react'
 import Link from 'next/link'
 import { Lock } from 'lucide-react'
-import SNSLinks, { type SNSUrls } from '@/components/common/SNSLinks'
 
 interface ExtendedHeaderProps {
   title: string // 국문 (주)
   eyebrow?: string // 영문 보조 — 로고 어법(PHYSICAL EDUCATION ASSOCIATION) 반향
-  sns?: SNSUrls
 }
 
-// 우측(확장) 페인 상단 마스트헤드: 국문 타이틀(주) + 영문 eyebrow(서브) + SNS + 언더바.
-// 참고이미지의 우측 헤더를 "언어 위계만 반전(국문 우세)"해 이식 → 메인헤더/로고 톤과 일치.
-// 토큰(fluid-*, font-raleway)만 사용, 페이지엔 raw 스타일 없음(원칙1).
-export default function ExtendedHeader({ title, eyebrow, sns }: ExtendedHeaderProps) {
+// 우측(확장) 페인 상단 마스트헤드: 국문 타이틀(주) + 영문 eyebrow(서브) + 언더바.
+// SNS는 올해 도입 계획 없어 미표시(오너 지시 2026-07-03). 우측엔 어드민 진입(자물쇠, 새창)만.
+export default function ExtendedHeader({ title, eyebrow }: ExtendedHeaderProps) {
   return (
     <header className="pt-4 mb-9">
       <div className="flex items-end justify-between gap-3">
@@ -30,20 +27,17 @@ export default function ExtendedHeader({ title, eyebrow, sns }: ExtendedHeaderPr
           )}
         </div>
 
-        {/* 우측 크롬: SNS 칩 + 어드민 진입(최우측, 새창) */}
-        <div className="flex items-center gap-2">
-          {sns && <SNSLinks urls={sns} variant="icon-sm" />}
-          <Link
-            href="/admin"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="관리자"
-            title="관리자"
-            className="flex h-6 w-6 items-center justify-center rounded-full bg-[#e0e0e0] text-[#777] transition-colors hover:bg-[#d5d5d5]"
-          >
-            <Lock size={12} />
-          </Link>
-        </div>
+        {/* 어드민 진입 (새창) */}
+        <Link
+          href="/admin"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="관리자"
+          title="관리자"
+          className="flex h-6 w-6 items-center justify-center rounded-full bg-[#e0e0e0] text-[#777] transition-colors hover:bg-[#d5d5d5]"
+        >
+          <Lock size={12} />
+        </Link>
       </div>
 
       {/* 언더바 */}

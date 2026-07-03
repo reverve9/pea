@@ -34,7 +34,7 @@ export default function SectionTitle({
     <>
       <div className="md:hidden">{full}</div>
       <div className="mb-3 hidden items-center justify-between gap-2 px-1 md:flex">
-        <span className="font-score text-[12px] font-[500] uppercase tracking-[1.5px] text-[#9ca3af]">
+        <span className="font-score text-[12px] font-[500] uppercase tracking-[1.5px] text-[#6b7280]">
           {title}
         </span>
         {right}

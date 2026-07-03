@@ -1,88 +1,149 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import React, { useState, useEffect } from 'react'
+import { X } from 'lucide-react'
+import AppShell from '@/components/layout/AppShell'
+import ExtendedHeader from '@/components/layout/ExtendedHeader'
 import PageTitle from '@/components/common/PageTitle'
-import { TabButton } from '@/components/common/Button'
-import { LoadingState, EmptyState } from '@/components/common/StateView'
-import NoticeCard from '@/components/features/NoticeCard'
+import Pagination from '@/components/common/Pagination'
+import { LoadingState } from '@/components/common/StateView'
+import CommunityNewsList, { type Selection } from '@/components/features/CommunityNewsList'
+import CommunityDetailPanel from '@/components/features/CommunityDetailPanel'
+import NoticeDetail from '@/components/features/NoticeDetail'
 import FaqAccordion from '@/components/features/FaqAccordion'
 import InquiryBoardShell from '@/components/features/InquiryBoardShell'
 import { useQuery } from '@/lib/useQuery'
 import { getNotices, getFaqs } from '@/lib/queries'
 import type { Notice, Faq } from '@/lib/types'
 
-// §3-5 커뮤니티 리스트(PWA 페인). Phase 2.6: 공지 상세는 URL 라우트(/community/notices/[id])로 이관 —
-// 카드 클릭 = Link, 선택 하이라이트 = usePathname(URL 이 선택 상태의 SSOT). 상세 렌더는 @detail 슬롯 담당.
-// FAQ(아코디언)·문의 2종(셸)은 리스트 페인 안에서 그대로. AppShell 은 community/layout 이 감싼다.
-type Tab = 'notices' | 'faq' | 'general' | 'cert'
+// §3-5 커뮤니티 — 나인브릿지 NEWS 이식. 좌(공지 보드+FAQ/문의 진입) ↔ 우(영역 스택: 공지/FAQ/문의).
+// 좌 카드 클릭: 데스크탑=우측 해당 영역 점프 / 모바일=모달. 공지·FAQ = 페이지당 5(모바일 3) 페이지네이션.
+type Modal = { kind: 'notice'; notice: Notice } | { kind: 'faq' } | { kind: 'inquiry' } | null
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'notices', label: '공지사항' },
-  { key: 'faq', label: 'FAQ' },
-  { key: 'general', label: '일반문의' },
-  { key: 'cert', label: '증명문의' },
-]
+function pinnedFirst(a: Notice, b: Notice) {
+  if (a.is_pinned && !b.is_pinned) return -1
+  if (!a.is_pinned && b.is_pinned) return 1
+  const ad = (a.published_at ?? a.created_at) ?? ''
+  const bd = (b.published_at ?? b.created_at) ?? ''
+  return bd.localeCompare(ad)
+}
 
 export default function CommunityPage() {
-  const [tab, setTab] = useState<Tab>('notices')
-  const pathname = usePathname()
   const notices = useQuery<Notice[]>(getNotices, [])
   const faqs = useQuery<Faq[]>(getFaqs, [])
+  const [isMobile, setIsMobile] = useState(false)
+  const [selectedNoticeId, setSelectedNoticeId] = useState<string | null>(null)
+  const [noticePage, setNoticePage] = useState(1)
+  const [faqPage, setFaqPage] = useState(1)
+  const [modal, setModal] = useState<Modal>(null)
 
-  return (
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  const pageSize = isMobile ? 3 : 5
+  // pageSize 변경(뷰포트 전환) 시 페이지 리셋
+  useEffect(() => {
+    setNoticePage(1)
+    setFaqPage(1)
+  }, [pageSize])
+
+  // 공지·FAQ = 카테고리 그룹핑 없이 '다 묶어' 평면 리스트 + 페이지네이션(좌/우 공유).
+  const sortedNotices = [...notices.data].sort(pinnedFirst)
+  const noticeTotalPages = Math.max(1, Math.ceil(sortedNotices.length / pageSize))
+  const pagedNotices = sortedNotices.slice((noticePage - 1) * pageSize, noticePage * pageSize)
+
+  const faqTotalPages = Math.max(1, Math.ceil(faqs.data.length / pageSize))
+  const pagedFaqs = faqs.data.slice((faqPage - 1) * pageSize, faqPage * pageSize)
+
+  const scrollToRegion = (id: string) =>
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+  const handleSelect = (sel: Selection) => {
+    if (isMobile) {
+      if (sel.kind === 'notice') {
+        const n = notices.data.find((x) => x.id === sel.id)
+        if (n) setModal({ kind: 'notice', notice: n })
+      } else if (sel.kind === 'faq') {
+        setModal({ kind: 'faq' })
+      } else {
+        setModal({ kind: 'inquiry' })
+      }
+      return
+    }
+    if (sel.kind === 'notice') {
+      // 스크롤은 우측 아코디언이 해당 글로 직접(가운데) — 여기선 선택만(이중 스크롤 방지).
+      setSelectedNoticeId(sel.id)
+    } else if (sel.kind === 'faq') {
+      scrollToRegion('community-faq')
+    } else {
+      scrollToRegion('community-inquiry')
+    }
+  }
+
+  const left = (
     <div className="pb-8">
       <PageTitle title="커뮤니티" en="COMMUNITY" />
+      {notices.loading ? (
+        <LoadingState />
+      ) : (
+        <CommunityNewsList
+          notices={pagedNotices}
+          faqCount={faqs.data.length}
+          onSelect={handleSelect}
+          selectedNoticeId={selectedNoticeId}
+          pagination={<Pagination page={noticePage} totalPages={noticeTotalPages} onChange={setNoticePage} />}
+        />
+      )}
+    </div>
+  )
 
-      <div className="flex flex-wrap gap-2 px-4 pb-3">
-        {TABS.map((t) => (
-          <TabButton key={t.key} active={tab === t.key} onClick={() => setTab(t.key)}>
-            {t.label}
-          </TabButton>
-        ))}
+  const right = (
+    <div>
+      <ExtendedHeader title="커뮤니티" eyebrow="COMMUNITY" />
+      <CommunityDetailPanel
+        notices={pagedNotices}
+        faqs={pagedFaqs}
+        selectedNoticeId={selectedNoticeId}
+        noticePagination={<Pagination page={noticePage} totalPages={noticeTotalPages} onChange={setNoticePage} />}
+        faqPagination={<Pagination page={faqPage} totalPages={faqTotalPages} onChange={setFaqPage} />}
+      />
+    </div>
+  )
+
+  return (
+    <>
+      <AppShell main={left} extended={right} />
+
+      {/* 모바일 모달 (768 미만) */}
+      {isMobile && modal && (
+        <ModalShell onClose={() => setModal(null)}>
+          {modal.kind === 'notice' && <NoticeDetail notice={modal.notice} />}
+          {modal.kind === 'faq' && <FaqAccordion faqs={faqs.data} />}
+          {modal.kind === 'inquiry' && <InquiryBoardShell />}
+        </ModalShell>
+      )}
+    </>
+  )
+}
+
+function ModalShell({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-5" onClick={onClose}>
+      <div
+        className="flex max-h-[82vh] w-full max-w-[440px] flex-col overflow-hidden rounded-[16px] bg-white shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-end border-b border-[#eceef1] px-3 py-2">
+          <button onClick={onClose} className="rounded-full p-1 hover:bg-[#f3f4f6]" aria-label="닫기">
+            <X size={20} className="text-[#6b7280]" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">{children}</div>
       </div>
-
-      {tab === 'notices' &&
-        (notices.loading ? (
-          <LoadingState />
-        ) : notices.data.length === 0 ? (
-          <EmptyState label="등록된 공지가 없습니다." />
-        ) : (
-          <div className="space-y-3 px-4">
-            {notices.data.map((n) => {
-              const href = `/community/notices/${n.id}`
-              const selected = pathname === href
-              return (
-                <Link
-                  key={n.id}
-                  href={href}
-                  scroll={false}
-                  aria-current={selected ? 'page' : undefined}
-                  className="block"
-                >
-                  <NoticeCard notice={n} selected={selected} />
-                </Link>
-              )
-            })}
-          </div>
-        ))}
-
-      {tab === 'faq' && (
-        <div className="px-4">{faqs.loading ? <LoadingState /> : <FaqAccordion faqs={faqs.data} />}</div>
-      )}
-
-      {tab === 'general' && (
-        <div className="px-4">
-          <InquiryBoardShell kind="general" />
-        </div>
-      )}
-
-      {tab === 'cert' && (
-        <div className="px-4">
-          <InquiryBoardShell kind="cert" />
-        </div>
-      )}
     </div>
   )
 }

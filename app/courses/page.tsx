@@ -5,7 +5,6 @@ import AppShell from '@/components/layout/AppShell'
 import PageTitle from '@/components/common/PageTitle'
 import SectionTitle from '@/components/common/SectionTitle'
 import ExtendedHeader from '@/components/layout/ExtendedHeader'
-import { PLACEHOLDER_SNS } from '@/lib/siteMeta'
 import { LoadingState } from '@/components/common/StateView'
 import ScheduleCalendar, { scheduleMonths } from '@/components/features/ScheduleCalendar'
 import ScheduleMaster from '@/components/features/ScheduleMaster'
@@ -93,7 +92,7 @@ export default function CoursesPage() {
       }
       extended={
         <div>
-          <ExtendedHeader title="연수안내" eyebrow="COURSES" sns={PLACEHOLDER_SNS} />
+          <ExtendedHeader title="연수안내" eyebrow="COURSES" />
           {/* 연수 개요 — 데스크탑 우측 페인(모바일은 좌측 main에 표시) */}
           <div className="mb-10">
             <CourseOverview />

@@ -8,7 +8,6 @@ import CourseCard from '@/components/features/CourseCard'
 import { EmptyState, LoadingState } from '@/components/common/StateView'
 import { useQuery } from '@/lib/useQuery'
 import { getCourses } from '@/lib/queries'
-import { PLACEHOLDER_SNS } from '@/lib/siteMeta'
 import type { Course } from '@/lib/types'
 
 // 프로그램: 종목·과정 "소개" 페이지 (IA 확정안). 스키·스노보드 + 준비중 종목.
@@ -39,7 +38,7 @@ export default function ProgramPage() {
       }
       extended={
         <div>
-          <ExtendedHeader title="프로그램" eyebrow="PROGRAM" sns={PLACEHOLDER_SNS} />
+          <ExtendedHeader title="프로그램" eyebrow="PROGRAM" />
           {/* 과정 상세 — 클라이언트 콘텐츠 수급 후 채움(가이드 초안 제공 예정) */}
           <section className="mb-8">
             <SectionTitle title="과정 상세" en="Detail" />

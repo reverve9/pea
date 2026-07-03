@@ -2,8 +2,7 @@
 
 import React from 'react'
 import Image from 'next/image'
-import SNSLinks from '@/components/common/SNSLinks'
-import { PLACEHOLDER_SNS, PLACEHOLDER_ORG as ORG } from '@/lib/siteMeta'
+import { PLACEHOLDER_ORG as ORG } from '@/lib/siteMeta'
 
 // 홈 전용 푸터(나인브릿지 PWAFooter 형식): 회색 박스 + 로고 + 기관정보 전항목 + SNS + 저작권.
 // 홈에만 배치(공용 레이아웃 아님). 나머지 페이지는 공용 SlimFooter. PWA 페인 폭 대응 = cqi clamp.
@@ -76,11 +75,6 @@ export default function HomeFooter() {
               <MailIcon />
               <span>{ORG.email}</span>
             </p>
-          </div>
-
-          {/* SNS */}
-          <div className="mt-3">
-            <SNSLinks urls={PLACEHOLDER_SNS} variant="icon-sm" />
           </div>
         </div>
 

@@ -4,8 +4,6 @@ import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ClipboardPen } from 'lucide-react'
-import SNSLinks from '@/components/common/SNSLinks'
-import { PLACEHOLDER_SNS } from '@/lib/siteMeta'
 
 // 홈 우측(확장 페인) 브랜드 히어로 — 나인브릿지 ExtendedHome 구성 이식:
 // 로고 → 슬로건(인용형 h2 + 소개 문단) → CTA + SNS, 세로 중앙 정렬(좌측 정렬 콘텐츠).
@@ -49,8 +47,6 @@ export default function HomeExtended() {
             <ClipboardPen size={16} strokeWidth={1.75} />
             연수 신청하기
           </Link>
-
-          <SNSLinks urls={PLACEHOLDER_SNS} variant="button" />
         </div>
       </div>
     </div>
