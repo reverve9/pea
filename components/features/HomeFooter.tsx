@@ -3,25 +3,11 @@
 import React from 'react'
 import Image from 'next/image'
 import SNSLinks from '@/components/common/SNSLinks'
-import { PLACEHOLDER_SNS } from '@/lib/siteMeta'
+import { PLACEHOLDER_SNS, PLACEHOLDER_ORG as ORG } from '@/lib/siteMeta'
 
 // 홈 전용 푸터(나인브릿지 PWAFooter 형식): 회색 박스 + 로고 + 기관정보 전항목 + SNS + 저작권.
-// 홈에만 배치(공용 레이아웃 아님). PWA 페인 폭 대응 = cqi clamp(고정 px·sm: 분기 없음).
-// ⚠ 아래 값은 전부 임의(placeholder) — 클라이언트 확정정보 수급 후 교체(후속 site_settings 연동).
-const ORG = {
-  name: '체육교육회',
-  tagline: '서울특별시교육청 지정 특수분야 직무연수기관',
-  address: '서울특별시 송파구 올림픽로 000, 0층',
-  ceo: '홍길동',
-  bank: '국민은행',
-  account: '000000-00-000000',
-  accountHolder: '체육교육회',
-  privacyOfficer: '홍길동',
-  privacyEmail: 'privacy@pea.or.kr',
-  tel: '02-000-0000',
-  fax: '02-000-0001',
-  email: 'info@pea.or.kr',
-}
+// 홈에만 배치(공용 레이아웃 아님). 나머지 페이지는 공용 SlimFooter. PWA 페인 폭 대응 = cqi clamp.
+// ⚠ ORG 값은 전부 임의(placeholder) — siteMeta에서 공용 관리, 확정정보 수급 후 site_settings 연동.
 
 // 나인브릿지 푸터 아이콘(인라인 svg)
 const PhoneIcon = () => (
