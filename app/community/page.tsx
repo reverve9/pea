@@ -36,6 +36,9 @@ export default function CommunityPage() {
   const [noticePage, setNoticePage] = useState(1)
   const [faqPage, setFaqPage] = useState(1)
   const [modal, setModal] = useState<Modal>(null)
+  // 좌 카드 클릭 신호(펄스) — 값이 바뀌면 우측 FAQ 상단 열기 / 문의 내역 열기(클릭마다 재오픈).
+  const [faqOpenPulse, setFaqOpenPulse] = useState(0)
+  const [inquiryOpenPulse, setInquiryOpenPulse] = useState(0)
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
@@ -79,8 +82,10 @@ export default function CommunityPage() {
       setSelectedNoticeId(sel.id)
     } else if (sel.kind === 'faq') {
       scrollToRegion('community-faq')
+      setFaqOpenPulse((n) => n + 1)
     } else {
       scrollToRegion('community-inquiry')
+      setInquiryOpenPulse((n) => n + 1)
     }
   }
 
@@ -110,6 +115,8 @@ export default function CommunityPage() {
         selectedNoticeId={selectedNoticeId}
         noticePagination={<Pagination page={noticePage} totalPages={noticeTotalPages} onChange={setNoticePage} />}
         faqPagination={<Pagination page={faqPage} totalPages={faqTotalPages} onChange={setFaqPage} />}
+        faqOpenPulse={faqOpenPulse}
+        inquiryOpenPulse={inquiryOpenPulse}
       />
     </div>
   )

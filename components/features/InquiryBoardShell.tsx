@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
-import { Lock, PenLine, Info, CheckCircle2 } from 'lucide-react'
+import { Lock, PenLine, Info, ChevronDown } from 'lucide-react'
 import { Badge } from '@/components/common/Badge'
 import { EmptyState } from '@/components/common/StateView'
 import Pagination from '@/components/common/Pagination'
@@ -26,18 +26,18 @@ const GUIDE: { label: string; text: string }[] = [
 
 const EMPTY = { name: '', phone: '', title: '', content: '', password: '' }
 
-export default function InquiryBoardShell() {
+// openPulse: 좌 문의 카드 클릭 시 부모가 증가시키는 신호 — 값이 바뀌면 문의 내역 아코디언을 토글한다.
+export default function InquiryBoardShell({ openPulse }: { openPulse?: number }) {
   // 작성 폼
   const [writing, setWriting] = useState(false)
   const [form, setForm] = useState(EMPTY)
   const [submitting, setSubmitting] = useState(false)
-  const [done, setDone] = useState(false)
   const [error, setError] = useState('')
 
   // 리스트 + 열람
   const [items, setItems] = useState<InquiryListItem[]>([])
   const [loadingList, setLoadingList] = useState(true)
-  const [isMobile, setIsMobile] = useState(false)
+  const [listOpen, setListOpen] = useState(false)
   const [page, setPage] = useState(1)
   const [openId, setOpenId] = useState<string | null>(null)
   const [pw, setPw] = useState('')
@@ -54,17 +54,14 @@ export default function InquiryBoardShell() {
 
   useEffect(() => {
     loadList()
-    const check = () => setIsMobile(window.innerWidth < 768)
-    check()
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
   }, [loadList])
 
-  const pageSize = isMobile ? 3 : 5
+  // 좌 문의 카드 클릭(펄스) → 문의 내역 토글(다시 누르면 닫힘).
   useEffect(() => {
-    setPage(1)
-  }, [pageSize])
+    if (openPulse) setListOpen((v) => !v)
+  }, [openPulse])
 
+  const pageSize = 5
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize))
   const paged = items.slice((page - 1) * pageSize, page * pageSize)
 
@@ -82,7 +79,6 @@ export default function InquiryBoardShell() {
       await createInquiry(form)
       setForm(EMPTY)
       setWriting(false)
-      setDone(true)
       loadList()
     } catch (err) {
       console.error('[inquiry] submit failed:', err)
@@ -122,7 +118,7 @@ export default function InquiryBoardShell() {
         </div>
         <div className="mt-2.5 space-y-2">
           {GUIDE.map((g) => (
-            <div key={g.label} className="flex gap-2.5">
+            <div key={g.label} className="flex items-start gap-2.5">
               <span className="mt-[1px] shrink-0 rounded-[5px] bg-white px-1.5 py-[2px] text-[11px] font-[500] text-[#3f6a99] ring-1 ring-[#dbe4ee]">
                 {g.label}
               </span>
@@ -132,31 +128,20 @@ export default function InquiryBoardShell() {
         </div>
       </div>
 
-      {/* 접수 완료 안내 */}
-      {done && (
-        <div className="flex items-center gap-2 rounded-[10px] border border-[#cfe6d8] bg-[#f0f8f3] px-4 py-3">
-          <CheckCircle2 size={16} className="shrink-0 text-[#2f7d5a]" />
-          <p className="text-[13px] font-[400] text-[#2f7d5a]">
-            문의가 접수되었습니다. 답변은 작성 시 설정한 비밀번호로 열람할 수 있습니다.
-          </p>
-        </div>
-      )}
-
-      {/* 헤더 + 작성 토글 */}
-      <div className="flex items-start justify-between gap-3 px-1">
+      {/* 헤더 + 작성 토글 — 모바일: 세로 스택 + 풀폭 버튼 / 데스크탑(md↑): 우측 인라인 버튼 */}
+      <div className="flex flex-col gap-3 px-1 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
-          <h3 className="text-[14.5px] font-[500] text-[#1f2937]">1:1 문의</h3>
-          <p className="mt-0.5 text-[12.5px] font-[300] text-[#6b7280]">
+          <h3 className="fluid-body font-[500] text-[#1f2937]">1:1 문의</h3>
+          <p className="fluid-nav-label text-[#6b7280] mt-1 leading-relaxed">
             연수 · 신청 · 환불 등 궁금한 점을 문의합니다.
+            <br />
+            답변은 작성 시 설정한 비밀번호로 열람할 수 있습니다.
           </p>
         </div>
         <button
           type="button"
-          onClick={() => {
-            setWriting((v) => !v)
-            setDone(false)
-          }}
-          className="flex shrink-0 items-center gap-1.5 rounded-[8px] bg-[#1e3a5f] px-3 py-2 text-[13px] font-[500] text-white transition-opacity hover:opacity-90"
+          onClick={() => setWriting((v) => !v)}
+          className="flex w-full shrink-0 items-center justify-center gap-1.5 rounded-[8px] bg-[#1e3a5f] px-3 py-2.5 text-[13px] font-[500] text-white transition-opacity hover:opacity-90 md:w-auto md:justify-start md:py-2"
         >
           <PenLine size={14} />
           문의 작성
@@ -206,19 +191,30 @@ export default function InquiryBoardShell() {
         </div>
       )}
 
-      {/* 문의 내역 — 공지 리스트와 동일 스타일(박스 없음, divide-y) + 페이지네이션(5/3) */}
-      <div>
-        <div className="flex items-center justify-between gap-2 px-1 pb-1">
-          <span className="text-[13px] font-[500] tracking-[0.3px] text-[#6b7280]">문의 내역</span>
-          <Pagination page={page} totalPages={totalPages} onChange={setPage} />
-        </div>
+      {/* 문의 내역 — 아코디언(기본 닫힘, 헤더/좌 문의 카드 클릭 시 열림). FAQ 아코디언과 동일 톤. */}
+      <div className="overflow-hidden rounded-[10px] border border-[#e5eaef] bg-[#f2f5f9]">
+        <button
+          type="button"
+          onClick={() => setListOpen((v) => !v)}
+          className="flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left"
+          aria-expanded={listOpen}
+        >
+          <span className="font-score text-[13.5px] font-[500] text-[#1e3a5f]">문의 내역</span>
+          <ChevronDown
+            size={16}
+            className={`shrink-0 text-[#9ca3af] transition-transform ${listOpen ? 'rotate-180' : ''}`}
+          />
+        </button>
 
-        {loadingList ? (
-          <p className="py-6 text-center text-[13px] font-[300] text-[#9ca3af]">불러오는 중…</p>
-        ) : items.length === 0 ? (
-          <EmptyState label="등록된 문의가 없습니다." icon={<Lock className="h-8 w-8" />} />
-        ) : (
-          <ul className="divide-y divide-[#eef1f5] border-y border-[#eef1f5]">
+        {listOpen && (
+          <div className="border-t border-[#e5eaef] bg-white px-4 pb-3 pt-3">
+            {loadingList ? (
+              <p className="py-6 text-center text-[13px] font-[300] text-[#9ca3af]">불러오는 중…</p>
+            ) : items.length === 0 ? (
+              <EmptyState label="등록된 문의가 없습니다." icon={<Lock className="h-8 w-8" />} />
+            ) : (
+              <>
+                <ul className="divide-y divide-[#eef1f5] border-y border-[#eef1f5]">
             {paged.map((it) => {
               const open = openId === it.id
               const detail = unlocked[it.id]
@@ -303,7 +299,11 @@ export default function InquiryBoardShell() {
                 </li>
               )
             })}
-          </ul>
+                </ul>
+                <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+              </>
+            )}
+          </div>
         )}
       </div>
     </div>

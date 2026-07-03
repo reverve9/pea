@@ -16,6 +16,8 @@ interface Props {
   selectedNoticeId?: string | null
   noticePagination?: React.ReactNode
   faqPagination?: React.ReactNode
+  faqOpenPulse?: number
+  inquiryOpenPulse?: number
 }
 
 export default function CommunityDetailPanel({
@@ -24,6 +26,8 @@ export default function CommunityDetailPanel({
   selectedNoticeId,
   noticePagination,
   faqPagination,
+  faqOpenPulse,
+  inquiryOpenPulse,
 }: Props) {
   return (
     <div className="space-y-10">
@@ -34,12 +38,12 @@ export default function CommunityDetailPanel({
 
       <section id="community-faq" className="scroll-mt-4">
         <SectionTitle title="자주 묻는 질문" right={faqPagination} />
-        <FaqAccordion faqs={faqs} />
+        <FaqAccordion faqs={faqs} openPulse={faqOpenPulse} />
       </section>
 
       <section id="community-inquiry" className="scroll-mt-4">
         <SectionTitle title="1:1 문의" />
-        <InquiryBoardShell />
+        <InquiryBoardShell openPulse={inquiryOpenPulse} />
       </section>
     </div>
   )

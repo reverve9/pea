@@ -1,13 +1,21 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { EmptyState } from '@/components/common/StateView'
 import type { Faq } from '@/lib/types'
 
 // FAQ 아코디언(§3-5). question 클릭 → content 펼침. 읽기 전용.
-export default function FaqAccordion({ faqs }: { faqs: Faq[] }) {
+// 초기엔 전부 닫힘(openId=null). openPulse(좌 FAQ 카드 클릭 신호)가 바뀌면 상단(첫) 항목을 토글한다.
+export default function FaqAccordion({ faqs, openPulse }: { faqs: Faq[]; openPulse?: number }) {
   const [openId, setOpenId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (openPulse && faqs.length > 0) {
+      const first = faqs[0].id
+      setOpenId((cur) => (cur === first ? null : first))
+    }
+  }, [openPulse])
 
   if (faqs.length === 0) {
     return <EmptyState label="등록된 FAQ가 없습니다." />
