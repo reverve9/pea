@@ -1,6 +1,8 @@
 'use client'
 
 import React from 'react'
+import Link from 'next/link'
+import { Lock } from 'lucide-react'
 import SNSLinks, { type SNSUrls } from '@/components/common/SNSLinks'
 
 interface ExtendedHeaderProps {
@@ -28,8 +30,20 @@ export default function ExtendedHeader({ title, eyebrow, sns }: ExtendedHeaderPr
           )}
         </div>
 
-        {/* SNS (site_settings 주입 전엔 빈 값이면 자동 숨김) */}
-        {sns && <SNSLinks urls={sns} variant="icon-sm" />}
+        {/* 우측 크롬: SNS 칩 + 어드민 진입(최우측, 새창) */}
+        <div className="flex items-center gap-2">
+          {sns && <SNSLinks urls={sns} variant="icon-sm" />}
+          <Link
+            href="/admin"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="관리자"
+            title="관리자"
+            className="flex h-6 w-6 items-center justify-center rounded-full bg-[#e0e0e0] text-[#777] transition-colors hover:bg-[#d5d5d5]"
+          >
+            <Lock size={12} />
+          </Link>
+        </div>
       </div>
 
       {/* 언더바 */}
