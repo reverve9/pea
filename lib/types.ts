@@ -65,6 +65,32 @@ export interface Faq {
   sort_order: number
 }
 
+// ── 어드민 전용 행 타입(비공개 컬럼 포함) — service_role 서버 조회에서만 사용.
+export interface NoticeAdmin extends Notice {
+  is_published: boolean
+  updated_at: string
+}
+
+export interface FaqAdmin extends Faq {
+  is_published: boolean
+  updated_at: string
+}
+
+export type InquiryStatus = 'open' | 'answered'
+
+export interface InquiryAdmin {
+  id: string
+  phone: string
+  name: string | null
+  title: string
+  content: string
+  is_secret: boolean
+  status: InquiryStatus
+  admin_reply: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface SiteContent {
   id: string
   key: string
