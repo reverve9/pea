@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import AppShell from '@/components/layout/AppShell'
 import PageTitle from '@/components/common/PageTitle'
 import SectionTitle from '@/components/common/SectionTitle'
@@ -8,15 +9,22 @@ import { PLACEHOLDER_SNS } from '@/lib/siteMeta'
 import { LoadingState } from '@/components/common/StateView'
 import ScheduleCalendar from '@/components/features/ScheduleCalendar'
 import CourseOverview from '@/components/features/CourseOverview'
-import CourseTypes from '@/components/features/CourseTypes'
+import {
+  CourseTypesMobile,
+  CourseTypeCards,
+  CourseTypeAccordion,
+  DEFAULT_TYPE_KEY,
+} from '@/components/features/CourseTypes'
 import { useQuery } from '@/lib/useQuery'
 import { getSessions } from '@/lib/queries'
 import type { SessionWithCourse } from '@/lib/types'
 
-// §3-2 연수안내: 개요 + 연수일정 달력(sessions) + 유형(직무/자율 3종, 아코디언). 읽기 전용.
-// extended(780)는 데스크탑 전용 → 개요·유형은 모바일(main·md:hidden)/데스크탑(extended)로 나눠 배치.
+// §3-2 연수안내 — 데스크탑 셸: 좌 500 = 사이드바(도입·일정·유형 요약 마스터) / 우 780 = 메인(개요·유형 상세).
+// 유형: 좌 요약카드(마스터) → 우 아코디언(디테일, 선택 시 최상단 스크롤). 상태는 페이지에서 공유.
+// ⚠ 일정은 아직 좌측 캘린더 그대로(다음 단계에서 캘린더 우측 이동 + 좌 월별요약 마스터로 재배치 예정).
 export default function CoursesPage() {
   const sessions = useQuery<SessionWithCourse[]>(getSessions, [])
+  const [selectedType, setSelectedType] = useState(DEFAULT_TYPE_KEY)
 
   return (
     <AppShell
@@ -40,10 +48,16 @@ export default function CoursesPage() {
             {sessions.loading ? <LoadingState /> : <ScheduleCalendar sessions={sessions.data} />}
           </section>
 
-          {/* 유형 — 모바일 전용(데스크탑은 우측 페인에서 노출) */}
+          {/* 유형 — 모바일: 카드 → 중앙 팝업 모달(건드리지 않음) */}
           <section className="px-4 md:hidden">
             <SectionTitle title="유형" en="Types" />
-            <CourseTypes />
+            <CourseTypesMobile />
+          </section>
+
+          {/* 유형 — 데스크탑 좌측 마스터(요약 카드). 우측 아코디언을 제어. */}
+          <section className="px-4 hidden md:block">
+            <SectionTitle title="유형" en="Types" />
+            <CourseTypeCards selected={selectedType} onSelect={setSelectedType} />
           </section>
         </div>
       }
@@ -54,9 +68,9 @@ export default function CoursesPage() {
           <div className="mb-10">
             <CourseOverview />
           </div>
-          {/* 유형 — 데스크탑 우측 페인(모바일은 좌측 일정 하단) */}
+          {/* 유형 상세 — 데스크탑 우측 아코디언(좌 카드가 제어, 선택 시 최상단 스크롤) */}
           <SectionTitle title="유형" en="Types" />
-          <CourseTypes />
+          <CourseTypeAccordion selected={selectedType} onSelect={setSelectedType} />
         </div>
       }
     />

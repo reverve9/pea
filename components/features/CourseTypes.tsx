@@ -1,10 +1,10 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, Check, GraduationCap, Boxes, X } from 'lucide-react'
+import Link from 'next/link'
+import { Plus, Check, GraduationCap, Boxes, X, ArrowRight, ChevronDown } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { useIsMobile } from '@/lib/useIsMobile'
 
 // /courses 연수 유형 — 계획안(연수비용 및 포함사항) 4개 유형을 공개용으로 큐레이션.
 // 모바일 드롭다운(아코디언): 헤더(유형명+일정+학점) 클릭 → 포함사항 체크리스트 + 비용을 회색 패널로.
@@ -156,13 +156,13 @@ function TypeHeader({ t, onClick }: { t: CourseType; onClick?: () => void }) {
       </span>
       <span className="min-w-0 flex-1">
         {/* 제목 텍스트는 네이비 통일 — 색 구분은 아이콘 칩으로만 */}
-        <span className="block font-score text-[14.5px] font-[500] text-[#1e3a5f]">
+        <span className="block font-score text-[clamp(0.8125rem,3.72vw,0.90625rem)] font-[500] text-[#1e3a5f]">
           {t.name}
           {t.variant && (
-            <span className="ml-1 text-[13.5px] font-[400] text-[#4b5563]">({t.variant})</span>
+            <span className="ml-1 text-[clamp(0.75rem,3.46vw,0.84375rem)] font-[400] text-[#4b5563]">({t.variant})</span>
           )}
         </span>
-        <span className="mt-0.5 block font-score text-[12px] font-[300] text-[#9ca3af]">
+        <span className="mt-0.5 block font-score text-[clamp(0.6875rem,3.08vw,0.75rem)] font-[300] text-[#9ca3af]">
           {t.schedule} · {t.credit}
         </span>
       </span>
@@ -190,7 +190,7 @@ function TypeHeader({ t, onClick }: { t: CourseType; onClick?: () => void }) {
 function TypeDetail({ t }: { t: CourseType }) {
   return (
     <>
-      <p className="mb-2 font-score text-[12px] font-[500]" style={{ color: t.accent }}>
+      <p className="mb-2 font-score text-[clamp(0.6875rem,3.08vw,0.75rem)] font-[500]" style={{ color: t.accent }}>
         세부사항
       </p>
       <ul className="space-y-1.5">
@@ -198,20 +198,20 @@ function TypeDetail({ t }: { t: CourseType }) {
           <li key={i} className="flex items-start gap-2">
             <Check size={14} className="mt-[3px] shrink-0" style={{ color: t.accent }} />
             {typeof item === 'string' ? (
-              <span className="font-score text-[13px] font-[300] leading-relaxed text-[#374151]">
+              <span className="font-score text-[clamp(0.71875rem,3.33vw,0.8125rem)] font-[300] leading-relaxed text-[#374151]">
                 {item}
               </span>
             ) : (
               <div className="min-w-0 flex-1">
-                <span className="font-score text-[13px] font-[300] text-[#374151]">{item.label}</span>
+                <span className="font-score text-[clamp(0.71875rem,3.33vw,0.8125rem)] font-[300] text-[#374151]">{item.label}</span>
                 {item.rows && (
                   <div className="mt-1 space-y-1">
                     {item.rows.map((r) => (
                       <div key={r.name} className="flex gap-2">
-                        <span className="w-[54px] shrink-0 font-score text-[12px] font-[400] text-[#9ca3af]">
+                        <span className="w-[54px] shrink-0 font-score text-[clamp(0.6875rem,3.08vw,0.75rem)] font-[400] text-[#9ca3af]">
                           {r.name}
                         </span>
-                        <span className="font-score text-[12.5px] font-[300] text-[#4b5563]">
+                        <span className="font-score text-[clamp(0.6875rem,3.21vw,0.78125rem)] font-[300] text-[#4b5563]">
                           {r.desc}
                         </span>
                       </div>
@@ -219,12 +219,12 @@ function TypeDetail({ t }: { t: CourseType }) {
                   </div>
                 )}
                 {item.sub && (
-                  <span className="mt-0.5 block font-score text-[12px] font-[300] text-[#8a94a0]">
+                  <span className="mt-0.5 block font-score text-[clamp(0.6875rem,3.08vw,0.75rem)] font-[300] text-[#8a94a0]">
                     {item.sub}
                   </span>
                 )}
                 {item.note && (
-                  <span className="block font-score text-[11.5px] font-[300] text-[#9ca3af]">
+                  <span className="block font-score text-[clamp(0.65625rem,2.95vw,0.71875rem)] font-[300] text-[#9ca3af]">
                     * {item.note}
                   </span>
                 )}
@@ -232,10 +232,10 @@ function TypeDetail({ t }: { t: CourseType }) {
                   <div className="mt-1.5 grid grid-cols-2 gap-x-5 gap-y-1">
                     {item.grid.map((g) => (
                       <div key={g.name} className="flex items-baseline justify-between gap-2">
-                        <span className="font-score text-[12px] font-[300] text-[#6b7280]">
+                        <span className="font-score text-[clamp(0.6875rem,3.08vw,0.75rem)] font-[300] text-[#6b7280]">
                           {g.name}
                         </span>
-                        <span className="font-score text-[12px] font-[500] tabular-nums text-[#4b5563]">
+                        <span className="font-score text-[clamp(0.6875rem,3.08vw,0.75rem)] font-[500] tabular-nums text-[#4b5563]">
                           {g.price}
                         </span>
                       </div>
@@ -249,21 +249,21 @@ function TypeDetail({ t }: { t: CourseType }) {
       </ul>
 
       <div className="mt-4 border-t border-[#e5eaef] pt-3">
-        <p className="mb-2 font-score text-[12px] font-[500]" style={{ color: t.accent }}>
+        <p className="mb-2 font-score text-[clamp(0.6875rem,3.08vw,0.75rem)] font-[500]" style={{ color: t.accent }}>
           비용
         </p>
         <div className="grid grid-cols-2 gap-x-8 gap-y-1.5">
           {t.prices.map(([label, value, sub]) => (
             <div key={label} className="flex items-start justify-between gap-2">
-              <span className="font-score text-[12.5px] font-[300] leading-tight text-[#6b7280]">
+              <span className="font-score text-[clamp(0.6875rem,3.21vw,0.78125rem)] font-[300] leading-tight text-[#6b7280]">
                 {label}
               </span>
               <span className="text-right">
-                <span className="block font-score text-[13px] font-[500] tabular-nums text-[#374151]">
+                <span className="block font-score text-[clamp(0.71875rem,3.33vw,0.8125rem)] font-[500] tabular-nums text-[#374151]">
                   {value}
                 </span>
                 {sub && (
-                  <span className="mt-0.5 block font-score text-[11px] font-[300] text-[#9ca3af]">
+                  <span className="mt-0.5 block font-score text-[clamp(0.625rem,2.82vw,0.6875rem)] font-[300] text-[#9ca3af]">
                     {sub}
                   </span>
                 )}
@@ -306,7 +306,7 @@ function CenterModal({ t, onClose }: { t: CourseType; onClose: () => void }) {
         className="absolute inset-0 bg-[#0f1b2e]/25 backdrop-blur-[2px]"
       />
       {/* 팝업 */}
-      <div className="relative z-10 flex max-h-[80vh] w-full max-w-[400px] flex-col overflow-hidden rounded-[14px] bg-white shadow-[0_16px_48px_rgba(15,27,46,0.22)]">
+      <div className="relative z-10 flex max-h-[75vh] w-full max-w-[400px] flex-col overflow-hidden rounded-[14px] bg-white shadow-[0_16px_48px_rgba(15,27,46,0.22)]">
         {/* 헤더 */}
         <div className="flex items-center gap-3 border-b border-[#eef1f4] px-5 py-4">
           <span
@@ -316,13 +316,13 @@ function CenterModal({ t, onClose }: { t: CourseType; onClose: () => void }) {
             <t.icon size={20} strokeWidth={1.75} style={{ color: t.accent }} />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="font-score text-[15.5px] font-[500] text-[#1e3a5f]">
+            <p className="font-score text-[clamp(0.875rem,3.97vw,0.96875rem)] font-[500] text-[#1e3a5f]">
               {t.name}
               {t.variant && (
-                <span className="ml-1 text-[13.5px] font-[400] text-[#4b5563]">({t.variant})</span>
+                <span className="ml-1 text-[clamp(0.75rem,3.46vw,0.84375rem)] font-[400] text-[#4b5563]">({t.variant})</span>
               )}
             </p>
-            <p className="mt-0.5 font-score text-[12px] font-[300] text-[#9ca3af]">
+            <p className="mt-0.5 font-score text-[clamp(0.6875rem,3.08vw,0.75rem)] font-[300] text-[#9ca3af]">
               {t.schedule} · {t.credit}
             </p>
           </div>
@@ -335,9 +335,20 @@ function CenterModal({ t, onClose }: { t: CourseType; onClose: () => void }) {
             <X size={18} />
           </button>
         </div>
-        {/* 본문 */}
-        <div className="overflow-y-auto px-5 py-4">
+        {/* 본문 — flex-1 min-h-0 로 스크롤 영역 확정. 모달 전체는 80vh 고정, CTA 는 스크롤 밖. */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           <TypeDetail t={t} />
+        </div>
+        {/* 하단 고정 CTA — 유형 accent 솔리드 풀폭. 쿼리파라미터(?type=)는 신청폼 완성 후 부착. */}
+        <div className="shrink-0 border-t border-[#eef1f4] p-4">
+          <Link
+            href="/application"
+            className="flex w-full items-center justify-center gap-1.5 rounded-[10px] py-3 font-score text-[clamp(0.8125rem,3.6vw,0.9375rem)] font-[500] text-white"
+            style={{ background: t.accent }}
+          >
+            신청하러 가기
+            <ArrowRight size={16} strokeWidth={2} />
+          </Link>
         </div>
       </div>
     </div>,
@@ -345,38 +356,152 @@ function CenterModal({ t, onClose }: { t: CourseType; onClose: () => void }) {
   )
 }
 
-export default function CourseTypes() {
-  const isMobile = useIsMobile()
+// 기본 선택 유형(첫 항목) — 페이지가 좌 마스터/우 디테일 공유 상태 초기값으로 사용.
+export const DEFAULT_TYPE_KEY = TYPES[0].key
+
+// 모바일 — 행 탭 → 중앙 팝업 모달. 아코디언 인라인 없음.
+export function CourseTypesMobile() {
   const [selected, setSelected] = useState<string | null>(null)
+  const sel = TYPES.find((t) => t.key === selected) ?? null
+  return (
+    <>
+      <div className="space-y-2">
+        {TYPES.map((t) => (
+          <div key={t.key} className="rounded-[10px] border border-[#e5eaef] bg-[#f2f5f9]">
+            <TypeHeader t={t} onClick={() => setSelected(t.key)} />
+          </div>
+        ))}
+      </div>
+      {sel && <CenterModal t={sel} onClose={() => setSelected(null)} />}
+    </>
+  )
+}
 
-  // 모바일 — 행 탭 → 중앙 팝업 모달. 아코디언 인라인 없음.
-  if (isMobile) {
-    const sel = TYPES.find((t) => t.key === selected) ?? null
-    return (
-      <>
-        <div className="space-y-2">
-          {TYPES.map((t) => (
-            <div key={t.key} className="rounded-[10px] border border-[#e5eaef] bg-[#f2f5f9]">
-              <TypeHeader t={t} onClick={() => setSelected(t.key)} />
-            </div>
-          ))}
-        </div>
-        {sel && <CenterModal t={sel} onClose={() => setSelected(null)} />}
-      </>
-    )
-  }
-
-  // 데스크탑 — 아코디언 불필요(비교 대상 아님, 일정으로 고르는 것). 4개 유형 상세를 펼쳐 노출.
+// 데스크탑 좌측 마스터 — 유형 요약 카드(선택 하이라이트 + 가격 힌트). 클릭 → 우측 아코디언 제어.
+export function CourseTypeCards({
+  selected,
+  onSelect,
+}: {
+  selected: string
+  onSelect: (k: string) => void
+}) {
   return (
     <div className="space-y-2">
-      {TYPES.map((t) => (
-        <div key={t.key} className="overflow-hidden rounded-[10px] border border-[#e5eaef] bg-[#f2f5f9]">
-          <TypeHeader t={t} />
-          <div className="border-t border-[#e5eaef] px-4 py-4">
-            <TypeDetail t={t} />
+      {TYPES.map((t) => {
+        const on = t.key === selected
+        return (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => onSelect(t.key)}
+            aria-pressed={on}
+            className="block w-full rounded-[10px] border border-[#e5eaef] text-left transition-colors"
+            style={{ background: on ? t.accent + '14' : '#f2f5f9' }}
+          >
+            <div className="flex items-center gap-3 px-4 py-3">
+              <span
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                style={{ background: t.accent + '14' }}
+              >
+                <t.icon size={18} strokeWidth={1.75} style={{ color: t.accent }} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-score text-[14.5px] font-[500] text-[#1e3a5f]">
+                  {t.name}
+                  {t.variant && (
+                    <span className="ml-1 text-[13px] font-[400] text-[#4b5563]">({t.variant})</span>
+                  )}
+                </span>
+                <span className="mt-0.5 block font-score text-[12px] font-[300] text-[#9ca3af]">
+                  {t.schedule} · {t.credit}
+                </span>
+              </span>
+              <span
+                className="shrink-0 font-score text-[12px] font-[500] tabular-nums"
+                style={{ color: on ? t.accent : '#9ca3af' }}
+              >
+                {t.prices[0][1]}~
+              </span>
+            </div>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// 데스크탑 우측 디테일 — 유형 아코디언(선택된 것만 펼침). 선택 변경 시 해당 헤더가 페인 최상단으로 스크롤.
+export function CourseTypeAccordion({
+  selected,
+  onSelect,
+}: {
+  selected: string
+  onSelect: (k: string) => void
+}) {
+  const refs = useRef<Record<string, HTMLDivElement | null>>({})
+  const mounted = useRef(false)
+
+  useEffect(() => {
+    // 최초 렌더(기본 선택)에는 스크롤하지 않음 — 사용자 선택 변경 시에만.
+    if (!mounted.current) {
+      mounted.current = true
+      return
+    }
+    refs.current[selected]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [selected])
+
+  return (
+    <div className="space-y-2">
+      {TYPES.map((t) => {
+        const on = t.key === selected
+        return (
+          <div
+            key={t.key}
+            ref={(el) => {
+              refs.current[t.key] = el
+            }}
+            className="scroll-mt-2 overflow-hidden rounded-[10px] border border-[#e5eaef] bg-[#f2f5f9]"
+          >
+            <button
+              type="button"
+              onClick={() => onSelect(t.key)}
+              aria-expanded={on}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left"
+            >
+              <span
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                style={{ background: t.accent + '14' }}
+              >
+                <t.icon size={18} strokeWidth={1.75} style={{ color: t.accent }} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-score text-[14.5px] font-[500] text-[#1e3a5f]">
+                  {t.name}
+                  {t.variant && (
+                    <span className="ml-1 text-[13px] font-[400] text-[#4b5563]">({t.variant})</span>
+                  )}
+                </span>
+                <span className="mt-0.5 block font-score text-[12px] font-[300] text-[#9ca3af]">
+                  {t.schedule} · {t.credit}
+                </span>
+              </span>
+              <ChevronDown
+                size={18}
+                className="shrink-0 transition-transform"
+                style={{
+                  transform: on ? 'rotate(180deg)' : undefined,
+                  color: on ? t.accent : '#9ca3af',
+                }}
+              />
+            </button>
+            {on && (
+              <div className="border-t border-[#e5eaef] bg-white px-4 py-4">
+                <TypeDetail t={t} />
+              </div>
+            )}
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
