@@ -1,17 +1,23 @@
 'use client'
 
 import { X } from 'lucide-react'
+import Text from './Text'
 
 // 공용 중앙 모달 — 모바일 상세/폼용. 신청·커뮤니티가 동일 셸이라 통일.
 // 본문 래퍼에 container-type:inline-size → 내부 cqi 텍스트가 모달 폭 기준으로 축소. [[type-scale-cqi-system]]
-// ⚠ 연수안내 유형 모달은 헤더(아이콘+제목)·하단 CTA·portal·블러 오버레이라 별개 유지(CourseTypes 내부).
+// 제목은 title 슬롯으로 — 모달 헤더 타이포(card-title)를 컴포넌트가 소유해 단일 진실원천. 크기는 컨테이너 비례.
+// ⚠ 연수안내 유형 모달은 하단 CTA·portal·블러 오버레이라 별개 유지(CourseTypes 내부), 헤더 타이포만 card-title 참조.
 export default function Modal({
   onClose,
   children,
+  title,
+  icon,
   maxWidth = 440,
 }: {
   onClose: () => void
   children: React.ReactNode
+  title?: React.ReactNode
+  icon?: React.ReactNode
   maxWidth?: number
 }) {
   return (
@@ -26,8 +32,14 @@ export default function Modal({
         style={{ maxWidth }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-end border-b border-[#eceef1] px-3 py-2">
-          <button onClick={onClose} className="rounded-full p-1 hover:bg-[#f3f4f6]" aria-label="닫기">
+        <div className="flex items-center gap-2 border-b border-[#eceef1] px-3 py-2 [container-type:inline-size]">
+          {icon}
+          {title != null && (
+            <Text variant="card-title" as="h2" className="min-w-0 flex-1 truncate">
+              {title}
+            </Text>
+          )}
+          <button onClick={onClose} className="ml-auto rounded-full p-1 hover:bg-[#f3f4f6]" aria-label="닫기">
             <X size={20} className="text-[#6b7280]" />
           </button>
         </div>

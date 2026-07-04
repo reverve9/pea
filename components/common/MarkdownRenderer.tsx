@@ -3,6 +3,7 @@
 import React from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { VARIANT } from './Text'
 
 interface MarkdownRendererProps {
   content: string
@@ -23,9 +24,9 @@ export default function MarkdownRenderer({ content, className = '' }: MarkdownRe
           a: (props) => (
             <a {...props} className="text-[#3f6a99] hover:underline" target="_blank" rel="noopener noreferrer" />
           ),
-          h1: (props) => <h1 {...props} className="text-[clamp(1.1875rem,4.8cqi,1.5rem)] font-bold text-[#1f2937] mt-6 mb-3" />,
-          h2: (props) => <h2 {...props} className="text-[clamp(1rem,4cqi,1.25rem)] font-bold text-[#1f2937] mt-5 mb-2" />,
-          h3: (props) => <h3 {...props} className="text-[clamp(0.9375rem,3.6cqi,1.125rem)] font-semibold text-[#1f2937] mt-4 mb-2" />,
+          h1: (props) => <h1 {...props} className={`${VARIANT['md-h1']} mt-6 mb-3`} />,
+          h2: (props) => <h2 {...props} className={`${VARIANT['md-h2']} mt-5 mb-2`} />,
+          h3: (props) => <h3 {...props} className={`${VARIANT['md-h3']} mt-4 mb-2`} />,
           p: (props) => <p {...props} className="fluid-body text-[#374151] leading-relaxed mb-3" />,
           ul: (props) => <ul {...props} className="list-disc list-inside fluid-body text-[#374151] mb-3 space-y-1" />,
           ol: (props) => <ol {...props} className="list-decimal list-inside fluid-body text-[#374151] mb-3 space-y-1" />,
