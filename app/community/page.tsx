@@ -133,10 +133,13 @@ export default function CommunityPage() {
 
       {/* 모바일 모달 (768 미만) */}
       {isMobile && modal && (
-        <Modal onClose={() => setModal(null)}>
+        <Modal
+          onClose={() => setModal(null)}
+          title={modal.kind === 'notice' ? '공지사항' : modal.kind === 'faq' ? '자주 묻는 질문' : '1:1 문의'}
+        >
           {modal.kind === 'notice' && <NoticeDetail notice={modal.notice} />}
           {modal.kind === 'faq' && <FaqAccordion faqs={faqs.data} />}
-          {modal.kind === 'inquiry' && <InquiryBoardShell />}
+          {modal.kind === 'inquiry' && <InquiryBoardShell hideHeader />}
         </Modal>
       )}
     </>

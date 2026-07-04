@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { Pin, ChevronDown } from 'lucide-react'
 import { Badge } from '@/components/common/Badge'
+import Text from '@/components/common/Text'
 import MarkdownRenderer from '@/components/common/MarkdownRenderer'
 import { NOTICE_CATEGORY, formatDate } from '@/lib/display'
 import type { Notice } from '@/lib/types'
@@ -48,7 +49,7 @@ export default function NoticeGroupAccordion({ notices, selectedNoticeId }: Prop
   }, [selectedNoticeId])
 
   if (notices.length === 0) {
-    return <p className="py-12 text-center text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[300] text-[#9ca3af]">등록된 공지가 없습니다.</p>
+    return <Text as="p" variant="sub" color="#9ca3af" className="py-12 text-center">등록된 공지가 없습니다.</Text>
   }
 
   const sorted = [...notices].sort(pinnedFirst)
@@ -83,10 +84,10 @@ export default function NoticeGroupAccordion({ notices, selectedNoticeId }: Prop
               <Badge color={cat.color} size="sm" className="shrink-0">
                 {cat.label}
               </Badge>
-              <span className="min-w-0 flex-1 truncate font-score text-[clamp(0.75rem,2.9cqi,0.90625rem)] font-[500] text-[#1e3a5f]">
+              <Text variant="card-title-sm" className="min-w-0 flex-1 truncate">
                 {notice.title}
-              </span>
-              <span className="shrink-0 text-[clamp(0.625rem,2.4cqi,0.78125rem)] font-[300] tabular-nums text-[#9ca3af]">{date}</span>
+              </Text>
+              <Text variant="date" className="shrink-0">{date}</Text>
             </div>
 
             {open && (

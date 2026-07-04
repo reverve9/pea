@@ -3,6 +3,7 @@
 import React from 'react'
 import { Pin } from 'lucide-react'
 import { Badge } from '@/components/common/Badge'
+import Text from '@/components/common/Text'
 import MarkdownRenderer from '@/components/common/MarkdownRenderer'
 import { NOTICE_CATEGORY, formatDate } from '@/lib/display'
 import type { Notice } from '@/lib/types'
@@ -18,9 +19,9 @@ export default function NoticeDetail({ notice }: { notice: Notice }) {
         <Badge color={cat.color} size="sm">
           {cat.label}
         </Badge>
-        <span className="fluid-nav-label text-[#9ca3af] tabular-nums">{date}</span>
+        <Text variant="date">{date}</Text>
       </div>
-      <h2 className="fluid-subtitle font-[500] text-[#1f2937] leading-snug mb-4">{notice.title}</h2>
+      <Text as="h2" variant="card-title-sm" className="mb-4">{notice.title}</Text>
       <div className="border-t border-[#f0f1f3] pt-4">
         <MarkdownRenderer content={notice.content} />
       </div>

@@ -4,6 +4,7 @@ import React from 'react'
 import Link from 'next/link'
 import { Pin, HelpCircle, MessageSquare, UserCheck, Lock, ChevronRight } from 'lucide-react'
 import SectionTitle from '@/components/common/SectionTitle'
+import Text from '@/components/common/Text'
 import { Badge } from '@/components/common/Badge'
 import { NOTICE_CATEGORY, formatDate } from '@/lib/display'
 import type { Notice } from '@/lib/types'
@@ -39,7 +40,7 @@ export default function CommunityNewsList({ notices, faqCount, onSelect, selecte
       <section className="px-8">
         <SectionTitle title="공지사항" rail right={pagination} />
         {shown.length === 0 ? (
-          <p className="py-6 text-center text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[300] text-[#9ca3af]">등록된 공지가 없습니다.</p>
+          <Text as="p" variant="sub" color="#9ca3af" className="py-6 text-center">등록된 공지가 없습니다.</Text>
         ) : (
           <ul className="divide-y divide-[#eef1f5] border-y border-[#eef1f5]">
             {shown.map((n) => {
@@ -60,13 +61,13 @@ export default function CommunityNewsList({ notices, faqCount, onSelect, selecte
                       <Badge color={cat.color} size="sm" className="shrink-0">
                         {cat.label}
                       </Badge>
-                      <span className="min-w-0 flex-1 truncate font-score text-[clamp(0.6875rem,2.6cqi,0.84375rem)] font-[500] text-[#1e3a5f]">
+                      <Text variant="card-title-sm" className="min-w-0 flex-1 truncate">
                         {n.title}
-                      </span>
-                      <span className="shrink-0 text-[clamp(0.59375rem,2.3cqi,0.71875rem)] font-[300] tabular-nums text-[#9ca3af]">{date}</span>
+                      </Text>
+                      <Text variant="date" className="shrink-0">{date}</Text>
                     </div>
                     {n.content && (
-                      <p className="mt-1 line-clamp-1 text-[clamp(0.625rem,2.4cqi,0.78125rem)] font-[300] text-[#6b7280]">{n.content}</p>
+                      <Text as="p" variant="card-sub" className="mt-1 line-clamp-1">{n.content}</Text>
                     )}
                   </button>
                 </li>
@@ -142,11 +143,11 @@ function BundleCard({
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
-          <span className="font-score text-[clamp(0.75rem,2.9cqi,0.90625rem)] font-[500] text-[#1e3a5f]">{title}</span>
+          <Text variant="card-title">{title}</Text>
           {lock && <Lock size={12} className="text-[#9ca3af]" />}
-          {meta && <span className="text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[300] text-[#9ca3af]">{meta}</span>}
+          {meta && <Text variant="date">{meta}</Text>}
         </span>
-        <span className="mt-0.5 block truncate text-[clamp(0.625rem,2.4cqi,0.78125rem)] font-[300] text-[#6b7280]">{desc}</span>
+        <Text as="span" variant="card-sub" className="mt-0.5 block truncate">{desc}</Text>
       </span>
       <ChevronRight size={17} className="shrink-0 text-[#c0c6cd]" />
     </>

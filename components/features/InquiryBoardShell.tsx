@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Lock, PenLine, Info, ChevronDown } from 'lucide-react'
 import { Badge } from '@/components/common/Badge'
+import Text, { BTN } from '@/components/common/Text'
 import { EmptyState } from '@/components/common/StateView'
 import Pagination from '@/components/common/Pagination'
 import { formatDate } from '@/lib/display'
@@ -27,7 +28,7 @@ const GUIDE: { label: string; text: string }[] = [
 const EMPTY = { name: '', phone: '', title: '', content: '', password: '' }
 
 // openPulse: 좌 문의 카드 클릭 시 부모가 증가시키는 신호 — 값이 바뀌면 문의 내역 아코디언을 토글한다.
-export default function InquiryBoardShell({ openPulse }: { openPulse?: number }) {
+export default function InquiryBoardShell({ openPulse, hideHeader }: { openPulse?: number; hideHeader?: boolean }) {
   // 작성 폼
   const [writing, setWriting] = useState(false)
   const [form, setForm] = useState(EMPTY)
@@ -114,7 +115,7 @@ export default function InquiryBoardShell({ openPulse }: { openPulse?: number })
       <div className="rounded-[12px] border border-[#e5ecf2] bg-[#f3f6f9] p-4">
         <div className="flex items-center gap-1.5">
           <Info size={15} className="text-[#1e3a5f]" />
-          <span className="text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[500] text-[#1e3a5f]">문의 전에 확인하세요</span>
+          <Text variant="card-title-sm">문의 전에 확인하세요</Text>
         </div>
         <div className="mt-2.5 space-y-2">
           {GUIDE.map((g) => (
@@ -122,26 +123,28 @@ export default function InquiryBoardShell({ openPulse }: { openPulse?: number })
               <span className="mt-[1px] shrink-0 rounded-[5px] bg-white px-1.5 py-[2px] text-[clamp(0.5625rem,2.2cqi,0.6875rem)] font-[500] text-[#3f6a99] ring-1 ring-[#dbe4ee]">
                 {g.label}
               </span>
-              <p className="text-[clamp(0.625rem,2.4cqi,0.78125rem)] font-[300] leading-relaxed text-[#4b5563]">{g.text}</p>
+              <Text as="p" variant="sub" className="leading-relaxed">{g.text}</Text>
             </div>
           ))}
         </div>
       </div>
 
       {/* 헤더 + 작성 토글 — 모바일: 세로 스택 + 풀폭 버튼 / 데스크탑(md↑): 우측 인라인 버튼 */}
-      <div className="flex flex-col gap-3 px-1 md:flex-row md:items-start md:justify-between">
-        <div className="min-w-0">
-          <h3 className="fluid-body font-[500] text-[#1f2937]">1:1 문의</h3>
-          <p className="fluid-nav-label text-[#6b7280] mt-1 leading-relaxed">
-            연수 · 신청 · 환불 등 궁금한 점을 문의합니다.
-            <br />
-            답변은 작성 시 설정한 비밀번호로 열람할 수 있습니다.
-          </p>
-        </div>
+      <div className={`flex flex-col gap-3 px-1 md:flex-row md:items-start md:justify-between ${hideHeader ? 'md:justify-end' : ''}`}>
+        {!hideHeader && (
+          <div className="min-w-0">
+            <Text as="h3" variant="card-title-sm">1:1 문의</Text>
+            <Text as="p" variant="caption" className="mt-1 leading-relaxed">
+              연수 · 신청 · 환불 등 궁금한 점을 문의합니다.
+              <br />
+              답변은 작성 시 설정한 비밀번호로 열람할 수 있습니다.
+            </Text>
+          </div>
+        )}
         <button
           type="button"
           onClick={() => setWriting((v) => !v)}
-          className="flex w-full shrink-0 items-center justify-center gap-1.5 rounded-[8px] bg-[#1e3a5f] px-3 py-2.5 text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[500] text-white transition-opacity hover:opacity-90 md:w-auto md:justify-start md:py-2"
+          className={`flex w-full shrink-0 items-center justify-center gap-1.5 rounded-[8px] bg-[#1e3a5f] px-3 py-2.5 ${BTN} text-white transition-opacity hover:opacity-90 md:w-auto md:justify-start md:py-2`}
         >
           <PenLine size={14} />
           문의 작성
@@ -172,18 +175,18 @@ export default function InquiryBoardShell({ openPulse }: { openPulse?: number })
             />
           </div>
 
-          {error && <p className="mt-2 text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[300] text-[#c0392b]">{error}</p>}
+          {error && <Text as="p" variant="caption" color="#c0392b" className="mt-2">{error}</Text>}
 
           <div className="mt-3 flex items-center justify-between gap-2">
-            <p className="flex items-center gap-1 text-[clamp(0.59375rem,2.3cqi,0.71875rem)] font-[300] text-[#9ca3af]">
+            <Text as="p" variant="caption" color="#9ca3af" className="flex items-center gap-1">
               <Lock size={12} />
               비밀글로 보호됩니다.
-            </p>
+            </Text>
             <button
               type="button"
               onClick={submit}
               disabled={!canSubmit}
-              className="rounded-[8px] bg-[#1e3a5f] px-4 py-2 text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[500] text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              className={`rounded-[8px] bg-[#1e3a5f] px-4 py-2 ${BTN} text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40`}
             >
               {submitting ? '제출 중…' : '제출'}
             </button>
@@ -199,7 +202,7 @@ export default function InquiryBoardShell({ openPulse }: { openPulse?: number })
           className="flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left"
           aria-expanded={listOpen}
         >
-          <span className="font-score text-[clamp(0.6875rem,2.6cqi,0.84375rem)] font-[500] text-[#1e3a5f]">문의 내역</span>
+          <Text variant="card-title-sm">문의 내역</Text>
           <ChevronDown
             size={16}
             className={`shrink-0 text-[#9ca3af] transition-transform ${listOpen ? 'rotate-180' : ''}`}
@@ -209,7 +212,7 @@ export default function InquiryBoardShell({ openPulse }: { openPulse?: number })
         {listOpen && (
           <div className="border-t border-[#e5eaef] bg-white px-4 pb-3 pt-3">
             {loadingList ? (
-              <p className="py-6 text-center text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[300] text-[#9ca3af]">불러오는 중…</p>
+              <Text as="p" variant="sub" color="#9ca3af" className="py-6 text-center">불러오는 중…</Text>
             ) : items.length === 0 ? (
               <EmptyState label="등록된 문의가 없습니다." icon={<Lock className="h-8 w-8" />} />
             ) : (
@@ -228,44 +231,44 @@ export default function InquiryBoardShell({ openPulse }: { openPulse?: number })
                     ].join(' ')}
                   >
                     <Lock size={12} className="shrink-0 text-[#9ca3af]" />
-                    <span className="shrink-0 text-[clamp(0.625rem,2.4cqi,0.78125rem)] font-[400] text-[#374151]">{it.name ?? '익명'}</span>
-                    <span className="min-w-0 flex-1 truncate text-[clamp(0.6875rem,2.6cqi,0.84375rem)] font-[400] text-[#1f2937]">
+                    <Text variant="sub" className="shrink-0">{it.name ?? '익명'}</Text>
+                    <Text variant="card-title-sm" className="min-w-0 flex-1 truncate">
                       {it.title}
-                    </span>
+                    </Text>
                     <Badge color={it.status === 'answered' ? 'emerald' : 'slate'} size="sm" className="shrink-0">
                       {it.status === 'answered' ? '답변완료' : '답변대기'}
                     </Badge>
-                    <span className="shrink-0 text-[clamp(0.59375rem,2.3cqi,0.71875rem)] font-[300] tabular-nums text-[#9ca3af]">
+                    <Text variant="date" className="shrink-0">
                       {formatDate(it.created_at.slice(0, 10))}
-                    </span>
+                    </Text>
                   </button>
 
                   {open && (
                     <div className="px-1 pb-3">
                       {detail ? (
                         <div className="rounded-[8px] border border-[#eef1f5] bg-white p-3.5">
-                          <p className="whitespace-pre-wrap text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[300] leading-relaxed text-[#374151]">
+                          <Text as="p" variant="sub" className="whitespace-pre-wrap leading-relaxed">
                             {detail.content}
-                          </p>
+                          </Text>
                           <div className="mt-3 border-t border-[#f0f1f3] pt-3">
-                            <p className="mb-1 text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[500] text-[#1e3a5f]">답변</p>
+                            <Text as="p" variant="label" color="#1e3a5f" className="mb-1">답변</Text>
                             {detail.admin_reply ? (
-                              <p className="whitespace-pre-wrap text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[300] leading-relaxed text-[#4b5563]">
+                              <Text as="p" variant="sub" className="whitespace-pre-wrap leading-relaxed">
                                 {detail.admin_reply}
-                              </p>
+                              </Text>
                             ) : (
-                              <p className="text-[clamp(0.625rem,2.4cqi,0.78125rem)] font-[300] text-[#9ca3af]">
+                              <Text as="p" variant="sub" color="#9ca3af">
                                 아직 답변이 등록되지 않았습니다.
-                              </p>
+                              </Text>
                             )}
                           </div>
                         </div>
                       ) : (
                         <div className="rounded-[8px] bg-[#f7f9fb] p-3">
-                          <p className="mb-2 flex items-center gap-1 text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[300] text-[#6b7280]">
+                          <Text as="p" variant="caption" color="#6b7280" className="mb-2 flex items-center gap-1">
                             <Lock size={12} />
                             비밀글입니다. 열람용 비밀번호를 입력하세요.
-                          </p>
+                          </Text>
                           <div className="flex gap-2">
                             <input
                               type="password"
@@ -282,15 +285,15 @@ export default function InquiryBoardShell({ openPulse }: { openPulse?: number })
                               type="button"
                               onClick={() => verify(it.id)}
                               disabled={!pw || verifying}
-                              className="shrink-0 rounded-[8px] bg-[#1e3a5f] px-4 py-2 text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+                              className={`shrink-0 rounded-[8px] bg-[#1e3a5f] px-4 py-2 ${BTN} text-white transition-opacity hover:opacity-90 disabled:opacity-40`}
                             >
                               {verifying ? '확인 중…' : '열람'}
                             </button>
                           </div>
                           {verifyError && (
-                            <p className="mt-1.5 text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[300] text-[#c0392b]">
+                            <Text as="p" variant="caption" color="#c0392b" className="mt-1.5">
                               비밀번호가 일치하지 않습니다.
-                            </p>
+                            </Text>
                           )}
                         </div>
                       )}
