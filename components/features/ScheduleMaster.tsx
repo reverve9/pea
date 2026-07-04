@@ -108,12 +108,12 @@ function TypeAccordion({
           <group.icon size={18} strokeWidth={1.75} style={{ color: group.color }} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block font-score text-[clamp(0.75rem,2.9cqi,0.90625rem)] font-[500] text-[#1e3a5f]">
+          <Text variant="card-title" as="span" className="block">
             {group.name}
-          </span>
-          <span className="mt-0.5 block font-score text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[400] text-[#6b7280]">
+          </Text>
+          <Text variant="card-sub" as="span" className="mt-0.5 block">
             {group.target}
-          </span>
+          </Text>
         </span>
         <ChevronDown
           size={17}

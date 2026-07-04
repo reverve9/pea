@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { Plus, Check, GraduationCap, Boxes, X, ArrowRight, ChevronDown } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import Text from '@/components/common/Text'
+import Text, { BTN } from '@/components/common/Text'
 
 // /courses 연수 유형 — 계획안(연수비용 및 포함사항) 4개 유형을 공개용으로 큐레이션.
 // 모바일 드롭다운(아코디언): 헤더(유형명+일정+학점) 클릭 → 포함사항 체크리스트 + 비용을 회색 패널로.
@@ -156,16 +156,16 @@ function TypeHeader({ t, onClick }: { t: CourseType; onClick?: () => void }) {
         <t.icon size={18} strokeWidth={1.75} style={{ color: t.accent }} />
       </span>
       <span className="min-w-0 flex-1">
-        {/* 제목 텍스트는 네이비 통일 — 색 구분은 아이콘 칩으로만 */}
-        <span className="block font-score text-[clamp(0.8125rem,3.72cqi,0.90625rem)] font-[500] text-[#1e3a5f]">
+        {/* 제목 텍스트는 네이비 통일(card-title) — 색 구분은 아이콘 칩으로만. 변형명은 em 비례. */}
+        <Text variant="card-title" as="span" className="block">
           {t.name}
           {t.variant && (
-            <span className="ml-1 text-[clamp(0.75rem,3.46cqi,0.84375rem)] font-[400] text-[#4b5563]">({t.variant})</span>
+            <span className="ml-1 text-[0.9em] font-[400] text-[#4b5563]">({t.variant})</span>
           )}
-        </span>
-        <span className="mt-0.5 block font-score text-[clamp(0.6875rem,3.08cqi,0.75rem)] font-[300] text-[#9ca3af]">
+        </Text>
+        <Text variant="card-sub" as="span" className="mt-0.5 block">
           {t.schedule} · {t.credit}
-        </span>
+        </Text>
       </span>
     </>
   )
@@ -317,15 +317,15 @@ function CenterModal({ t, onClose }: { t: CourseType; onClose: () => void }) {
             <t.icon size={20} strokeWidth={1.75} style={{ color: t.accent }} />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="font-score text-[clamp(0.875rem,3.97cqi,0.96875rem)] font-[500] text-[#1e3a5f]">
+            <Text variant="card-title" as="p">
               {t.name}
               {t.variant && (
-                <span className="ml-1 text-[clamp(0.75rem,3.46cqi,0.84375rem)] font-[400] text-[#4b5563]">({t.variant})</span>
+                <span className="ml-1 text-[0.9em] font-[400] text-[#4b5563]">({t.variant})</span>
               )}
-            </p>
-            <p className="mt-0.5 font-score text-[clamp(0.6875rem,3.08cqi,0.75rem)] font-[300] text-[#9ca3af]">
+            </Text>
+            <Text variant="card-sub" as="p" className="mt-0.5">
               {t.schedule} · {t.credit}
-            </p>
+            </Text>
           </div>
           <button
             type="button"
@@ -344,7 +344,7 @@ function CenterModal({ t, onClose }: { t: CourseType; onClose: () => void }) {
         <div className="shrink-0 border-t border-[#eef1f4] p-4">
           <Link
             href="/application"
-            className="flex w-full items-center justify-center gap-1.5 rounded-[10px] py-3 font-score text-[clamp(0.8125rem,3.6cqi,0.9375rem)] font-[500] text-white"
+            className={`flex w-full items-center justify-center gap-1.5 rounded-[10px] py-3 ${BTN} text-white`}
             style={{ background: t.accent }}
           >
             신청하러 가기
@@ -407,15 +407,15 @@ export function CourseTypeCards({
                 <t.icon size={18} strokeWidth={1.75} style={{ color: t.accent }} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block font-score text-[clamp(0.75rem,2.9cqi,0.90625rem)] font-[500] text-[#1e3a5f]">
+                <Text variant="card-title" as="span" className="block">
                   {t.name}
                   {t.variant && (
-                    <span className="ml-1 text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[400] text-[#4b5563]">({t.variant})</span>
+                    <span className="ml-1 text-[0.9em] font-[400] text-[#4b5563]">({t.variant})</span>
                   )}
-                </span>
-                <span className="mt-0.5 block font-score text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[400] text-[#6b7280]">
+                </Text>
+                <Text variant="card-sub" as="span" className="mt-0.5 block">
                   {t.schedule} · {t.credit}
-                </span>
+                </Text>
               </span>
               <span
                 className="shrink-0 font-score text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[500] tabular-nums"
@@ -473,20 +473,22 @@ export function CourseTypeAccordion({
               className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors"
               style={{ background: on ? t.accent + 'E6' : undefined }}
             >
-              <span
-                className="min-w-0 flex-1 font-score text-[clamp(0.75rem,2.9cqi,0.90625rem)] font-[500]"
-                style={{ color: on ? '#ffffff' : '#1e3a5f' }}
+              <Text
+                variant="card-title"
+                as="span"
+                className="min-w-0 flex-1"
+                color={on ? '#ffffff' : undefined}
               >
                 {t.name}
                 {t.variant && (
                   <span
-                    className="ml-1 text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[400]"
+                    className="ml-1 text-[0.9em] font-[400]"
                     style={{ color: on ? 'rgba(255,255,255,0.8)' : '#4b5563' }}
                   >
                     ({t.variant})
                   </span>
                 )}
-              </span>
+              </Text>
               <ChevronDown
                 size={18}
                 className="shrink-0 transition-transform"
