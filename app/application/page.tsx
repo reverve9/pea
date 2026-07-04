@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { GraduationCap, Boxes } from 'lucide-react'
+import { GraduationCap, Boxes, ArrowRight } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import AppShell from '@/components/layout/AppShell'
 import PageTitle from '@/components/common/PageTitle'
@@ -106,6 +106,43 @@ function TrackCard({ track, selected, compact, onSelect }: { track: Track; selec
   )
 }
 
+// 선택된 유형 배너(데스크탑 우 페인) — 유형 선택 시 2카드를 접고 활성 유형을 솔리드 유형색으로 승격.
+// 긴 폼을 스크롤해도 "지금 이 유형 작성 중"이 각인됨. '다른 유형'으로 선택 해제(2카드 복귀).
+function SelectedTypeBanner({ track, onSwitch }: { track: Track; onSwitch: (key: string) => void }) {
+  const Icon = track.icon
+  const other = TRACKS.find((t) => t.key !== track.key)
+  return (
+    <div className="mb-5 flex items-center justify-between gap-3">
+      {/* 현재 유형 배지 카드 — 1/2 폭(유형 전환해도 통일), 유형색 라이트 틴트 */}
+      <div
+        className="flex w-1/2 min-w-0 items-center gap-2.5 rounded-[10px] border border-[#e5eaef] px-3.5 py-2.5"
+        style={{ background: track.accent + '14' }}
+      >
+        <span
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+          style={{ background: track.accent + '24' }}
+        >
+          <Icon size={15} strokeWidth={1.75} style={{ color: track.accent }} />
+        </span>
+        <Text variant="card-title" as="span" color={track.accent}>{track.title}</Text>
+        <Text variant="card-sub" as="span" className="truncate">{track.spec}</Text>
+      </div>
+      {/* 반대 유형 전환 — 컴팩트 아웃라인 필(반대 유형색) */}
+      {other && (
+        <button
+          type="button"
+          onClick={() => onSwitch(other.key)}
+          className="flex shrink-0 items-center gap-1 rounded-[8px] border px-3 py-2 transition-opacity hover:opacity-70"
+          style={{ borderColor: other.accent + '40', color: other.accent }}
+        >
+          <Text variant="card-title-sm" as="span" color={other.accent}>{other.title} 신청하기</Text>
+          <ArrowRight size={13} />
+        </button>
+      )}
+    </div>
+  )
+}
+
 // 준비중 프로그램 좌측 카드(마스터) — 클릭 시 우 페인/모달에 준비중 패널.
 function PendingCard({ selected, onSelect }: { selected: boolean; onSelect: () => void }) {
   return (
@@ -133,7 +170,7 @@ function ProgramTabs({ active, onSelect }: { active: string; onSelect: (k: strin
             type="button"
             onClick={() => onSelect(p.key)}
             aria-selected={on}
-            className="rounded-[10px] border px-2 py-2.5 text-center font-score text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[500] transition-colors"
+            className="rounded-[5px] border px-2 py-2.5 text-center font-score text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[500] transition-colors"
             style={{
               borderColor: on ? NAVY : '#e5eaef',
               background: on ? NAVY : '#f2f5f9',
@@ -225,11 +262,15 @@ export default function ApplyPage() {
       <ProgramTabs active={program} onSelect={setProgram} />
       {activeProgram.ready ? (
         <div>
-          <div className="mb-5 grid grid-cols-2 gap-3">
-            {TRACKS.map((t) => (
-              <TrackCard key={t.key} track={t} compact selected={type === t.key} onSelect={() => setType(t.key)} />
-            ))}
-          </div>
+          {type ? (
+            <SelectedTypeBanner track={TRACKS.find((t) => t.key === type)!} onSwitch={setType} />
+          ) : (
+            <div className="mb-5 grid grid-cols-2 gap-3">
+              {TRACKS.map((t) => (
+                <TrackCard key={t.key} track={t} compact selected={false} onSelect={() => setType(t.key)} />
+              ))}
+            </div>
+          )}
           {type ? trackBody(type) : <GuideBox />}
         </div>
       ) : (
