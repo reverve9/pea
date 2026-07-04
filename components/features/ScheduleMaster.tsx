@@ -108,10 +108,10 @@ function TypeAccordion({
           <group.icon size={18} strokeWidth={1.75} style={{ color: group.color }} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block font-score text-[14.5px] font-[500] text-[#1e3a5f]">
+          <span className="block font-score text-[clamp(0.75rem,2.9cqi,0.90625rem)] font-[500] text-[#1e3a5f]">
             {group.name}
           </span>
-          <span className="mt-0.5 block font-score text-[12px] font-[400] text-[#6b7280]">
+          <span className="mt-0.5 block font-score text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[400] text-[#6b7280]">
             {group.target}
           </span>
         </span>
@@ -174,7 +174,7 @@ export default function ScheduleMaster({
       {groupByProgram(sessions).map((prog) => (
         <div key={prog.name}>
           {/* 프로그램(종목) 라벨 — 이 유형들이 어느 종목의 것인지 명시(다종목 대비) */}
-          <div className="mb-2 px-1 font-score text-[12px] font-[500] text-[#6b7280]">
+          <div className="mb-2 px-1 font-score text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[500] text-[#6b7280]">
             {prog.name} 연수 프로그램
           </div>
           <div className="space-y-2">

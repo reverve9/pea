@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { X } from 'lucide-react'
+import Modal from '@/components/common/Modal'
 import AppShell from '@/components/layout/AppShell'
 import ExtendedHeader from '@/components/layout/ExtendedHeader'
 import PageTitle from '@/components/common/PageTitle'
@@ -93,7 +93,7 @@ export default function CommunityPage() {
     <div className="pb-8">
       <PageTitle title="커뮤니티" en="COMMUNITY" />
       {/* 도입 리드 — 연수안내·신청과 동일 레지스터(font-score 300 · 중앙 · 행간 1.85 · 키워드만 네이비 강조) */}
-      <p className="px-4 pt-1 pb-8 font-score text-center text-[clamp(0.9375rem,3.9vw,1.0625rem)] font-[300] leading-[1.85] text-[#4b5563]">
+      <p className="px-4 pt-1 pb-8 font-score text-center text-[clamp(0.9375rem,3.4cqi,1.0625rem)] font-[300] leading-[1.85] text-[#4b5563]">
         <span className="font-[500] text-[#1e3a5f]">공지사항</span>과{' '}
         <span className="font-[500] text-[#1e3a5f]">자주 묻는 질문</span>을 확인하세요.<br />
         궁금한 점은 1:1 문의로 남겨주실 수 있습니다.
@@ -133,30 +133,12 @@ export default function CommunityPage() {
 
       {/* 모바일 모달 (768 미만) */}
       {isMobile && modal && (
-        <ModalShell onClose={() => setModal(null)}>
+        <Modal onClose={() => setModal(null)}>
           {modal.kind === 'notice' && <NoticeDetail notice={modal.notice} />}
           {modal.kind === 'faq' && <FaqAccordion faqs={faqs.data} />}
           {modal.kind === 'inquiry' && <InquiryBoardShell />}
-        </ModalShell>
+        </Modal>
       )}
     </>
-  )
-}
-
-function ModalShell({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-5" onClick={onClose}>
-      <div
-        className="flex max-h-[82vh] w-full max-w-[440px] flex-col overflow-hidden rounded-[16px] bg-white shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-end border-b border-[#eceef1] px-3 py-2">
-          <button onClick={onClose} className="rounded-full p-1 hover:bg-[#f3f4f6]" aria-label="닫기">
-            <X size={20} className="text-[#6b7280]" />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-4">{children}</div>
-      </div>
-    </div>
   )
 }

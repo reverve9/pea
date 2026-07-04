@@ -61,7 +61,7 @@ export default function DetailContainer({ children }: { children: React.ReactNod
               <X size={20} />
             </button>
           </div>
-          <div className="overflow-y-auto px-5 pb-8">{children}</div>
+          <div className="overflow-y-auto px-5 pb-8 [container-type:inline-size]">{children}</div>
         </Drawer.Content>
       </Drawer.Portal>
     </Drawer.Root>

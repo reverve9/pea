@@ -36,7 +36,7 @@ export default function FaqAccordion({ faqs, openPulse }: { faqs: Faq[]; openPul
               className="flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left"
               aria-expanded={open}
             >
-              <span className="font-score text-[13.5px] font-[500] leading-snug text-[#1e3a5f]">{f.question}</span>
+              <span className="font-score text-[clamp(0.6875rem,2.6cqi,0.84375rem)] font-[500] leading-snug text-[#1e3a5f]">{f.question}</span>
               <ChevronDown
                 size={16}
                 className={`shrink-0 text-[#9ca3af] transition-transform ${open ? 'rotate-180' : ''}`}
@@ -44,7 +44,7 @@ export default function FaqAccordion({ faqs, openPulse }: { faqs: Faq[]; openPul
             </button>
             {open && (
               <div className="border-t border-[#e5eaef] bg-white px-3.5 pb-3 pt-2.5">
-                <p className="whitespace-pre-wrap text-[13px] font-[300] leading-relaxed text-[#4b5563]">
+                <p className="whitespace-pre-wrap text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[300] leading-relaxed text-[#4b5563]">
                   {f.content}
                 </p>
               </div>

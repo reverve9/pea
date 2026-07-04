@@ -114,15 +114,15 @@ export default function InquiryBoardShell({ openPulse }: { openPulse?: number })
       <div className="rounded-[12px] border border-[#e5ecf2] bg-[#f3f6f9] p-4">
         <div className="flex items-center gap-1.5">
           <Info size={15} className="text-[#1e3a5f]" />
-          <span className="text-[13px] font-[500] text-[#1e3a5f]">문의 전에 확인하세요</span>
+          <span className="text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[500] text-[#1e3a5f]">문의 전에 확인하세요</span>
         </div>
         <div className="mt-2.5 space-y-2">
           {GUIDE.map((g) => (
             <div key={g.label} className="flex items-start gap-2.5">
-              <span className="mt-[1px] shrink-0 rounded-[5px] bg-white px-1.5 py-[2px] text-[11px] font-[500] text-[#3f6a99] ring-1 ring-[#dbe4ee]">
+              <span className="mt-[1px] shrink-0 rounded-[5px] bg-white px-1.5 py-[2px] text-[clamp(0.5625rem,2.2cqi,0.6875rem)] font-[500] text-[#3f6a99] ring-1 ring-[#dbe4ee]">
                 {g.label}
               </span>
-              <p className="text-[12.5px] font-[300] leading-relaxed text-[#4b5563]">{g.text}</p>
+              <p className="text-[clamp(0.625rem,2.4cqi,0.78125rem)] font-[300] leading-relaxed text-[#4b5563]">{g.text}</p>
             </div>
           ))}
         </div>
@@ -141,7 +141,7 @@ export default function InquiryBoardShell({ openPulse }: { openPulse?: number })
         <button
           type="button"
           onClick={() => setWriting((v) => !v)}
-          className="flex w-full shrink-0 items-center justify-center gap-1.5 rounded-[8px] bg-[#1e3a5f] px-3 py-2.5 text-[13px] font-[500] text-white transition-opacity hover:opacity-90 md:w-auto md:justify-start md:py-2"
+          className="flex w-full shrink-0 items-center justify-center gap-1.5 rounded-[8px] bg-[#1e3a5f] px-3 py-2.5 text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[500] text-white transition-opacity hover:opacity-90 md:w-auto md:justify-start md:py-2"
         >
           <PenLine size={14} />
           문의 작성
@@ -172,10 +172,10 @@ export default function InquiryBoardShell({ openPulse }: { openPulse?: number })
             />
           </div>
 
-          {error && <p className="mt-2 text-[12px] font-[300] text-[#c0392b]">{error}</p>}
+          {error && <p className="mt-2 text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[300] text-[#c0392b]">{error}</p>}
 
           <div className="mt-3 flex items-center justify-between gap-2">
-            <p className="flex items-center gap-1 text-[11.5px] font-[300] text-[#9ca3af]">
+            <p className="flex items-center gap-1 text-[clamp(0.59375rem,2.3cqi,0.71875rem)] font-[300] text-[#9ca3af]">
               <Lock size={12} />
               비밀글로 보호됩니다.
             </p>
@@ -183,7 +183,7 @@ export default function InquiryBoardShell({ openPulse }: { openPulse?: number })
               type="button"
               onClick={submit}
               disabled={!canSubmit}
-              className="rounded-[8px] bg-[#1e3a5f] px-4 py-2 text-[13px] font-[500] text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-[8px] bg-[#1e3a5f] px-4 py-2 text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[500] text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {submitting ? '제출 중…' : '제출'}
             </button>
@@ -199,7 +199,7 @@ export default function InquiryBoardShell({ openPulse }: { openPulse?: number })
           className="flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left"
           aria-expanded={listOpen}
         >
-          <span className="font-score text-[13.5px] font-[500] text-[#1e3a5f]">문의 내역</span>
+          <span className="font-score text-[clamp(0.6875rem,2.6cqi,0.84375rem)] font-[500] text-[#1e3a5f]">문의 내역</span>
           <ChevronDown
             size={16}
             className={`shrink-0 text-[#9ca3af] transition-transform ${listOpen ? 'rotate-180' : ''}`}
@@ -209,7 +209,7 @@ export default function InquiryBoardShell({ openPulse }: { openPulse?: number })
         {listOpen && (
           <div className="border-t border-[#e5eaef] bg-white px-4 pb-3 pt-3">
             {loadingList ? (
-              <p className="py-6 text-center text-[13px] font-[300] text-[#9ca3af]">불러오는 중…</p>
+              <p className="py-6 text-center text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[300] text-[#9ca3af]">불러오는 중…</p>
             ) : items.length === 0 ? (
               <EmptyState label="등록된 문의가 없습니다." icon={<Lock className="h-8 w-8" />} />
             ) : (
@@ -228,14 +228,14 @@ export default function InquiryBoardShell({ openPulse }: { openPulse?: number })
                     ].join(' ')}
                   >
                     <Lock size={12} className="shrink-0 text-[#9ca3af]" />
-                    <span className="shrink-0 text-[12.5px] font-[400] text-[#374151]">{it.name ?? '익명'}</span>
-                    <span className="min-w-0 flex-1 truncate text-[13.5px] font-[400] text-[#1f2937]">
+                    <span className="shrink-0 text-[clamp(0.625rem,2.4cqi,0.78125rem)] font-[400] text-[#374151]">{it.name ?? '익명'}</span>
+                    <span className="min-w-0 flex-1 truncate text-[clamp(0.6875rem,2.6cqi,0.84375rem)] font-[400] text-[#1f2937]">
                       {it.title}
                     </span>
                     <Badge color={it.status === 'answered' ? 'emerald' : 'slate'} size="sm" className="shrink-0">
                       {it.status === 'answered' ? '답변완료' : '답변대기'}
                     </Badge>
-                    <span className="shrink-0 text-[11.5px] font-[300] tabular-nums text-[#9ca3af]">
+                    <span className="shrink-0 text-[clamp(0.59375rem,2.3cqi,0.71875rem)] font-[300] tabular-nums text-[#9ca3af]">
                       {formatDate(it.created_at.slice(0, 10))}
                     </span>
                   </button>
@@ -244,17 +244,17 @@ export default function InquiryBoardShell({ openPulse }: { openPulse?: number })
                     <div className="px-1 pb-3">
                       {detail ? (
                         <div className="rounded-[8px] border border-[#eef1f5] bg-white p-3.5">
-                          <p className="whitespace-pre-wrap text-[13px] font-[300] leading-relaxed text-[#374151]">
+                          <p className="whitespace-pre-wrap text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[300] leading-relaxed text-[#374151]">
                             {detail.content}
                           </p>
                           <div className="mt-3 border-t border-[#f0f1f3] pt-3">
-                            <p className="mb-1 text-[12px] font-[500] text-[#1e3a5f]">답변</p>
+                            <p className="mb-1 text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[500] text-[#1e3a5f]">답변</p>
                             {detail.admin_reply ? (
-                              <p className="whitespace-pre-wrap text-[13px] font-[300] leading-relaxed text-[#4b5563]">
+                              <p className="whitespace-pre-wrap text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[300] leading-relaxed text-[#4b5563]">
                                 {detail.admin_reply}
                               </p>
                             ) : (
-                              <p className="text-[12.5px] font-[300] text-[#9ca3af]">
+                              <p className="text-[clamp(0.625rem,2.4cqi,0.78125rem)] font-[300] text-[#9ca3af]">
                                 아직 답변이 등록되지 않았습니다.
                               </p>
                             )}
@@ -262,7 +262,7 @@ export default function InquiryBoardShell({ openPulse }: { openPulse?: number })
                         </div>
                       ) : (
                         <div className="rounded-[8px] bg-[#f7f9fb] p-3">
-                          <p className="mb-2 flex items-center gap-1 text-[12px] font-[300] text-[#6b7280]">
+                          <p className="mb-2 flex items-center gap-1 text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[300] text-[#6b7280]">
                             <Lock size={12} />
                             비밀글입니다. 열람용 비밀번호를 입력하세요.
                           </p>
@@ -276,19 +276,19 @@ export default function InquiryBoardShell({ openPulse }: { openPulse?: number })
                               }}
                               onKeyDown={(e) => e.key === 'Enter' && verify(it.id)}
                               placeholder="비밀번호"
-                              className="min-w-0 flex-1 rounded-[8px] border border-[#e2e5e9] bg-white px-3 py-2 text-[13.5px] text-[#1f2937] outline-none transition-colors placeholder:text-[#b0b6be] focus:border-[#1e3a5f]"
+                              className="min-w-0 flex-1 rounded-[8px] border border-[#e2e5e9] bg-white px-3 py-2 text-[clamp(0.6875rem,2.6cqi,0.84375rem)] text-[#1f2937] outline-none transition-colors placeholder:text-[#b0b6be] focus:border-[#1e3a5f]"
                             />
                             <button
                               type="button"
                               onClick={() => verify(it.id)}
                               disabled={!pw || verifying}
-                              className="shrink-0 rounded-[8px] bg-[#1e3a5f] px-4 py-2 text-[13px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+                              className="shrink-0 rounded-[8px] bg-[#1e3a5f] px-4 py-2 text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
                             >
                               {verifying ? '확인 중…' : '열람'}
                             </button>
                           </div>
                           {verifyError && (
-                            <p className="mt-1.5 text-[12px] font-[300] text-[#c0392b]">
+                            <p className="mt-1.5 text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[300] text-[#c0392b]">
                               비밀번호가 일치하지 않습니다.
                             </p>
                           )}
@@ -325,13 +325,13 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[12px] font-[400] text-[#6b7280]">{label}</span>
+      <span className="mb-1 block text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[400] text-[#6b7280]">{label}</span>
       <input
         type={type}
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="w-full rounded-[8px] border border-[#e2e5e9] bg-white px-3 py-2 text-[13.5px] text-[#1f2937] outline-none transition-colors placeholder:text-[#b0b6be] focus:border-[#1e3a5f]"
+        className="w-full rounded-[8px] border border-[#e2e5e9] bg-white px-3 py-2 text-[clamp(0.6875rem,2.6cqi,0.84375rem)] text-[#1f2937] outline-none transition-colors placeholder:text-[#b0b6be] focus:border-[#1e3a5f]"
       />
     </label>
   )
@@ -350,13 +350,13 @@ function TextareaField({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[12px] font-[400] text-[#6b7280]">{label}</span>
+      <span className="mb-1 block text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[400] text-[#6b7280]">{label}</span>
       <textarea
         rows={4}
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="w-full resize-none rounded-[8px] border border-[#e2e5e9] bg-white px-3 py-2 text-[13.5px] text-[#1f2937] outline-none transition-colors placeholder:text-[#b0b6be] focus:border-[#1e3a5f]"
+        className="w-full resize-none rounded-[8px] border border-[#e2e5e9] bg-white px-3 py-2 text-[clamp(0.6875rem,2.6cqi,0.84375rem)] text-[#1f2937] outline-none transition-colors placeholder:text-[#b0b6be] focus:border-[#1e3a5f]"
       />
     </label>
   )

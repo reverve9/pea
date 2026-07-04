@@ -23,20 +23,20 @@ export default function MarkdownRenderer({ content, className = '' }: MarkdownRe
           a: (props) => (
             <a {...props} className="text-[#3f6a99] hover:underline" target="_blank" rel="noopener noreferrer" />
           ),
-          h1: (props) => <h1 {...props} className="text-[24px] font-bold text-[#1f2937] mt-6 mb-3" />,
-          h2: (props) => <h2 {...props} className="text-[20px] font-bold text-[#1f2937] mt-5 mb-2" />,
-          h3: (props) => <h3 {...props} className="text-[18px] font-semibold text-[#1f2937] mt-4 mb-2" />,
+          h1: (props) => <h1 {...props} className="text-[clamp(1.1875rem,4.8cqi,1.5rem)] font-bold text-[#1f2937] mt-6 mb-3" />,
+          h2: (props) => <h2 {...props} className="text-[clamp(1rem,4cqi,1.25rem)] font-bold text-[#1f2937] mt-5 mb-2" />,
+          h3: (props) => <h3 {...props} className="text-[clamp(0.9375rem,3.6cqi,1.125rem)] font-semibold text-[#1f2937] mt-4 mb-2" />,
           p: (props) => <p {...props} className="fluid-body text-[#374151] leading-relaxed mb-3" />,
           ul: (props) => <ul {...props} className="list-disc list-inside fluid-body text-[#374151] mb-3 space-y-1" />,
           ol: (props) => <ol {...props} className="list-decimal list-inside fluid-body text-[#374151] mb-3 space-y-1" />,
           code: ({ className, children, ...props }) => {
             const isInline = !className
             return isInline ? (
-              <code className="bg-[#f3f4f6] px-1.5 py-0.5 rounded text-[13px] text-[#e11d48]" {...props}>
+              <code className="bg-[#f3f4f6] px-1.5 py-0.5 rounded text-[clamp(0.6875rem,2.6cqi,0.8125rem)] text-[#e11d48]" {...props}>
                 {children}
               </code>
             ) : (
-              <code className="block bg-[#1f2937] text-[#e5e7eb] p-4 rounded-[8px] text-[13px] overflow-x-auto" {...props}>
+              <code className="block bg-[#1f2937] text-[#e5e7eb] p-4 rounded-[8px] text-[clamp(0.6875rem,2.6cqi,0.8125rem)] overflow-x-auto" {...props}>
                 {children}
               </code>
             )

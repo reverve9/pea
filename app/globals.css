@@ -169,10 +169,11 @@ body {
      상한값에 걸려 자동으로 고정된다(vw 기준이 뷰포트라 광폭에서 max 도달).
    - 순수 vw 금지: 모든 clamp 중간값에 rem 을 섞어 브라우저 zoom 접근성 보존.
    ------------------------------------------------------------------ */
-.fluid-page-title { font-size: clamp(1.375rem, 1.05rem + 1.55vw, 1.6875rem); } /* 22 → 27px */
-.fluid-subtitle   { font-size: clamp(0.8125rem, 0.74rem + 0.35vw, 0.9375rem); } /* 13 → 15px */
-.fluid-body       { font-size: clamp(0.875rem, 0.83rem + 0.25vw, 0.9375rem); }  /* 14 → 15px */
-.fluid-nav-label  { font-size: clamp(0.625rem, 0.6rem + 0.12vw, 0.6875rem); }   /* 10 → 11px */
+/* cqi 기반 — 페인/모달 컨테이너 폭에 비례(모달 안에서도 축소). rem 베이스로 zoom 접근성 보존. */
+.fluid-page-title { font-size: clamp(1.375rem, 1.05rem + 1.55cqi, 1.6875rem); } /* 22 → 27px */
+.fluid-subtitle   { font-size: clamp(0.8125rem, 0.74rem + 0.35cqi, 0.9375rem); } /* 13 → 15px */
+.fluid-body       { font-size: clamp(0.875rem, 0.83rem + 0.25cqi, 0.9375rem); }  /* 14 → 15px */
+.fluid-nav-label  { font-size: clamp(0.625rem, 0.6rem + 0.12cqi, 0.6875rem); }   /* 10 → 11px */
 .fluid-gap        { gap: clamp(0.5rem, 0.35rem + 0.7vw, 0.75rem); }
 .fluid-px         { padding-left: clamp(0.75rem, 0.4rem + 1.6vw, 1rem); padding-right: clamp(0.75rem, 0.4rem + 1.6vw, 1rem); }
 

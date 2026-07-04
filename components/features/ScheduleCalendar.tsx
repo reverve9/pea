@@ -216,7 +216,7 @@ export default function ScheduleCalendar({
       {/* 월 탭 — 세션 있는 달만. 직접 점프. showMonthTabs=false(데스크탑)면 좌 마스터가 제어하므로 정적 헤더로. */}
       {showMonthTabs ? (
         <div className="flex items-center gap-2 border-b border-[#e5eaef] px-3 py-1.5">
-          <span className="font-score text-[12px] font-[400] tabular-nums text-[#9ca3af]">
+          <span className="font-score text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[400] tabular-nums text-[#9ca3af]">
             {activeMonth.y}
           </span>
           <div className="flex overflow-x-auto">
@@ -227,7 +227,7 @@ export default function ScheduleCalendar({
                   key={`${mo.y}-${mo.m}`}
                   type="button"
                   onClick={() => setMonthIdx(i)}
-                  className={`border-b-2 px-2.5 py-1 font-score text-[13px] font-[500] tabular-nums transition-colors ${
+                  className={`border-b-2 px-2.5 py-1 font-score text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[500] tabular-nums transition-colors ${
                     on
                       ? 'border-[#1e3a5f] text-[#1e3a5f]'
                       : 'border-transparent text-[#9ca3af] hover:text-[#6b7280]'
@@ -241,7 +241,7 @@ export default function ScheduleCalendar({
         </div>
       ) : (
         <div className="border-b border-[#e5eaef] px-4 py-2">
-          <span className="font-score text-[13px] font-[500] tabular-nums text-[#1e3a5f]">
+          <span className="font-score text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[500] tabular-nums text-[#1e3a5f]">
             {activeMonth.y}년 {activeMonth.m + 1}월
           </span>
         </div>
@@ -252,7 +252,7 @@ export default function ScheduleCalendar({
         {WEEKDAYS.map((w, i) => (
           <div
             key={w}
-            className={`pb-1.5 text-center text-[clamp(0.75rem,0.71rem+0.22vw,0.8125rem)] font-[500] ${
+            className={`pb-1.5 text-center text-[clamp(0.75rem,0.71rem+0.22cqi,0.8125rem)] font-[500] ${
               i === 0 ? 'text-[#c0685a]' : i === 6 ? 'text-[#5b7cae]' : 'text-[#9ca3af]'
             }`}
           >
@@ -279,7 +279,7 @@ export default function ScheduleCalendar({
                 return (
                   <div
                     key={i}
-                    className={`px-1 pt-1.5 text-right text-[clamp(0.75rem,0.71rem+0.22vw,0.8125rem)] tabular-nums ${color}`}
+                    className={`px-1 pt-1.5 text-right text-[clamp(0.75rem,0.71rem+0.22cqi,0.8125rem)] tabular-nums ${color}`}
                   >
                     {d.getDate()}
                   </div>
@@ -349,7 +349,7 @@ export default function ScheduleCalendar({
               <span className="tabular-nums">
                 현재 신청인원 {applied}/{selected.capacity}
               </span>
-              <span className="text-[clamp(0.6875rem,0.66rem+0.12vw,0.75rem)] text-[#8a94a0] tabular-nums">
+              <span className="text-[clamp(0.6875rem,0.66rem+0.12cqi,0.75rem)] text-[#8a94a0] tabular-nums">
                 (신청가능인원 {remaining})
               </span>
             </p>

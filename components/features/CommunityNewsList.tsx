@@ -39,7 +39,7 @@ export default function CommunityNewsList({ notices, faqCount, onSelect, selecte
       <section className="px-8">
         <SectionTitle title="공지사항" rail right={pagination} />
         {shown.length === 0 ? (
-          <p className="py-6 text-center text-[13px] font-[300] text-[#9ca3af]">등록된 공지가 없습니다.</p>
+          <p className="py-6 text-center text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[300] text-[#9ca3af]">등록된 공지가 없습니다.</p>
         ) : (
           <ul className="divide-y divide-[#eef1f5] border-y border-[#eef1f5]">
             {shown.map((n) => {
@@ -60,13 +60,13 @@ export default function CommunityNewsList({ notices, faqCount, onSelect, selecte
                       <Badge color={cat.color} size="sm" className="shrink-0">
                         {cat.label}
                       </Badge>
-                      <span className="min-w-0 flex-1 truncate font-score text-[13.5px] font-[500] text-[#1e3a5f]">
+                      <span className="min-w-0 flex-1 truncate font-score text-[clamp(0.6875rem,2.6cqi,0.84375rem)] font-[500] text-[#1e3a5f]">
                         {n.title}
                       </span>
-                      <span className="shrink-0 text-[11.5px] font-[300] tabular-nums text-[#9ca3af]">{date}</span>
+                      <span className="shrink-0 text-[clamp(0.59375rem,2.3cqi,0.71875rem)] font-[300] tabular-nums text-[#9ca3af]">{date}</span>
                     </div>
                     {n.content && (
-                      <p className="mt-1 line-clamp-1 text-[12.5px] font-[300] text-[#6b7280]">{n.content}</p>
+                      <p className="mt-1 line-clamp-1 text-[clamp(0.625rem,2.4cqi,0.78125rem)] font-[300] text-[#6b7280]">{n.content}</p>
                     )}
                   </button>
                 </li>
@@ -142,11 +142,11 @@ function BundleCard({
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
-          <span className="font-score text-[14.5px] font-[500] text-[#1e3a5f]">{title}</span>
+          <span className="font-score text-[clamp(0.75rem,2.9cqi,0.90625rem)] font-[500] text-[#1e3a5f]">{title}</span>
           {lock && <Lock size={12} className="text-[#9ca3af]" />}
-          {meta && <span className="text-[12px] font-[300] text-[#9ca3af]">{meta}</span>}
+          {meta && <span className="text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[300] text-[#9ca3af]">{meta}</span>}
         </span>
-        <span className="mt-0.5 block truncate text-[12.5px] font-[300] text-[#6b7280]">{desc}</span>
+        <span className="mt-0.5 block truncate text-[clamp(0.625rem,2.4cqi,0.78125rem)] font-[300] text-[#6b7280]">{desc}</span>
       </span>
       <ChevronRight size={17} className="shrink-0 text-[#c0c6cd]" />
     </>

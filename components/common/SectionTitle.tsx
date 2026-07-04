@@ -21,7 +21,7 @@ export default function SectionTitle({
       <div>
         {/* 포인트 바 — 시그니처 시안 액센트 */}
         <span className="block w-6 h-[2px] rounded-full bg-[#2f8ba0] mb-2" />
-        <h2 className="font-score text-[clamp(0.9375rem,3.6vw,1.0625rem)] font-[500] leading-tight text-[#1e3a5f]">
+        <h2 className="font-score text-[clamp(0.9375rem,3.6cqi,1.0625rem)] font-[500] leading-tight text-[#1e3a5f]">
           {title}
         </h2>
       </div>

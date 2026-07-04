@@ -11,16 +11,16 @@ export type TextVariant = 'label' | 'body' | 'sub' | 'caption' | 'num'
 
 const VARIANT: Record<TextVariant, string> = {
   // 라벨/아이브로우(연수대상·기관·세부사항·비용) — 브랜드 폰트. 기본 뮤트, accent는 color override.
-  label: 'font-score text-[clamp(0.71875rem,3.08vw,0.75rem)] font-[500] text-[#9ca3af]',
+  label: 'font-score text-[clamp(0.71875rem,3.08cqi,0.75rem)] font-[500] text-[#9ca3af]',
   // 주 읽기 값(대상·값·유형 항목) — 브랜드 폰트, near-black.
-  body: 'font-score text-[clamp(0.8125rem,3.4vw,0.875rem)] font-[400] leading-relaxed text-[#374151]',
+  body: 'font-score text-[clamp(0.8125rem,3.4cqi,0.875rem)] font-[400] leading-relaxed text-[#374151]',
   // 부차 한 줄(일정·주소·스키복 등 부가) — 읽기 폰트(Pretendard), 진한 회색(가독성).
   // 데스크탑 max는 13.5px — Pretendard가 S-CoreDream보다 작게 보이는 갭 보정(+1px).
-  sub: 'font-pretendard text-[clamp(0.71875rem,3.08vw,0.84375rem)] font-[300] leading-snug text-[#4b5563]',
+  sub: 'font-pretendard text-[clamp(0.71875rem,3.08cqi,0.84375rem)] font-[300] leading-snug text-[#4b5563]',
   // 최소 주석(*note) — 읽기 폰트. 컬러는 sub와 동일(#4b5563), 크기로만 위계.
-  caption: 'font-pretendard text-[clamp(0.6875rem,2.9vw,0.71875rem)] font-[400] leading-snug text-[#4b5563]',
+  caption: 'font-pretendard text-[clamp(0.6875rem,2.9cqi,0.71875rem)] font-[400] leading-snug text-[#4b5563]',
   // 금액/수치 — 브랜드 폰트(S-CoreDream), tabular.
-  num: 'font-score text-[clamp(0.8125rem,3.33vw,0.875rem)] font-[500] tabular-nums text-[#374151]',
+  num: 'font-score text-[clamp(0.8125rem,3.33cqi,0.875rem)] font-[500] tabular-nums text-[#374151]',
 }
 
 type TextProps = {

@@ -157,13 +157,13 @@ function TypeHeader({ t, onClick }: { t: CourseType; onClick?: () => void }) {
       </span>
       <span className="min-w-0 flex-1">
         {/* 제목 텍스트는 네이비 통일 — 색 구분은 아이콘 칩으로만 */}
-        <span className="block font-score text-[clamp(0.8125rem,3.72vw,0.90625rem)] font-[500] text-[#1e3a5f]">
+        <span className="block font-score text-[clamp(0.8125rem,3.72cqi,0.90625rem)] font-[500] text-[#1e3a5f]">
           {t.name}
           {t.variant && (
-            <span className="ml-1 text-[clamp(0.75rem,3.46vw,0.84375rem)] font-[400] text-[#4b5563]">({t.variant})</span>
+            <span className="ml-1 text-[clamp(0.75rem,3.46cqi,0.84375rem)] font-[400] text-[#4b5563]">({t.variant})</span>
           )}
         </span>
-        <span className="mt-0.5 block font-score text-[clamp(0.6875rem,3.08vw,0.75rem)] font-[300] text-[#9ca3af]">
+        <span className="mt-0.5 block font-score text-[clamp(0.6875rem,3.08cqi,0.75rem)] font-[300] text-[#9ca3af]">
           {t.schedule} · {t.credit}
         </span>
       </span>
@@ -317,13 +317,13 @@ function CenterModal({ t, onClose }: { t: CourseType; onClose: () => void }) {
             <t.icon size={20} strokeWidth={1.75} style={{ color: t.accent }} />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="font-score text-[clamp(0.875rem,3.97vw,0.96875rem)] font-[500] text-[#1e3a5f]">
+            <p className="font-score text-[clamp(0.875rem,3.97cqi,0.96875rem)] font-[500] text-[#1e3a5f]">
               {t.name}
               {t.variant && (
-                <span className="ml-1 text-[clamp(0.75rem,3.46vw,0.84375rem)] font-[400] text-[#4b5563]">({t.variant})</span>
+                <span className="ml-1 text-[clamp(0.75rem,3.46cqi,0.84375rem)] font-[400] text-[#4b5563]">({t.variant})</span>
               )}
             </p>
-            <p className="mt-0.5 font-score text-[clamp(0.6875rem,3.08vw,0.75rem)] font-[300] text-[#9ca3af]">
+            <p className="mt-0.5 font-score text-[clamp(0.6875rem,3.08cqi,0.75rem)] font-[300] text-[#9ca3af]">
               {t.schedule} · {t.credit}
             </p>
           </div>
@@ -337,14 +337,14 @@ function CenterModal({ t, onClose }: { t: CourseType; onClose: () => void }) {
           </button>
         </div>
         {/* 본문 — flex-1 min-h-0 로 스크롤 영역 확정. 모달 전체는 80vh 고정, CTA 는 스크롤 밖. */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 [container-type:inline-size]">
           <TypeDetail t={t} />
         </div>
         {/* 하단 고정 CTA — 유형 accent 솔리드 풀폭. 쿼리파라미터(?type=)는 신청폼 완성 후 부착. */}
         <div className="shrink-0 border-t border-[#eef1f4] p-4">
           <Link
             href="/application"
-            className="flex w-full items-center justify-center gap-1.5 rounded-[10px] py-3 font-score text-[clamp(0.8125rem,3.6vw,0.9375rem)] font-[500] text-white"
+            className="flex w-full items-center justify-center gap-1.5 rounded-[10px] py-3 font-score text-[clamp(0.8125rem,3.6cqi,0.9375rem)] font-[500] text-white"
             style={{ background: t.accent }}
           >
             신청하러 가기
@@ -407,18 +407,18 @@ export function CourseTypeCards({
                 <t.icon size={18} strokeWidth={1.75} style={{ color: t.accent }} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block font-score text-[14.5px] font-[500] text-[#1e3a5f]">
+                <span className="block font-score text-[clamp(0.75rem,2.9cqi,0.90625rem)] font-[500] text-[#1e3a5f]">
                   {t.name}
                   {t.variant && (
-                    <span className="ml-1 text-[13px] font-[400] text-[#4b5563]">({t.variant})</span>
+                    <span className="ml-1 text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[400] text-[#4b5563]">({t.variant})</span>
                   )}
                 </span>
-                <span className="mt-0.5 block font-score text-[12px] font-[400] text-[#6b7280]">
+                <span className="mt-0.5 block font-score text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[400] text-[#6b7280]">
                   {t.schedule} · {t.credit}
                 </span>
               </span>
               <span
-                className="shrink-0 font-score text-[12px] font-[500] tabular-nums"
+                className="shrink-0 font-score text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[500] tabular-nums"
                 style={{ color: on ? t.accent : '#9ca3af' }}
               >
                 {t.prices[0][1]}~
@@ -474,13 +474,13 @@ export function CourseTypeAccordion({
               style={{ background: on ? t.accent + 'E6' : undefined }}
             >
               <span
-                className="min-w-0 flex-1 font-score text-[14.5px] font-[500]"
+                className="min-w-0 flex-1 font-score text-[clamp(0.75rem,2.9cqi,0.90625rem)] font-[500]"
                 style={{ color: on ? '#ffffff' : '#1e3a5f' }}
               >
                 {t.name}
                 {t.variant && (
                   <span
-                    className="ml-1 text-[13px] font-[400]"
+                    className="ml-1 text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[400]"
                     style={{ color: on ? 'rgba(255,255,255,0.8)' : '#4b5563' }}
                   >
                     ({t.variant})

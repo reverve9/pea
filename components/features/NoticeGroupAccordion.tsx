@@ -48,7 +48,7 @@ export default function NoticeGroupAccordion({ notices, selectedNoticeId }: Prop
   }, [selectedNoticeId])
 
   if (notices.length === 0) {
-    return <p className="py-12 text-center text-[13px] font-[300] text-[#9ca3af]">등록된 공지가 없습니다.</p>
+    return <p className="py-12 text-center text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[300] text-[#9ca3af]">등록된 공지가 없습니다.</p>
   }
 
   const sorted = [...notices].sort(pinnedFirst)
@@ -83,14 +83,14 @@ export default function NoticeGroupAccordion({ notices, selectedNoticeId }: Prop
               <Badge color={cat.color} size="sm" className="shrink-0">
                 {cat.label}
               </Badge>
-              <span className="min-w-0 flex-1 truncate font-score text-[14.5px] font-[500] text-[#1e3a5f]">
+              <span className="min-w-0 flex-1 truncate font-score text-[clamp(0.75rem,2.9cqi,0.90625rem)] font-[500] text-[#1e3a5f]">
                 {notice.title}
               </span>
-              <span className="shrink-0 text-[12.5px] font-[300] tabular-nums text-[#9ca3af]">{date}</span>
+              <span className="shrink-0 text-[clamp(0.625rem,2.4cqi,0.78125rem)] font-[300] tabular-nums text-[#9ca3af]">{date}</span>
             </div>
 
             {open && (
-              <div className="border-t border-[#e5eaef] bg-white px-4 py-4 text-[13px]">
+              <div className="border-t border-[#e5eaef] bg-white px-4 py-4 text-[clamp(0.6875rem,2.6cqi,0.8125rem)]">
                 <MarkdownRenderer content={notice.content} />
               </div>
             )}

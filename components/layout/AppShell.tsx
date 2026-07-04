@@ -28,7 +28,8 @@ export default function AppShell({ main, extended }: AppShellProps) {
           <div className="relative w-full md:w-[500px] flex-shrink-0 h-screen z-10">
             <div id="pwa-wrapper" className="w-full h-full overflow-y-auto custom-scrollbar">
               <div className="bg-white min-h-screen relative overflow-x-hidden shadow-[0_0_1px_rgba(0,0,0,0.1)]">
-                <PWANavigation>{main}</PWANavigation>
+                {/* container-type는 콘텐츠 래퍼에만 — PWANavigation의 fixed/sticky 헤더·네비바를 가두지 않도록(홈과 동일 패턴) */}
+                <PWANavigation><div className="[container-type:inline-size]">{main}</div></PWANavigation>
               </div>
             </div>
             {/* PWA 우측 음영 */}
@@ -37,7 +38,7 @@ export default function AppShell({ main, extended }: AppShellProps) {
 
           {/* 확장 페인 (≥768 전용, 780px 고정) */}
           <div className="hidden md:block w-[780px] flex-shrink-0 h-screen overflow-y-auto custom-scrollbar">
-            <div className="pl-[40px] pr-[20px] pt-[25px] pb-[50px]">{extended}</div>
+            <div className="pl-[40px] pr-[20px] pt-[25px] pb-[50px] [container-type:inline-size]">{extended}</div>
           </div>
         </div>
 

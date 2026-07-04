@@ -120,7 +120,7 @@ export default function CourseOverview() {
                   role="tab"
                   aria-selected={on}
                   onClick={() => setActive(i)}
-                  className="flex-1 py-2.5 font-score text-[13px] transition-colors duration-200"
+                  className="flex-1 py-2.5 font-score text-[clamp(0.6875rem,2.6cqi,0.8125rem)] transition-colors duration-200"
                   style={
                     on
                       ? { background: tt.accent, color: '#ffffff', fontWeight: 500 }
@@ -143,7 +143,7 @@ export default function CourseOverview() {
             <div key={tt.type} className={i === 0 ? 'border-r border-[#eef1f4] p-4' : 'p-4'}>
               <div className="mb-3 flex items-center gap-1.5">
                 <span className="h-[13px] w-[3px] rounded-full" style={{ background: tt.accent }} />
-                <span className="font-score text-[14px] font-[500]" style={{ color: tt.accent }}>
+                <span className="font-score text-[clamp(0.75rem,2.8cqi,0.875rem)] font-[500]" style={{ color: tt.accent }}>
                   {tt.type}
                 </span>
               </div>
