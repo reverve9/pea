@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import FormSectionTitle from '@/components/common/FormSectionTitle'
-import Text from '@/components/common/Text'
+import Text, { BTN } from '@/components/common/Text'
 import { LoadingState } from '@/components/common/StateView'
 import { useQuery } from '@/lib/useQuery'
 import { getSessions, getPriceItems } from '@/lib/queries'
@@ -386,27 +386,27 @@ export default function JikmuApplyForm() {
             {lines.map((l, i) => (
               <div key={i} className="flex items-center justify-between">
                 <Text variant="sub" className="text-[#4b5563]">{l.label}</Text>
-                <span className="font-score text-[clamp(0.71875rem,3.08cqi,0.8125rem)] font-[500] tabular-nums text-[#4b5563]">{won(l.amount)}</span>
+                <Text variant="num" color="#4b5563">{won(l.amount)}</Text>
               </div>
             ))}
           </div>
         )}
         <div className="mt-3 flex items-center justify-between border-t border-[#e5eaef] pt-3">
-          <span className="font-score text-[clamp(0.8125rem,3.4cqi,0.875rem)] font-[500] text-[#1e3a5f]">총 금액</span>
-          <span className="font-score text-[clamp(1rem,4cqi,1.125rem)] font-[500] tabular-nums text-[#1e3a5f]">{won(total)}</span>
+          <Text variant="card-title-sm">총 금액</Text>
+          <Text variant="num-lg">{won(total)}</Text>
         </div>
         <div className="mt-4 grid grid-cols-[130px_1fr] gap-2">
           <button
             type="button"
             onClick={saveDraft}
-            className="rounded-[10px] border border-[#e5eaef] bg-white px-4 py-3 font-score text-[clamp(0.71875rem,3.08cqi,0.8125rem)] font-[500] text-[#4b5563] transition-colors hover:bg-[#f2f5f9]"
+            className={`rounded-[10px] border border-[#e5eaef] bg-white px-4 py-3 ${BTN} text-[#4b5563] transition-colors hover:bg-[#f2f5f9]`}
           >
             {saved ? '저장됨 ✓' : '임시저장'}
           </button>
           <button
             type="button"
             onClick={submit}
-            className="rounded-[10px] bg-[#1e3a5f] py-3 font-score text-[clamp(0.8125rem,3.4cqi,0.875rem)] font-[500] text-white transition-colors hover:bg-[#16304f]"
+            className={`rounded-[10px] bg-[#1e3a5f] py-3 ${BTN} text-white transition-colors hover:bg-[#16304f]`}
           >
             신청하기
           </button>

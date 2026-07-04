@@ -71,7 +71,7 @@ function trackBody(key: string) {
 function PendingPanel({ title }: { title: string }) {
   return (
     <div className="flex items-center justify-center rounded-[10px] border border-[#e5eaef] py-10" style={{ background: '#f2f5f9' }}>
-      <span className="font-score text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[500] text-[#9ca3af]">{title} 연수는 준비 중입니다.</span>
+      <Text variant="sub" color="#9ca3af">{title} 연수는 준비 중입니다.</Text>
     </div>
   )
 }
@@ -93,8 +93,8 @@ function TrackCard({ track, selected, compact, onSelect }: { track: Track; selec
           <Icon size={18} strokeWidth={1.75} style={{ color: track.accent }} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block font-score text-[clamp(0.75rem,2.9cqi,0.90625rem)] font-[500] text-[#1e3a5f]">{track.title}</span>
-          <span className="mt-0.5 block font-score text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[400] text-[#6b7280]">{track.spec}</span>
+          <Text variant="card-title" as="span" className="block">{track.title}</Text>
+          <Text variant="card-sub" as="span" className="mt-0.5 block">{track.spec}</Text>
         </span>
       </div>
       {!compact && (
@@ -116,7 +116,7 @@ function PendingCard({ selected, onSelect }: { selected: boolean; onSelect: () =
       className="flex w-full items-center justify-center rounded-[10px] border border-[#e5eaef] py-6 transition-colors"
       style={{ background: selected ? '#eef2f6' : '#f2f5f9' }}
     >
-      <span className="font-score text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[500] text-[#9ca3af]">준비중</span>
+      <Text variant="sub" color="#9ca3af">준비중</Text>
     </button>
   )
 }
@@ -242,7 +242,10 @@ export default function ApplyPage() {
     <>
       <AppShell main={main} extended={right} />
       {isMobile && modal && (
-        <Modal onClose={() => setModal(null)}>
+        <Modal
+          onClose={() => setModal(null)}
+          title={modal.kind === 'form' ? (TRACKS.find((t) => t.key === modal.key)?.title ?? '신청') : modal.title}
+        >
           {modal.kind === 'form' ? trackBody(modal.key) : <PendingPanel title={modal.title} />}
         </Modal>
       )}
