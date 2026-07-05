@@ -20,8 +20,8 @@ const VARIANT_LABEL: Record<Exclude<ScheduleType, 'jikmu'>, string> = {
   weekday_2n: '주중 2박',
 }
 
-// "2027-01-11" → "01.11"
-const md = (iso: string) => iso.slice(5).replace('-', '.')
+// "2027-01-11" → "01/11" (일정 기간 슬래시 표기)
+const md = (iso: string) => iso.slice(5).replace('-', '/')
 
 interface TypeGroup {
   key: 'jikmu' | 'jayul'

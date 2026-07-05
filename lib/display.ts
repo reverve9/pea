@@ -41,14 +41,15 @@ export function formatKRW(amount: number): string {
   return `${amount.toLocaleString('ko-KR')}원`
 }
 
-// "2027-01-11" → "2027.01.11"
+// "2027-01-11" → "2027/01/11"
 export function formatDate(iso: string): string {
-  return iso.replaceAll('-', '.')
+  return iso.replaceAll('-', '/')
 }
 
-// 기간: "2027-01-11" ~ "2027-01-13" → "2027.01.11 – 01.13 (2박)"
+// 기간: "2027-01-11" ~ "2027-01-13" → "2027/01/11 – 01/13 (2박)"
+// 일정 기간은 슬래시 표기(신청일·게시판 날짜 formatDate 점 표기와 구분).
 export function formatPeriod(startsOn: string, endsOn: string, nights: number): string {
-  const start = formatDate(startsOn)
-  const end = endsOn.slice(5).replace('-', '.') // MM.DD
+  const start = startsOn.replaceAll('-', '/') // 2027/01/11
+  const end = endsOn.slice(5).replace('-', '/') // MM/DD
   return `${start} – ${end} (${nights}박)`
 }
