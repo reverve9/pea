@@ -279,7 +279,7 @@ export default function InquiryBoardShell({ openPulse, hideHeader }: { openPulse
                               }}
                               onKeyDown={(e) => e.key === 'Enter' && verify(it.id)}
                               placeholder="비밀번호"
-                              className="min-w-0 flex-1 rounded-[8px] border border-[#e2e5e9] bg-white px-3 py-2 text-[clamp(0.6875rem,2.6cqi,0.84375rem)] text-[#1f2937] outline-none transition-colors placeholder:text-[#b0b6be] focus:border-[#1e3a5f]"
+                              className="min-w-0 flex-1 rounded-[8px] border border-[#e2e5e9] bg-white px-3 py-2 text-[clamp(0.6875rem,2.6cqi,0.84375rem)] text-[#1f2937] outline-none transition-colors placeholder:text-[#b0b6be] focus:bg-[#f7f9fb]"
                             />
                             <button
                               type="button"
@@ -334,7 +334,7 @@ function Field({
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="w-full rounded-[8px] border border-[#e2e5e9] bg-white px-3 py-2 text-[clamp(0.6875rem,2.6cqi,0.84375rem)] text-[#1f2937] outline-none transition-colors placeholder:text-[#b0b6be] focus:border-[#1e3a5f]"
+        className="w-full rounded-[8px] border border-[#e2e5e9] bg-white px-3 py-2 text-[clamp(0.6875rem,2.6cqi,0.84375rem)] text-[#1f2937] outline-none transition-colors placeholder:text-[#b0b6be] focus:bg-[#f7f9fb]"
       />
     </label>
   )
@@ -359,7 +359,7 @@ function TextareaField({
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="w-full resize-none rounded-[8px] border border-[#e2e5e9] bg-white px-3 py-2 text-[clamp(0.6875rem,2.6cqi,0.84375rem)] text-[#1f2937] outline-none transition-colors placeholder:text-[#b0b6be] focus:border-[#1e3a5f]"
+        className="w-full resize-none rounded-[8px] border border-[#e2e5e9] bg-white px-3 py-2 text-[clamp(0.6875rem,2.6cqi,0.84375rem)] text-[#1f2937] outline-none transition-colors placeholder:text-[#b0b6be] focus:bg-[#f7f9fb]"
       />
     </label>
   )

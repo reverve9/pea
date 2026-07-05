@@ -93,8 +93,9 @@ const EMPTY: JayulForm = {
 const won = (n: number) => n.toLocaleString('ko-KR') + '원'
 
 // ⚠ 입력 컨트롤 16px 고정(cqi 제외) — iOS Safari <16px 포커스 시 자동 확대 방지. [[type-scale-cqi-system]]
+// 통일 규칙: 포커스에 하드 테두리 안 씀(테두리 고정 #e5eaef). 포커스는 옅은 배경 틴트로만.
 const inputCls =
-  'w-full rounded-[10px] border border-[#e5eaef] bg-white px-3.5 py-2.5 font-score text-[16px] text-[#1f2937] placeholder:text-[#b6bcc4] transition-colors focus:border-[#2f803a] focus:outline-none'
+  'w-full rounded-[10px] border border-[#e5eaef] bg-white px-3.5 py-2.5 font-score text-[16px] text-[#1f2937] placeholder:text-[#b6bcc4] transition-colors focus:bg-[#f7f9fb] focus:outline-none'
 // 드롭다운 — 선택 시 테두리(포커스 잔상) 대신 배경 틴트로 상태 표시(OptionRow와 통일). 배경은 값 유무로 style 지정.
 const selectCls =
   'w-full appearance-none rounded-[10px] border border-[#e5eaef] px-3.5 py-2.5 font-score text-[16px] text-[#1f2937] transition-colors focus:outline-none'
