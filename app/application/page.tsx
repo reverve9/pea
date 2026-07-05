@@ -11,6 +11,7 @@ import Text from '@/components/common/Text'
 import Modal from '@/components/common/Modal'
 import ExtendedHeader from '@/components/layout/ExtendedHeader'
 import JikmuApplyForm from '@/components/features/JikmuApplyForm'
+import JayulApplyForm from '@/components/features/JayulApplyForm'
 
 // §3-5 연수신청 — 좌우 동일 층위(프로그램 → 유형). 좌(main)=마스터 인덱스, 우(extended)=상세.
 // 층1 = 프로그램(종목) : 스키·스노보드 + 준비중 3종. 우 페인에서 탭으로 전환.
@@ -57,12 +58,13 @@ const TRACKS: Track[] = [
   },
 ]
 
-// 유형별 폼 본문 — 직무=신청 폼 / 자율=준비중.
+// 유형별 폼 본문 — 직무·자율 신청 폼.
 function trackBody(key: string) {
   if (key === 'jikmu') return <JikmuApplyForm />
+  if (key === 'jayul') return <JayulApplyForm />
   return (
     <WhiteBox className="p-6">
-      <Text variant="body">자율패키지 신청 폼은 준비 중입니다. 직무연수부터 순차 오픈됩니다.</Text>
+      <Text variant="body">해당 유형은 준비 중입니다.</Text>
     </WhiteBox>
   )
 }

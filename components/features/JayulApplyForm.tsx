@@ -1,0 +1,621 @@
+'use client'
+
+import { useEffect, useMemo, useState } from 'react'
+import { Minus, Plus } from 'lucide-react'
+import FormSectionTitle from '@/components/common/FormSectionTitle'
+import Text, { BTN } from '@/components/common/Text'
+import { LoadingState } from '@/components/common/StateView'
+import { useQuery } from '@/lib/useQuery'
+import { getSessions, getPriceItems } from '@/lib/queries'
+import { formatPeriod } from '@/lib/display'
+import type { SessionWithCourse, PriceItem, ScheduleType } from '@/lib/types'
+
+// 자율패키지 신청 폼(상세) — /application 자율 트랙(데스크탑 우 페인 / 모바일 모달). [[jayul-apply-form-spec]]
+// 원칙: 무통장 1회 완납 → 금액 바꾸는 선택(인원·렌탈수량)은 신청 시 확정, 금액무관 정보(사이즈·명단)는 어드민 후속.
+// 대표 단독 신청 — 참가자 개별 캡처 없음(비대표 조회 드롭). 보험은 폼에서 제외(비용 미확정 → 발생 시 추가입금).
+// 가격: 세션 schedule_type이 변형 결정 → pkg_{변형}_{인원} 묶음가(price_items pkg_price) + 렌탈 수량×정액.
+
+const GREEN = '#2f803a'
+const DRAFT_KEY = 'pea:draft:application:jayul'
+const MAX_HEADCOUNT = 6
+
+// 자율 변형 라벨(세션 schedule_type → 표시명). jikmu 제외.
+const VARIANT_LABEL: Record<Exclude<ScheduleType, 'jikmu'>, string> = {
+  weekday_2n: '주중 2박',
+  weekend_2n: '주말 2박',
+  weekend_1n: '주말 1박',
+}
+
+// 유형 먼저 선택 → 해당 유형의 차수 목록. 표시 순서·기간.
+type JayulVariant = Exclude<ScheduleType, 'jikmu'>
+const VARIANTS: { key: JayulVariant; label: string; spec: string }[] = [
+  { key: 'weekend_1n', label: '주말 1박', spec: '1박 2일' },
+  { key: 'weekend_2n', label: '주말 2박', spec: '2박 3일' },
+  { key: 'weekday_2n', label: '주중 2박', spec: '2박 3일' },
+]
+
+const REGIONS = [
+  '서울특별시', '부산광역시', '대구광역시', '인천광역시', '광주광역시', '대전광역시', '울산광역시',
+  '세종특별자치시', '경기도', '강원특별자치도', '충청북도', '충청남도', '전북특별자치도', '전라남도',
+  '경상북도', '경상남도', '제주특별자치도',
+]
+
+// 렌탈 항목 — item_key = price_items(rental) 매칭. 수량형(0~인원).
+const RENTAL_KEYS = ['apparel', 'goggle', 'protector', 'glove'] as const
+type RentalKey = (typeof RENTAL_KEYS)[number]
+// 알게 된 경로(계획안 14번) — 필수X·중복선택. 직무폼과 동일(내일 컴포넌트화 시 공용화).
+const ROUTE_OPTIONS = ['체육교육회 홈페이지', '교육청 연수원 게시글', '학교 내 공문', '지인 소개', '과거 참가자']
+const APPAREL_SIZES = ['S', 'M', 'L', 'XL', '2XL'] // 스키복 대여 사이즈
+
+// 동반 참가자 1명 — 성함·연락처·보험희망(대표 외 명단). 연락처는 동명이인 구분·배정용.
+interface Companion {
+  name: string
+  phone: string
+  insurance: boolean
+}
+const emptyCompanion = (): Companion => ({ name: '', phone: '', insurance: false })
+
+interface JayulForm {
+  variant: '' | JayulVariant // 패키지 유형(선행 선택) → 차수·가격 결정
+  sessionId: string
+  headcount: number // 1~6 → pkg 묶음가
+  // 대표자(결제·연락 창구) — 직무폼 기본정보 재활용(보험 제외)
+  name: string
+  gender: '' | 'male' | 'female'
+  phone: string
+  birthFront: string
+  schoolName: string
+  region: string
+  rentals: Record<RentalKey, number> // 항목별 수량
+  apparelSizes: string[] // 스키복 대여 수량만큼 사이즈(길이 = rentals.apparel)
+  repInsurance: boolean // 대표 본인 보험 희망
+  companions: Companion[] // 동반 참가자(길이 = headcount - 1)
+  note: string // 기타 요청사항(자유기술)
+  // 추가 정보·확인·동의(직무폼과 공통 — 내일 컴포넌트화)
+  payerDiffers: boolean // 입금자≠대표
+  payerName: string // 입금자명
+  routes: string[] // 알게 된 경로(다중)
+  confirmChecked: boolean // 신청·입금자명 일치 확인(필수)
+  privacyConsent: boolean // 개인정보·촬영 동의(필수)
+  marketingOptIn: boolean // 프로그램 연락 수신(선택)
+}
+
+const EMPTY: JayulForm = {
+  variant: '', sessionId: '', headcount: 1, name: '', gender: '', phone: '', birthFront: '',
+  schoolName: '', region: '',
+  rentals: { apparel: 0, goggle: 0, protector: 0, glove: 0 },
+  apparelSizes: [], repInsurance: false, companions: [],
+  note: '',
+  payerDiffers: false, payerName: '', routes: [],
+  confirmChecked: false, privacyConsent: false, marketingOptIn: false,
+}
+
+const won = (n: number) => n.toLocaleString('ko-KR') + '원'
+
+// ⚠ 입력 컨트롤 16px 고정(cqi 제외) — iOS Safari <16px 포커스 시 자동 확대 방지. [[type-scale-cqi-system]]
+const inputCls =
+  'w-full rounded-[10px] border border-[#e5eaef] bg-white px-3.5 py-2.5 font-score text-[16px] text-[#1f2937] placeholder:text-[#b6bcc4] transition-colors focus:border-[#2f803a] focus:outline-none'
+// 드롭다운 — 선택 시 테두리(포커스 잔상) 대신 배경 틴트로 상태 표시(OptionRow와 통일). 배경은 값 유무로 style 지정.
+const selectCls =
+  'w-full appearance-none rounded-[10px] border border-[#e5eaef] px-3.5 py-2.5 font-score text-[16px] text-[#1f2937] transition-colors focus:outline-none'
+
+function Field({
+  label, required, hint, children,
+}: { label: string; required?: boolean; hint?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="mb-5">
+      <label className="mb-2 block font-score text-[clamp(0.8125rem,3.4cqi,0.875rem)] font-[500] text-[#1f2937]">
+        {label}
+        {required && <span className="text-[#c0685a]"> *</span>}
+      </label>
+      {children}
+      {hint && <p className="mt-1.5 font-score text-[clamp(0.71875rem,3.08cqi,0.75rem)] font-[400] text-[#9ca3af]">{hint}</p>}
+    </div>
+  )
+}
+
+// 라디오형 선택 — 체크 + 배경 틴트(자율=그린). compact = 좁은 그리드용 축약.
+function OptionRow({
+  selected, onClick, compact, children,
+}: { selected: boolean; onClick: () => void; compact?: boolean; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`flex w-full items-center rounded-[10px] border border-[#e5eaef] text-left font-score text-[clamp(0.8125rem,3.4cqi,0.875rem)] transition-colors ${
+        compact ? 'justify-center gap-1.5 whitespace-nowrap px-2 py-2.5 md:gap-2.5 md:px-3.5' : 'gap-2.5 px-3.5 py-2.5'
+      }`}
+      style={{ background: selected ? GREEN + '12' : '#ffffff', color: selected ? GREEN : '#4b5563' }}
+    >
+      {!compact && (
+        <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border" style={{ borderColor: selected ? GREEN : '#cbd2da' }}>
+          {selected && <span className="h-2 w-2 rounded-full" style={{ background: GREEN }} />}
+        </span>
+      )}
+      <span className="min-w-0 flex-1">{children}</span>
+    </button>
+  )
+}
+
+// 수량형(렌탈) — 라벨 + 개당 금액 + 스텝퍼(−/값/+). 0이면 회색, ≥1이면 그린.
+function QtyRow({
+  label, unit, qty, max, onChange,
+}: { label: string; unit: number; qty: number; max: number; onChange: (n: number) => void }) {
+  const on = qty > 0
+  return (
+    <div
+      className="flex items-center gap-2.5 rounded-[10px] border border-[#e5eaef] px-3.5 py-2 font-score text-[clamp(0.8125rem,3.4cqi,0.875rem)] transition-colors"
+      style={{ background: on ? GREEN + '12' : '#ffffff', color: on ? GREEN : '#4b5563' }}
+    >
+      <span className="min-w-0 flex-1">{label}</span>
+      <span className="shrink-0 font-score text-[clamp(0.71875rem,3.08cqi,0.8125rem)] tabular-nums" style={{ color: on ? GREEN : '#8a94a0' }}>
+        개당 {won(unit)}
+      </span>
+      <div className="flex shrink-0 items-center gap-1">
+        <button
+          type="button"
+          aria-label={`${label} 수량 감소`}
+          onClick={() => onChange(Math.max(0, qty - 1))}
+          disabled={qty <= 0}
+          className="flex h-7 w-7 items-center justify-center rounded-[8px] border border-[#e5eaef] bg-white text-[#4b5563] transition-colors hover:bg-[#f2f5f9] disabled:opacity-40"
+        >
+          <Minus size={14} />
+        </button>
+        <span className="w-6 text-center font-score text-[15px] tabular-nums" style={{ color: on ? GREEN : '#4b5563' }}>{qty}</span>
+        <button
+          type="button"
+          aria-label={`${label} 수량 증가`}
+          onClick={() => onChange(Math.min(max, qty + 1))}
+          disabled={qty >= max}
+          className="flex h-7 w-7 items-center justify-center rounded-[8px] border border-[#e5eaef] bg-white text-[#4b5563] transition-colors hover:bg-[#f2f5f9] disabled:opacity-40"
+        >
+          <Plus size={14} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// 다중선택(경로) — 사각 체크 + 라벨. 자율=그린.
+function CheckRow({ selected, onClick, label }: { selected: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className="flex w-full items-center gap-2.5 rounded-[10px] border border-[#e5eaef] px-3.5 py-2.5 text-left font-score text-[clamp(0.8125rem,3.4cqi,0.875rem)] transition-colors"
+      style={{ background: selected ? GREEN + '12' : '#ffffff', color: selected ? GREEN : '#4b5563' }}
+    >
+      <span
+        className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border"
+        style={{ borderColor: selected ? GREEN : '#cbd2da', background: selected ? GREEN : '#ffffff' }}
+      >
+        {selected && (
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+            <path d="M2.5 6.2l2.2 2.3L9.5 3.5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </span>
+      <span className="min-w-0 flex-1">{label}</span>
+    </button>
+  )
+}
+
+// 동의·확인 체크 — 네이티브 체크박스 + 설명.
+function ConsentRow({
+  checked, onChange, children,
+}: { checked: boolean; onChange: (v: boolean) => void; children: React.ReactNode }) {
+  return (
+    <label className="flex cursor-pointer items-start gap-2.5">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[#2f803a]" />
+      <Text variant="sub" className="text-[#4b5563]">{children}</Text>
+    </label>
+  )
+}
+
+export default function JayulApplyForm() {
+  const sessions = useQuery<SessionWithCourse[]>(getSessions, [])
+  const prices = useQuery<PriceItem[]>(getPriceItems, [])
+  const [form, setForm] = useState<JayulForm>(EMPTY)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    const raw = typeof window !== 'undefined' ? window.localStorage.getItem(DRAFT_KEY) : null
+    if (raw) {
+      try {
+        const p = JSON.parse(raw) as Partial<JayulForm>
+        setForm({ ...EMPTY, ...p, rentals: { ...EMPTY.rentals, ...(p.rentals ?? {}) } })
+      } catch {
+        /* 손상된 드래프트 무시 */
+      }
+    }
+  }, [])
+
+  // 선택된 유형의 차수만 — 유형 미선택이면 빈 목록.
+  const variantSessions = useMemo(
+    () => (form.variant ? (sessions.data ?? []).filter((s) => s.schedule_type === form.variant) : []),
+    [sessions.data, form.variant],
+  )
+
+  const itemBy = useMemo(() => {
+    const m: Record<string, PriceItem> = {}
+    for (const p of prices.data) m[p.item_key] = p
+    return m
+  }, [prices.data])
+
+  // pkg 묶음가 — pkg_{변형}_{인원}. 유형 미선택이면 0.
+  const pkgAmount = form.variant ? itemBy[`pkg_${form.variant}_${form.headcount}`]?.amount ?? 0 : 0
+
+  // 실시간 합계 라인아이템 — 유형·차수 선택 시부터 계상.
+  const lines = useMemo(() => {
+    const out: { label: string; amount: number }[] = []
+    if (!form.variant || !form.sessionId) return out
+    out.push({ label: `${VARIANT_LABEL[form.variant]} · ${form.headcount}인 패키지`, amount: pkgAmount })
+    for (const key of RENTAL_KEYS) {
+      const qty = form.rentals[key]
+      if (qty > 0 && itemBy[key]) out.push({ label: `${itemBy[key].label} ×${qty}`, amount: itemBy[key].amount * qty })
+    }
+    return out
+  }, [form.variant, form.sessionId, form.headcount, form.rentals, pkgAmount, itemBy])
+  const total = lines.reduce((s, l) => s + l.amount, 0)
+
+  const set = <K extends keyof JayulForm>(k: K, v: JayulForm[K]) => {
+    setForm((f) => ({ ...f, [k]: v }))
+    setSaved(false)
+  }
+  // 유형 변경 시 선택 차수 초기화(차수는 유형에 종속).
+  const setVariant = (v: JayulVariant) => {
+    setForm((f) => (f.variant === v ? f : { ...f, variant: v, sessionId: '' }))
+    setSaved(false)
+  }
+  // 배열을 목표 길이로 리사이즈(초과분 절삭, 부족분 factory로 채움).
+  const resize = <T,>(arr: T[], len: number, factory: () => T): T[] => {
+    const out = arr.slice(0, len)
+    while (out.length < len) out.push(factory())
+    return out
+  }
+  // 인원 변경 → 렌탈 수량 클램프 + 사이즈/동반 명단 리사이즈.
+  const setHeadcount = (n: number) => {
+    setForm((f) => {
+      const rentals = { ...f.rentals }
+      for (const key of RENTAL_KEYS) rentals[key] = Math.min(rentals[key], n)
+      return {
+        ...f,
+        headcount: n,
+        rentals,
+        apparelSizes: resize(f.apparelSizes, rentals.apparel, () => ''),
+        companions: resize(f.companions, Math.max(0, n - 1), emptyCompanion),
+      }
+    })
+    setSaved(false)
+  }
+  // 렌탈 수량 변경 → 스키복이면 사이즈 칸 개수 동기화.
+  const setRental = (key: RentalKey, n: number) => {
+    setForm((f) => {
+      const rentals = { ...f.rentals, [key]: n }
+      return { ...f, rentals, apparelSizes: key === 'apparel' ? resize(f.apparelSizes, n, () => '') : f.apparelSizes }
+    })
+    setSaved(false)
+  }
+  const setApparelSize = (i: number, v: string) => {
+    setForm((f) => ({ ...f, apparelSizes: f.apparelSizes.map((s, idx) => (idx === i ? v : s)) }))
+    setSaved(false)
+  }
+  const setCompanion = (i: number, patch: Partial<Companion>) => {
+    setForm((f) => ({ ...f, companions: f.companions.map((c, idx) => (idx === i ? { ...c, ...patch } : c)) }))
+    setSaved(false)
+  }
+  const togglePayerDiffers = (v: boolean) => {
+    setForm((f) => ({ ...f, payerDiffers: v, payerName: v ? f.payerName : '' }))
+    setSaved(false)
+  }
+  const toggleRoute = (r: string) => {
+    setForm((f) => ({ ...f, routes: f.routes.includes(r) ? f.routes.filter((x) => x !== r) : [...f.routes, r] }))
+    setSaved(false)
+  }
+
+  const saveDraft = () => {
+    window.localStorage.setItem(DRAFT_KEY, JSON.stringify(form))
+    setSaved(true)
+  }
+
+  const submit = () => {
+    /* TODO: service_role /api 제출 파이프라인(insert · 발번 · price_breakdown 스냅샷 · note 저장) [[jayul-apply-form-spec]] */
+  }
+
+  return (
+    <div>
+      <FormSectionTitle title="일정 · 인원" />
+
+      <Field label="패키지 유형" required>
+        <div className="grid grid-cols-3 gap-2">
+          {VARIANTS.map((v) => {
+            const on = form.variant === v.key
+            return (
+              <button
+                key={v.key}
+                type="button"
+                onClick={() => setVariant(v.key)}
+                aria-pressed={on}
+                className="flex flex-col items-center gap-0.5 rounded-[10px] border border-[#e5eaef] px-2 py-2.5 text-center transition-colors"
+                style={{ background: on ? GREEN + '12' : '#ffffff', color: on ? GREEN : '#4b5563' }}
+              >
+                <span className="font-score text-[clamp(0.8125rem,3.4cqi,0.9375rem)] font-[500]">{v.label}</span>
+                <span className="font-score text-[clamp(0.6875rem,2.9cqi,0.75rem)]" style={{ color: on ? GREEN : '#9ca3af' }}>{v.spec}</span>
+              </button>
+            )
+          })}
+        </div>
+      </Field>
+
+      {form.variant && (
+        sessions.loading ? (
+          <LoadingState />
+        ) : (
+          <Field label="참가 차수" required>
+            <div className="space-y-2">
+              {variantSessions.length === 0 ? (
+                <Text variant="sub" className="text-[#9ca3af]">개설된 {VARIANT_LABEL[form.variant]} 차수가 없습니다.</Text>
+              ) : (
+                variantSessions.map((s) => (
+                  <OptionRow key={s.id} selected={form.sessionId === s.id} onClick={() => set('sessionId', s.id)}>
+                    <span className="block tabular-nums font-[500] md:inline">{formatPeriod(s.starts_on, s.ends_on, s.nights)}</span>
+                    <span className="mt-0.5 block text-[clamp(0.71875rem,3.08cqi,0.75rem)] text-[#8a94a0] md:mt-0 md:ml-1.5 md:inline">{s.label}</span>
+                  </OptionRow>
+                ))
+              )}
+            </div>
+          </Field>
+        )
+      )}
+
+      <Field label="참가 인원" required hint="1~6인 패키지. 인원에 따라 숙박 평형(1~4인 22평 · 5~6인 33평)과 금액이 정해집니다.">
+        <div className="grid grid-cols-6 gap-2">
+          {Array.from({ length: MAX_HEADCOUNT }, (_, i) => i + 1).map((n) => (
+            <OptionRow key={n} compact selected={form.headcount === n} onClick={() => setHeadcount(n)}>{n}인</OptionRow>
+          ))}
+        </div>
+      </Field>
+
+      <div className="mt-10">
+        <FormSectionTitle title="대표 신청자 정보" />
+
+        <Field label="성함" required>
+          <input className={inputCls} value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="대표 신청자 성함" />
+        </Field>
+
+        <Field label="성별" required>
+          <div className="grid grid-cols-2 gap-2">
+            <OptionRow selected={form.gender === 'male'} onClick={() => set('gender', 'male')}>남자</OptionRow>
+            <OptionRow selected={form.gender === 'female'} onClick={() => set('gender', 'female')}>여자</OptionRow>
+          </div>
+        </Field>
+
+        <Field label="연락처" required hint="신청 관련 안내가 이 번호로 전달됩니다.">
+          <input
+            className={inputCls}
+            value={form.phone}
+            onChange={(e) => set('phone', e.target.value.replace(/\D/g, '').slice(0, 11))}
+            placeholder="01000000000 (- 없이 숫자만)"
+            inputMode="numeric"
+          />
+        </Field>
+
+        <Field label="생년월일" required hint="YYMMDD 6자리">
+          <input
+            className={inputCls}
+            value={form.birthFront}
+            onChange={(e) => set('birthFront', e.target.value.replace(/\D/g, '').slice(0, 6))}
+            placeholder="YYMMDD"
+            inputMode="numeric"
+          />
+        </Field>
+
+        <Field label="소속" required>
+          <div className="grid grid-cols-2 gap-2">
+            <input className={inputCls} value={form.schoolName} onChange={(e) => set('schoolName', e.target.value)} placeholder="소속 기입" />
+            <select className={selectCls} value={form.region} onChange={(e) => set('region', e.target.value)} style={{ background: form.region ? GREEN + '12' : '#ffffff' }}>
+              <option value="">지역 선택</option>
+              {REGIONS.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+          </div>
+        </Field>
+      </div>
+
+      <div className="mt-10">
+        <FormSectionTitle title="렌탈 (선택)" />
+        <Field label="렌탈 장비" hint="필요한 수량을 선택하세요.">
+          <div className="space-y-2">
+            {RENTAL_KEYS.map((key) => {
+              const item = itemBy[key]
+              if (!item) return null
+              return (
+                <QtyRow
+                  key={key}
+                  label={item.label}
+                  unit={item.amount}
+                  qty={form.rentals[key]}
+                  max={form.headcount}
+                  onChange={(n) => setRental(key, n)}
+                />
+              )
+            })}
+          </div>
+        </Field>
+
+        {form.rentals.apparel > 0 && (
+          <Field label="스키복 사이즈" hint="대여하신 스키복 수량만큼 사이즈를 선택해 주세요.">
+            <div className="space-y-2">
+              {form.apparelSizes.map((sz, i) => (
+                <div key={i} className="flex items-center gap-2.5">
+                  <Text variant="sub" className="w-12 shrink-0 text-[#6b7280]">{i + 1}벌</Text>
+                  <select
+                    className={selectCls}
+                    value={sz}
+                    onChange={(e) => setApparelSize(i, e.target.value)}
+                    style={{ background: sz ? GREEN + '12' : '#ffffff' }}
+                  >
+                    <option value="">사이즈 선택</option>
+                    {APPAREL_SIZES.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+          </Field>
+        )}
+      </div>
+
+      <div className="mt-10">
+        <FormSectionTitle title="참가자 명단" />
+        <Field
+          label={`참가자 ${form.headcount}명`}
+          hint="대표 외 참가자의 성함·연락처를 입력해 주세요. 연락처는 동명이인 구분·배정에 사용됩니다. 보험 가입 희망자는 체크해 주세요."
+        >
+          <div className="space-y-2">
+            {/* 1번 = 대표(위 입력값 표시, 보험 희망만 선택) */}
+            <div className="rounded-[10px] border border-[#e5eaef] bg-[#f7f9fb] px-3.5 py-2.5">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="rounded-[6px] px-1.5 py-0.5 font-score text-[11px] font-[500]" style={{ background: GREEN + '1f', color: GREEN }}>대표</span>
+                <Text variant="sub" className="text-[#374151]">{form.name || '대표 신청자'}</Text>
+                {form.phone && <Text variant="caption" className="text-[#8a94a0]">{form.phone}</Text>}
+                <label className="ml-auto flex cursor-pointer items-center gap-1.5">
+                  <input type="checkbox" checked={form.repInsurance} onChange={(e) => set('repInsurance', e.target.checked)} className="h-4 w-4 accent-[#2f803a]" />
+                  <Text variant="caption" className="text-[#4b5563]">보험 희망</Text>
+                </label>
+              </div>
+            </div>
+            {/* 2~N번 = 동반 참가자 */}
+            {form.companions.map((c, i) => (
+              <div key={i} className="rounded-[10px] border border-[#e5eaef] bg-white p-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <input className={inputCls} value={c.name} onChange={(e) => setCompanion(i, { name: e.target.value })} placeholder={`참가자 ${i + 2} 성함`} />
+                  <input
+                    className={inputCls}
+                    value={c.phone}
+                    onChange={(e) => setCompanion(i, { phone: e.target.value.replace(/\D/g, '').slice(0, 11) })}
+                    placeholder="연락처 (- 없이)"
+                    inputMode="numeric"
+                  />
+                </div>
+                <label className="mt-2 flex cursor-pointer items-center gap-1.5">
+                  <input type="checkbox" checked={c.insurance} onChange={(e) => setCompanion(i, { insurance: e.target.checked })} className="h-4 w-4 accent-[#2f803a]" />
+                  <Text variant="caption" className="text-[#4b5563]">보험 가입 희망</Text>
+                </label>
+              </div>
+            ))}
+          </div>
+        </Field>
+      </div>
+
+      <div className="mt-10">
+        <FormSectionTitle title="추가 정보" />
+
+        <Field label="기타 요청사항" hint="운영진이 참고할 사항이 있으면 자유롭게 적어주세요. (선택)">
+          <textarea
+            className={`${inputCls} min-h-[88px] resize-y`}
+            value={form.note}
+            onChange={(e) => set('note', e.target.value)}
+            placeholder="예) 알레르기, 지병, 객실 요청 등"
+          />
+        </Field>
+
+        <Field label="알게 된 경로" hint="중복 선택 가능 (선택)">
+          <div className="grid grid-cols-2 gap-2">
+            {ROUTE_OPTIONS.map((r) => (
+              <CheckRow key={r} selected={form.routes.includes(r)} onClick={() => toggleRoute(r)} label={r} />
+            ))}
+          </div>
+        </Field>
+      </div>
+
+      <div className="mt-10">
+        <FormSectionTitle title="확인 · 동의" />
+
+        <Field label="입금자" hint="입금자가 대표 신청자와 다르면 체크해 주세요. 신청 성함과 입금자명이 다르면 접수 확정이 지연될 수 있습니다.">
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={form.payerDiffers} onChange={(e) => togglePayerDiffers(e.target.checked)} className="h-4 w-4 accent-[#2f803a]" />
+            <Text variant="sub" className="text-[#4b5563]">입금자가 대표 신청자와 다릅니다</Text>
+          </label>
+          {form.payerDiffers && (
+            <input className={`${inputCls} mt-2`} value={form.payerName} onChange={(e) => set('payerName', e.target.value)} placeholder="입금자 성함" />
+          )}
+        </Field>
+
+        {/* 개인정보 수집·이용/촬영 활용 고지문 — 스크롤 박스 + 필수 동의 체크. */}
+        <div className="mb-4 max-h-[220px] overflow-y-auto rounded-[10px] border border-[#e5eaef] bg-[#f7f9fb] p-4 [container-type:inline-size]">
+          <Text variant="sub" className="text-[#4b5563]">
+            체육교육회는 연수 신청·운영을 위하여 아래와 같이 개인정보를 수집·이용하며, 연수 과정에서 촬영된 사진·영상물을 교육 및 홍보 목적으로 활용하고자 합니다. 내용을 충분히 확인하신 후 동의 여부를 선택해 주세요.
+          </Text>
+          <div className="mt-3 space-y-3">
+            {[
+              { h: '1. 수집·이용 목적', body: '연수 참가 신청·접수 관리 / 연수 운영·참가자 확인 / 보험 가입·안전관리 / 연수 안내사항 전달 / 이수·결과 관리 / 홈페이지·SNS·홍보물·보도자료 등 교육활동 홍보' },
+              { h: '2. 수집 항목', body: '[필수] 성명 · 소속기관(학교) · 휴대전화번호 · 생년월일\n[보험 가입 시 추가] 주민등록번호 뒷자리 ※ 보험 가입 등 법령상 허용된 목적에 한하여 수집·이용' },
+              { h: '3. 보유·이용기간', body: '연수 종료 후 2년간 보관 후 지체 없이 파기. 단, 홍보·기록 보존 목적으로 활용된 촬영물은 관련 사업 종료 후 보관될 수 있음' },
+              { h: '4. 동의 거부 권리', body: '동의를 거부할 권리가 있으며, 필수정보 수집에 동의하지 않을 경우 연수 신청·보험 가입·연수 참여가 제한될 수 있습니다.' },
+            ].map((s) => (
+              <div key={s.h}>
+                <Text variant="label" className="text-[#374151]">{s.h}</Text>
+                <Text variant="caption" className="mt-0.5 block whitespace-pre-line text-[#6b7280]">{s.body}</Text>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-3 rounded-[10px] border border-[#e5eaef] bg-white p-4">
+          <ConsentRow checked={form.privacyConsent} onChange={(v) => set('privacyConsent', v)}>
+            <span className="text-[#c0685a]">[필수] </span>위 개인정보 수집·이용 및 촬영물 활용에 동의합니다.
+          </ConsentRow>
+          <ConsentRow checked={form.confirmChecked} onChange={(v) => set('confirmChecked', v)}>
+            <span className="text-[#c0685a]">[필수] </span>신청 내용을 다시 확인했으며, 신청 성함과 입금자명이 일치하지 않으면 접수 확정이 늦어질 수 있음을 확인했습니다.
+          </ConsentRow>
+          <ConsentRow checked={form.marketingOptIn} onChange={(v) => set('marketingOptIn', v)}>
+            [선택] 추후 체육교육회의 프로그램 안내 연락을 받겠습니다.
+          </ConsentRow>
+        </div>
+      </div>
+
+      {/* 합계·액션 */}
+      <div className="mt-8 rounded-[12px] border border-[#e5eaef] bg-[#f7f9fb] p-4">
+        {lines.length === 0 ? (
+          <Text variant="sub" className="text-[#9ca3af]">참가 일정과 인원을 선택하면 금액이 계산됩니다.</Text>
+        ) : (
+          <div className="space-y-2">
+            {lines.map((l, i) => (
+              <div key={i} className="flex items-center justify-between">
+                <Text variant="sub" className="text-[#4b5563]">{l.label}</Text>
+                <Text variant="num" color="#4b5563">{won(l.amount)}</Text>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="mt-3 flex items-center justify-between border-t border-[#e5eaef] pt-3">
+          <Text variant="card-title-sm">총 금액</Text>
+          <Text variant="num-lg">{won(total)}</Text>
+        </div>
+        <div className="mt-4 grid grid-cols-[130px_1fr] gap-2">
+          <button
+            type="button"
+            onClick={saveDraft}
+            className={`rounded-[10px] border border-[#e5eaef] bg-white px-4 py-3 ${BTN} text-[#4b5563] transition-colors hover:bg-[#f2f5f9]`}
+          >
+            {saved ? '저장됨 ✓' : '임시저장'}
+          </button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={!form.confirmChecked || !form.privacyConsent}
+            className={`rounded-[10px] py-3 ${BTN} text-white transition-colors disabled:cursor-not-allowed disabled:opacity-40`}
+            style={{ background: GREEN }}
+          >
+            신청하기
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

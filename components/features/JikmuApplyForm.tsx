@@ -23,8 +23,27 @@ const REGIONS = [
   '경상북도', '경상남도', '제주특별자치도',
 ]
 
-const LESSON_LEVELS = ['입문', '초급', '중급', '고급'] // 배정용(가격 무관)
+// 강습 수준 — 종목(스키/스노보드) 선택 → 반(입문/초급/중상급) + 교육목표. 조편성용(가격 무관). 계획안 5번.
+const LESSON_SPORTS = [
+  { key: 'ski', label: '스키' },
+  { key: 'board', label: '스노보드' },
+] as const
+type LessonSport = (typeof LESSON_SPORTS)[number]['key']
+const LESSON_CLASSES: Record<LessonSport, { key: string; label: string; cond: string; goal: string }[]> = {
+  ski: [
+    { key: 'ski_beginner', label: '입문반', cond: '첫 입문자', goal: '스키 착용법, 지상 강습, 스노우플라우턴' },
+    { key: 'ski_basic', label: '초급반', cond: '1~3회 경험자', goal: '스노우플라우턴, 슈템턴' },
+    { key: 'ski_adv', label: '중상급반', cond: '중급 이상 슬로프에서 자유로운 턴 가능', goal: '베이직롱턴(패러렐), 숏턴' },
+  ],
+  board: [
+    { key: 'board_beginner', label: '입문반', cond: '첫 입문자', goal: '스노보드 착용법, 지상 강습, 사이드슬리핑, 펜쥴럼' },
+    { key: 'board_basic', label: '초급반', cond: '1~3회 경험자', goal: '펜쥴럼(낙엽), 비기너턴' },
+    { key: 'board_adv', label: '중상급반', cond: '중급 이상 슬로프에서 자유로운 턴 가능', goal: '너비스턴, 보드 컨트롤' },
+  ],
+}
 const APPAREL_SIZES = ['S', 'M', 'L', 'XL', '2XL']
+// 알게 된 경로(계획안 14번) — 필수X·중복선택.
+const ROUTE_OPTIONS = ['체육교육회 홈페이지', '교육청 연수원 게시글', '학교 내 공문', '지인 소개', '과거 참가자']
 // 렌탈 항목 — item_key = price_items 매칭. apparel 은 사이즈 부속 선택.
 const RENTAL_ITEMS: { key: string; field: keyof RentalSel }[] = [
   { key: 'apparel', field: 'apparel' },
@@ -50,19 +69,33 @@ interface JikmuForm {
   birthBack: string
   schoolName: string
   region: string
-  lessonLevel: string
+  lessonSport: '' | LessonSport
+  lessonClass: string // LESSON_CLASSES 반 key
   roomType: '' | 'group' | 'private'
   roomSpec: string // room_surcharge item_key (개별객실일 때)
   rentals: RentalSel
   apparelSize: string
+  // 마무리(계획안 11~17)
+  hasCompanion: boolean // 11 동반인 유무(옵션·비용 섹션에서 토글)
+  companion: string // 11 동반인 성함
+  companionPhone: string // 11 동반인 연락처(별도 신청서 매칭 키)
+  notes: string // 12 특이사항
+  payerDiffers: boolean // 13 입금자≠참가자(기본정보 섹션에서 토글)
+  payerName: string // 13 입금자명(참가자와 다를 경우)
+  routes: string[] // 14 알게 된 경로(다중)
+  confirmChecked: boolean // 15 신청내용·입금자명 일치 확인(필수)
+  privacyConsent: boolean // 17 개인정보/촬영 활용 동의(필수)
+  marketingOptIn: boolean // 16 프로그램 연락 수신(선택)
 }
 
 const EMPTY: JikmuForm = {
   sessionId: '', name: '', gender: '', phone: '', birthFront: '',
   insurance: false, birthBack: '', schoolName: '', region: '',
-  lessonLevel: '', roomType: 'group', roomSpec: '',
+  lessonSport: '', lessonClass: '', roomType: 'group', roomSpec: '',
   rentals: { apparel: false, goggle: false, protector: false, glove: false },
   apparelSize: '',
+  hasCompanion: false, companion: '', companionPhone: '', notes: '', payerDiffers: false, payerName: '', routes: [],
+  confirmChecked: false, privacyConsent: false, marketingOptIn: false,
 }
 
 const won = (n: number) => n.toLocaleString('ko-KR') + '원'
@@ -70,6 +103,9 @@ const won = (n: number) => n.toLocaleString('ko-KR') + '원'
 // ⚠ 입력 컨트롤은 16px 고정(cqi 제외) — iOS Safari가 <16px 입력 포커스 시 자동 확대(zoom)하는 것 방지. [[type-scale-cqi-system]]
 const inputCls =
   'w-full rounded-[10px] border border-[#e5eaef] bg-white px-3.5 py-2.5 font-score text-[16px] text-[#1f2937] placeholder:text-[#b6bcc4] transition-colors focus:border-[#1e3a5f] focus:outline-none'
+// 드롭다운 — 선택 시 테두리(포커스 잔상) 대신 배경 틴트로 상태 표시(OptionRow와 통일, 하드 테두리 안 생김). 배경은 값 유무로 style 지정.
+const selectCls =
+  'w-full appearance-none rounded-[10px] border border-[#e5eaef] px-3.5 py-2.5 font-score text-[16px] text-[#1f2937] transition-colors focus:outline-none'
 
 function Field({
   label, required, hint, children,
@@ -89,14 +125,16 @@ function Field({
 // 선택 표시 = 라디오 체크 + 배경 틴트. 테두리는 고정(#e5eaef) — 카드와 동일하게 선택 시 테두리 안 생김.
 // compact = 모바일 축약(패딩·텍스트 축소, nowrap) → 4열 등 좁은 그리드에서 체크 유지한 채 1행. 데스크탑(md)은 정상 크기.
 function OptionRow({
-  selected, onClick, compact, children,
-}: { selected: boolean; onClick: () => void; compact?: boolean; children: React.ReactNode }) {
+  selected, onClick, compact, top, children,
+}: { selected: boolean; onClick: () => void; compact?: boolean; top?: boolean; children: React.ReactNode }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={`flex w-full items-center rounded-[10px] border border-[#e5eaef] text-left font-score text-[clamp(0.8125rem,3.4cqi,0.875rem)] transition-colors ${
+      className={`flex w-full rounded-[10px] border border-[#e5eaef] text-left font-score text-[clamp(0.8125rem,3.4cqi,0.875rem)] transition-colors ${
+        top ? 'items-start' : 'items-center'
+      } ${
         compact
           ? 'gap-1.5 whitespace-nowrap px-2 py-2.5 md:gap-2.5 md:px-3.5'
           : 'gap-2.5 px-3.5 py-2.5'
@@ -107,7 +145,7 @@ function OptionRow({
       }}
     >
       <span
-        className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border"
+        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${top ? 'mt-0.5' : ''}`}
         style={{ borderColor: selected ? NAVY : '#cbd2da' }}
       >
         {selected && <span className="h-2 w-2 rounded-full" style={{ background: NAVY }} />}
@@ -147,6 +185,43 @@ function ToggleRow({
         +{won(amount)}
       </span>
     </button>
+  )
+}
+
+// 다중선택(경로 등) — 사각 체크 + 라벨. ToggleRow에서 금액만 뺀 형태.
+function CheckRow({ selected, onClick, label }: { selected: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className="flex w-full items-center gap-2.5 rounded-[10px] border border-[#e5eaef] px-3.5 py-2.5 text-left font-score text-[clamp(0.8125rem,3.4cqi,0.875rem)] transition-colors"
+      style={{ background: selected ? NAVY + '12' : '#ffffff', color: selected ? NAVY : '#4b5563' }}
+    >
+      <span
+        className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border"
+        style={{ borderColor: selected ? NAVY : '#cbd2da', background: selected ? NAVY : '#ffffff' }}
+      >
+        {selected && (
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+            <path d="M2.5 6.2l2.2 2.3L9.5 3.5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </span>
+      <span className="min-w-0 flex-1">{label}</span>
+    </button>
+  )
+}
+
+// 동의·확인 체크(계획안 15~17) — 네이티브 체크박스 + 설명. required면 라벨 옆 *.
+function ConsentRow({
+  checked, onChange, children,
+}: { checked: boolean; onChange: (v: boolean) => void; children: React.ReactNode }) {
+  return (
+    <label className="flex cursor-pointer items-start gap-2.5">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[#1e3a5f]" />
+      <Text variant="sub" className="text-[#4b5563]">{children}</Text>
+    </label>
   )
 }
 
@@ -208,8 +283,27 @@ export default function JikmuApplyForm() {
     setForm((f) => ({ ...f, [k]: v }))
     setSaved(false)
   }
+  // 종목 변경 시 선택 반 초기화(반은 종목에 종속).
+  const setSport = (v: LessonSport) => {
+    setForm((f) => (f.lessonSport === v ? f : { ...f, lessonSport: v, lessonClass: '' }))
+    setSaved(false)
+  }
   const toggleRental = (field: keyof RentalSel) => {
     setForm((f) => ({ ...f, rentals: { ...f.rentals, [field]: !f.rentals[field] } }))
+    setSaved(false)
+  }
+  const toggleRoute = (r: string) => {
+    setForm((f) => ({ ...f, routes: f.routes.includes(r) ? f.routes.filter((x) => x !== r) : [...f.routes, r] }))
+    setSaved(false)
+  }
+  // 동반인 유무 토글 — 해제 시 성함·연락처 초기화.
+  const toggleCompanion = (v: boolean) => {
+    setForm((f) => ({ ...f, hasCompanion: v, companion: v ? f.companion : '', companionPhone: v ? f.companionPhone : '' }))
+    setSaved(false)
+  }
+  // 입금자≠참가자 토글 — 해제 시 입금자명 초기화.
+  const togglePayerDiffers = (v: boolean) => {
+    setForm((f) => ({ ...f, payerDiffers: v, payerName: v ? f.payerName : '' }))
     setSaved(false)
   }
 
@@ -265,8 +359,8 @@ export default function JikmuApplyForm() {
         <input
           className={inputCls}
           value={form.phone}
-          onChange={(e) => set('phone', e.target.value.replace(/[^\d-]/g, ''))}
-          placeholder="010-0000-0000"
+          onChange={(e) => set('phone', e.target.value.replace(/\D/g, '').slice(0, 11))}
+          placeholder="01000000000 (- 없이 숫자만)"
           inputMode="numeric"
         />
       </Field>
@@ -302,7 +396,7 @@ export default function JikmuApplyForm() {
       <Field label="소속" required>
         <div className="grid grid-cols-2 gap-2">
           <input className={inputCls} value={form.schoolName} onChange={(e) => set('schoolName', e.target.value)} placeholder="소속교 기입" />
-          <select className={`${inputCls} appearance-none`} value={form.region} onChange={(e) => set('region', e.target.value)}>
+          <select className={selectCls} value={form.region} onChange={(e) => set('region', e.target.value)} style={{ background: form.region ? NAVY + '12' : '#ffffff' }}>
             <option value="">지역 선택</option>
             {REGIONS.map((r) => (
               <option key={r} value={r}>{r}</option>
@@ -313,17 +407,53 @@ export default function JikmuApplyForm() {
 
       <div className="mt-10">
         <FormSectionTitle title="강습 수준" />
-        <Field label="희망 강습 수준" required hint="조 편성 참고용입니다. 비용에는 영향이 없습니다.">
-          <div className="grid grid-cols-4 gap-2">
-            {LESSON_LEVELS.map((lv) => (
-              <OptionRow key={lv} compact selected={form.lessonLevel === lv} onClick={() => set('lessonLevel', lv)}>{lv}</OptionRow>
+
+        <Field label="종목" required>
+          <div className="grid grid-cols-2 gap-2">
+            {LESSON_SPORTS.map((sp) => (
+              <OptionRow key={sp.key} selected={form.lessonSport === sp.key} onClick={() => setSport(sp.key)}>{sp.label}</OptionRow>
             ))}
           </div>
         </Field>
+
+        {form.lessonSport && (
+          <Field label="희망 강습 수준" required hint="조 편성 참고용입니다. 비용에는 영향이 없습니다.">
+            <div className="space-y-2">
+              {LESSON_CLASSES[form.lessonSport].map((c) => (
+                <OptionRow key={c.key} top selected={form.lessonClass === c.key} onClick={() => set('lessonClass', c.key)}>
+                  <span className="block font-[500]">
+                    {c.label}
+                    <span className="ml-1 text-[0.9em] font-[400] text-[#8a94a0]">({c.cond})</span>
+                  </span>
+                  <span className="mt-0.5 block text-[clamp(0.71875rem,3.08cqi,0.75rem)] font-[400] text-[#8a94a0]">{c.goal}</span>
+                </OptionRow>
+              ))}
+            </div>
+          </Field>
+        )}
       </div>
 
       <div className="mt-10">
         <FormSectionTitle title="옵션 · 비용" />
+
+        <Field label="동반인" hint="같은 방·같은 강습조로 배정받고 싶은 동반 참가자가 있으면 체크해 주세요. 동반인도 별도로 신청해야 하며, 동명이인 구분·매칭을 위해 성함과 연락처가 필요합니다.">
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={form.hasCompanion} onChange={(e) => toggleCompanion(e.target.checked)} className="h-4 w-4 accent-[#1e3a5f]" />
+            <Text variant="sub" className="text-[#4b5563]">동반인이 있습니다</Text>
+          </label>
+          {form.hasCompanion && (
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <input className={inputCls} value={form.companion} onChange={(e) => set('companion', e.target.value)} placeholder="동반인 성함" />
+              <input
+                className={inputCls}
+                value={form.companionPhone}
+                onChange={(e) => set('companionPhone', e.target.value.replace(/\D/g, '').slice(0, 11))}
+                placeholder="동반인 연락처 (- 없이)"
+                inputMode="numeric"
+              />
+            </div>
+          )}
+        </Field>
 
         <Field
           label="객실"
@@ -336,9 +466,10 @@ export default function JikmuApplyForm() {
           </div>
           {form.roomType === 'private' && (
             <select
-              className={`${inputCls} mt-2 appearance-none`}
+              className={`${selectCls} mt-2`}
               value={form.roomSpec}
               onChange={(e) => set('roomSpec', e.target.value)}
+              style={{ background: form.roomSpec ? NAVY + '12' : '#ffffff' }}
             >
               <option value="">평형 · 인실 선택</option>
               {roomOptions.map((r) => (
@@ -358,9 +489,10 @@ export default function JikmuApplyForm() {
                   <ToggleRow selected={form.rentals[field]} onClick={() => toggleRental(field)} label={item.label} amount={item.amount} />
                   {field === 'apparel' && form.rentals.apparel && (
                     <select
-                      className={`${inputCls} mt-2 appearance-none`}
+                      className={`${selectCls} mt-2`}
                       value={form.apparelSize}
                       onChange={(e) => set('apparelSize', e.target.value)}
+                      style={{ background: form.apparelSize ? NAVY + '12' : '#ffffff' }}
                     >
                       <option value="">스키복 사이즈 선택</option>
                       {APPAREL_SIZES.map((sz) => (
@@ -375,7 +507,72 @@ export default function JikmuApplyForm() {
         </Field>
       </div>
 
-      {/* 다음 단계: 마무리(동반인 납부계획 · 특이사항 · 알게된 경로 · 개인정보 동의 · 마케팅) + 제출 파이프라인. */}
+      <div className="mt-10">
+        <FormSectionTitle title="추가 정보" />
+
+        <Field label="특이사항" hint="운영진이 참고할 사항이 있으면 기재 (선택)">
+          <textarea
+            className={`${inputCls} min-h-[80px] resize-y`}
+            value={form.notes}
+            onChange={(e) => set('notes', e.target.value)}
+            placeholder="예) 알레르기, 지병, 요청사항 등"
+          />
+        </Field>
+
+        <Field label="알게 된 경로" hint="중복 선택 가능 (선택)">
+          <div className="grid grid-cols-2 gap-2">
+            {ROUTE_OPTIONS.map((r) => (
+              <CheckRow key={r} selected={form.routes.includes(r)} onClick={() => toggleRoute(r)} label={r} />
+            ))}
+          </div>
+        </Field>
+      </div>
+
+      <div className="mt-10">
+        <FormSectionTitle title="확인 · 동의" />
+
+        <Field label="입금자" hint="입금자가 참가자와 다르면 체크해 주세요. 신청 성함과 입금자명이 다르면 접수 확정이 지연될 수 있습니다.">
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={form.payerDiffers} onChange={(e) => togglePayerDiffers(e.target.checked)} className="h-4 w-4 accent-[#1e3a5f]" />
+            <Text variant="sub" className="text-[#4b5563]">입금자가 참가자와 다릅니다</Text>
+          </label>
+          {form.payerDiffers && (
+            <input className={`${inputCls} mt-2`} value={form.payerName} onChange={(e) => set('payerName', e.target.value)} placeholder="입금자 성함" />
+          )}
+        </Field>
+
+        {/* 17 개인정보 수집·이용/촬영 활용 고지문 — 스크롤 박스 + 필수 동의 체크. */}
+        <div className="mb-4 max-h-[220px] overflow-y-auto rounded-[10px] border border-[#e5eaef] bg-[#f7f9fb] p-4 [container-type:inline-size]">
+          <Text variant="sub" className="text-[#4b5563]">
+            체육교육회는 연수 신청·운영을 위하여 아래와 같이 개인정보를 수집·이용하며, 연수 과정에서 촬영된 사진·영상물을 교육 및 홍보 목적으로 활용하고자 합니다. 내용을 충분히 확인하신 후 동의 여부를 선택해 주세요.
+          </Text>
+          <div className="mt-3 space-y-3">
+            {[
+              { h: '1. 수집·이용 목적', body: '연수 참가 신청·접수 관리 / 연수 운영·참가자 확인 / 보험 가입·안전관리 / 연수 안내사항 전달 / 이수·결과 관리 / 홈페이지·SNS·홍보물·보도자료 등 교육활동 홍보' },
+              { h: '2. 수집 항목', body: '[필수] 성명 · 소속기관(학교) · 휴대전화번호 · 생년월일\n[보험 가입 시 추가] 주민등록번호 뒷자리 ※ 보험 가입 등 법령상 허용된 목적에 한하여 수집·이용' },
+              { h: '3. 보유·이용기간', body: '연수 종료 후 2년간 보관 후 지체 없이 파기. 단, 홍보·기록 보존 목적으로 활용된 촬영물은 관련 사업 종료 후 보관될 수 있음' },
+              { h: '4. 동의 거부 권리', body: '동의를 거부할 권리가 있으며, 필수정보 수집에 동의하지 않을 경우 연수 신청·보험 가입·연수 참여가 제한될 수 있습니다.' },
+            ].map((s) => (
+              <div key={s.h}>
+                <Text variant="label" className="text-[#374151]">{s.h}</Text>
+                <Text variant="caption" className="mt-0.5 block whitespace-pre-line text-[#6b7280]">{s.body}</Text>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-3 rounded-[10px] border border-[#e5eaef] bg-white p-4">
+          <ConsentRow checked={form.privacyConsent} onChange={(v) => set('privacyConsent', v)}>
+            <span className="text-[#c0685a]">[필수] </span>위 개인정보 수집·이용 및 촬영물 활용에 동의합니다.
+          </ConsentRow>
+          <ConsentRow checked={form.confirmChecked} onChange={(v) => set('confirmChecked', v)}>
+            <span className="text-[#c0685a]">[필수] </span>신청 내용을 다시 확인했으며, 신청 성함과 입금자명이 일치하지 않으면 접수 확정이 늦어질 수 있음을 확인했습니다.
+          </ConsentRow>
+          <ConsentRow checked={form.marketingOptIn} onChange={(v) => set('marketingOptIn', v)}>
+            [선택] 추후 체육교육회의 프로그램 안내 연락을 받겠습니다.
+          </ConsentRow>
+        </div>
+      </div>
 
       {/* 합계·액션 */}
       <div className="mt-8 rounded-[12px] border border-[#e5eaef] bg-[#f7f9fb] p-4">
@@ -406,7 +603,8 @@ export default function JikmuApplyForm() {
           <button
             type="button"
             onClick={submit}
-            className={`rounded-[10px] bg-[#1e3a5f] py-3 ${BTN} text-white transition-colors hover:bg-[#16304f]`}
+            disabled={!form.confirmChecked || !form.privacyConsent}
+            className={`rounded-[10px] bg-[#1e3a5f] py-3 ${BTN} text-white transition-colors hover:bg-[#16304f] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#1e3a5f]`}
           >
             신청하기
           </button>

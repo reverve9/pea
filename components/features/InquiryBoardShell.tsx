@@ -157,7 +157,7 @@ export default function InquiryBoardShell({ openPulse, hideHeader }: { openPulse
           <div className="space-y-2.5">
             <div className="grid grid-cols-2 gap-2.5">
               <Field label="이름" placeholder="이름" value={form.name} onChange={set('name')} />
-              <Field label="연락처" placeholder="010-0000-0000" value={form.phone} onChange={set('phone')} />
+              <Field label="연락처" placeholder="01000000000 (- 없이 숫자만)" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, '').slice(0, 11) }))} />
             </div>
             <Field label="제목" placeholder="제목" value={form.title} onChange={set('title')} />
             <TextareaField
