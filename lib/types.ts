@@ -91,6 +91,108 @@ export interface InquiryAdmin {
   updated_at: string
 }
 
+// ── 신청 관리(어드민) ──
+// service_role 조회. 뒷자리(birth_back_enc)는 목록에 실어보내지 않는다 — has_insurance 플래그만.
+// 실제 복호는 상세에서 revealInsuranceRoster 서버 액션이 온디맨드로 처리.
+export type ApplicationStatus = 'pending' | 'paid' | 'completed' | 'cancelled' | 'refunded'
+
+export interface ParticipantAdmin {
+  id: string
+  name: string
+  gender: 'male' | 'female' | null
+  phone: string | null
+  lesson_level: string | null
+  rentals: Record<string, unknown>
+  birth_front: string | null
+  has_insurance: boolean // birth_back_enc != null (직무=뒷자리 보유 / 자율=insurance_wanted 플래그)
+  is_leader: boolean
+  line_amount: number
+}
+
+export interface ApplicationAdmin {
+  id: string
+  application_no: string
+  applicant_name: string
+  phone: string
+  payer_name: string | null
+  kind: 'jikmu' | 'jayul'
+  program_sport: string | null // 프로그램(종목) 필터용 — course.sport
+  track_label: string
+  period: string
+  room_type: 'group' | 'private' | null
+  room_spec: string | null
+  pkg_size: number | null
+  total_amount: number
+  status: ApplicationStatus
+  payment_claimed_at: string | null
+  payment_claim_name: string | null
+  companion_memo: string | null
+  special_notes: string | null
+  referral_source: string[]
+  marketing_opt_in: boolean
+  admin_memo: string | null
+  created_at: string
+  participants: ParticipantAdmin[]
+  headcount: number
+  // pending 이면서 입금완료 신고가 들어온 건 = 관리자 통장대조 대기(우선정렬 대상)
+  needs_review: boolean
+  // 신고 입금자명이 신청자명과 다르면 대조 하이라이트
+  payer_mismatch: boolean
+}
+
+// 뒷자리 복호 결과(온디맨드 reveal) — 보험명단용
+export interface InsuranceRosterEntry {
+  id: string
+  name: string
+  birth_front: string | null
+  birth_back: string // 복호된 7자리
+}
+
+// ── 요청 관리(어드민) — 환불/수정 게시판형 ──
+export type RefundStatus = 'requested' | 'confirmed' | 'completed'
+export interface RefundRequestAdmin {
+  id: string
+  application_no: string | null // 연결된 신청(삭제 시 SET NULL)
+  applicant_name: string | null
+  phone: string
+  reason: string | null
+  refund_account: string | null
+  status: RefundStatus
+  admin_memo: string | null
+  created_at: string
+}
+
+export type ModificationStatus = 'pending' | 'confirmed' | 'done' | 'rejected'
+export interface ModificationRequestAdmin {
+  id: string
+  application_no: string | null
+  applicant_name: string | null
+  phone: string
+  content: string | null
+  is_secret: boolean
+  status: ModificationStatus
+  admin_reply: string | null
+  created_at: string
+}
+
+// ── 증명서 발급(어드민) — v1: 수료증(completion)만. 발급현황 = 연수완료 신청의 참가자 × 발급 원장 ──
+export type CertType = 'participation' | 'payment' | 'completion'
+export interface CertificateRosterRow {
+  participant_id: string
+  application_id: string
+  application_no: string
+  applicant_name: string // 신청 대표(참고용)
+  phone: string
+  participant_name: string
+  is_leader: boolean
+  session_label: string // 차수 그룹/필터
+  track_label: string
+  period: string
+  issued: boolean // 수료증 발급 완료 여부
+  certificate_id: string | null // 발급 원장 row id(취소용)
+  issued_at: string | null
+}
+
 export interface SiteContent {
   id: string
   key: string

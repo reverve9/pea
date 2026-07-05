@@ -11,6 +11,7 @@ import {
   Megaphone,
   HelpCircle,
   CalendarDays,
+  Award,
   LogOut,
 } from 'lucide-react'
 import { ADMIN_NAV, type AdminIconKey } from '@/lib/adminNav'
@@ -23,6 +24,7 @@ const ICONS: Record<AdminIconKey, React.ComponentType<{ size?: number; className
   Megaphone,
   HelpCircle,
   CalendarDays,
+  Award,
 }
 
 // /admin(대시보드)는 정확히 일치할 때만, 나머지는 하위 경로 포함.

@@ -12,6 +12,7 @@ import Modal from '@/components/common/Modal'
 import ExtendedHeader from '@/components/layout/ExtendedHeader'
 import JikmuApplyForm from '@/components/features/JikmuApplyForm'
 import JayulApplyForm from '@/components/features/JayulApplyForm'
+import { PROGRAMS, type Program } from '@/lib/programs'
 
 // §3-5 연수신청 — 좌우 동일 층위(프로그램 → 유형). 좌(main)=마스터 인덱스, 우(extended)=상세.
 // 층1 = 프로그램(종목) : 스키·스노보드 + 준비중 3종. 우 페인에서 탭으로 전환.
@@ -19,15 +20,6 @@ import JayulApplyForm from '@/components/features/JayulApplyForm'
 // 모바일 = 확장 페인 숨김 → 좌 카드 탭 시 중앙 모달(커뮤니티 ModalShell 스타일)로 폼/준비중.
 const NAVY = '#1e3a5f'
 const GREEN = '#2f803a'
-
-type Program = { key: string; title: string; en: string; ready: boolean }
-
-const PROGRAMS: Program[] = [
-  { key: 'ski', title: '스키·스노보드', en: 'Ski & Snowboard', ready: true },
-  { key: 'tennis', title: '테니스', en: 'Tennis', ready: false },
-  { key: 'windsurf', title: '윈드서핑', en: 'Windsurfing', ready: false },
-  { key: 'rehab', title: '운동처방', en: 'Exercise Rx', ready: false },
-]
 
 type Track = {
   key: string

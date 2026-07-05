@@ -2,7 +2,7 @@
 // 순수 함수만. 스타일 없음.
 
 import type { BadgeColor } from '@/components/common/Badge'
-import type { CourseStatus, ScheduleType, NoticeCategory } from './types'
+import type { CourseStatus, ScheduleType, NoticeCategory, RefundStatus, ModificationStatus } from './types'
 
 // 과정 상태 → 라벨 + 배지색 (Phase 2.5 딥네이비 톤 키)
 export const COURSE_STATUS: Record<CourseStatus, { label: string; color: BadgeColor }> = {
@@ -34,6 +34,21 @@ export const NOTICE_CATEGORY: Record<NoticeCategory, { label: string; color: Bad
   general: { label: '일반', color: 'slate' },
   program: { label: '프로그램', color: 'navy' },
   result: { label: '결과발표', color: 'emerald' },
+}
+
+// 환불 요청 status → 라벨 + 배지색 (계획안 ②: 신청대기/신청확인/환불완료). 스키마엔 '반려' 없음.
+export const REFUND_STATUS: Record<RefundStatus, { label: string; color: BadgeColor }> = {
+  requested: { label: '신청대기', color: 'amber' },
+  confirmed: { label: '신청확인', color: 'navy' },
+  completed: { label: '환불완료', color: 'emerald' },
+}
+
+// 수정 요청 status → 라벨 + 배지색 (계획안 ⑤: 신청대기/수정확인/수정완료/수정반려).
+export const MODIFICATION_STATUS: Record<ModificationStatus, { label: string; color: BadgeColor }> = {
+  pending: { label: '신청대기', color: 'amber' },
+  confirmed: { label: '수정확인', color: 'navy' },
+  done: { label: '수정완료', color: 'emerald' },
+  rejected: { label: '수정반려', color: 'slate' },
 }
 
 // 원화 포맷: 303000 → "303,000원"

@@ -10,6 +10,7 @@ import { getSessions, getPriceItems } from '@/lib/queries'
 import { formatPeriod } from '@/lib/display'
 import { submitApplication } from '@/lib/applyClient'
 import ApplyComplete from '@/components/features/ApplyComplete'
+import { JAYUL_LESSONS, EQUIPMENT_TYPES } from '@/lib/lessonOptions'
 import type { SessionWithCourse, PriceItem, ScheduleType } from '@/lib/types'
 import type { JayulPayload } from '@/lib/applicationTypes'
 
@@ -49,14 +50,7 @@ type RentalKey = (typeof RENTAL_KEYS)[number]
 // 알게 된 경로(계획안 14번) — 필수X·중복선택. 직무폼과 동일(내일 컴포넌트화 시 공용화).
 const ROUTE_OPTIONS = ['체육교육회 홈페이지', '교육청 연수원 게시글', '학교 내 공문', '지인 소개', '과거 참가자']
 const APPAREL_SIZES = ['S', 'M', 'L', 'XL', '2XL'] // 스키복 대여 사이즈
-
-// 동반 참가자 1명 — 성함·연락처·보험희망(대표 외 명단). 연락처는 동명이인 구분·배정용.
-interface Companion {
-  name: string
-  phone: string
-  insurance: boolean
-}
-const emptyCompanion = (): Companion => ({ name: '', phone: '', insurance: false })
+// 동반 참가자 상세는 신청폼에서 받지 않는다 — 신청 후 마이페이지/셀프필로 입력. [[companion-detail-post-signup-fill]]
 
 interface JayulForm {
   variant: '' | JayulVariant // 패키지 유형(선행 선택) → 차수·가격 결정
@@ -69,10 +63,11 @@ interface JayulForm {
   birthFront: string
   schoolName: string
   region: string
+  lessonClass: string // 대표 기초강습(jayul_ski/jayul_board/jayul_freeride)
+  equipment: '' | 'ski' | 'board' // 대표 대여 장비 세트
   rentals: Record<RentalKey, number> // 항목별 수량
   apparelSizes: string[] // 스키복 대여 수량만큼 사이즈(길이 = rentals.apparel)
   repInsurance: boolean // 대표 본인 보험 희망
-  companions: Companion[] // 동반 참가자(길이 = headcount - 1)
   note: string // 기타 요청사항(자유기술)
   // 추가 정보·확인·동의(직무폼과 공통 — 내일 컴포넌트화)
   payerDiffers: boolean // 입금자≠대표
@@ -85,9 +80,9 @@ interface JayulForm {
 
 const EMPTY: JayulForm = {
   variant: '', sessionId: '', headcount: 1, name: '', gender: '', phone: '', birthFront: '',
-  schoolName: '', region: '',
+  schoolName: '', region: '', lessonClass: '', equipment: '',
   rentals: { apparel: 0, goggle: 0, protector: 0, glove: 0 },
-  apparelSizes: [], repInsurance: false, companions: [],
+  apparelSizes: [], repInsurance: false,
   note: '',
   payerDiffers: false, payerName: '', routes: [],
   confirmChecked: false, privacyConsent: false, marketingOptIn: false,
@@ -282,7 +277,7 @@ export default function JayulApplyForm() {
     while (out.length < len) out.push(factory())
     return out
   }
-  // 인원 변경 → 렌탈 수량 클램프 + 사이즈/동반 명단 리사이즈.
+  // 인원 변경 → 렌탈 수량 클램프 + 스키복 사이즈 리사이즈. 동반 명단은 신청폼에서 안 받음.
   const setHeadcount = (n: number) => {
     setForm((f) => {
       const rentals = { ...f.rentals }
@@ -292,7 +287,6 @@ export default function JayulApplyForm() {
         headcount: n,
         rentals,
         apparelSizes: resize(f.apparelSizes, rentals.apparel, () => ''),
-        companions: resize(f.companions, Math.max(0, n - 1), emptyCompanion),
       }
     })
     setSaved(false)
@@ -307,10 +301,6 @@ export default function JayulApplyForm() {
   }
   const setApparelSize = (i: number, v: string) => {
     setForm((f) => ({ ...f, apparelSizes: f.apparelSizes.map((s, idx) => (idx === i ? v : s)) }))
-    setSaved(false)
-  }
-  const setCompanion = (i: number, patch: Partial<Companion>) => {
-    setForm((f) => ({ ...f, companions: f.companions.map((c, idx) => (idx === i ? { ...c, ...patch } : c)) }))
     setSaved(false)
   }
   const togglePayerDiffers = (v: boolean) => {
@@ -339,6 +329,8 @@ export default function JayulApplyForm() {
       : a.birthFront.length !== 6 ? '생년월일 6자리를 입력해 주세요.'
       : !a.schoolName.trim() ? '소속을 입력해 주세요.'
       : !a.region ? '지역을 선택해 주세요.'
+      : !a.lessonClass ? '기초 단체 강습을 선택해 주세요.'
+      : !a.equipment ? '대여 장비를 선택해 주세요.'
       : !a.privacyConsent || !a.confirmChecked ? '필수 동의 항목을 확인해 주세요.'
       : null
     if (err) {
@@ -352,10 +344,11 @@ export default function JayulApplyForm() {
       variant: a.variant,
       headcount: a.headcount,
       applicant: { name: a.name.trim(), gender: a.gender, phone: a.phone, birthFront: a.birthFront, schoolName: a.schoolName.trim(), region: a.region },
+      lessonClass: a.lessonClass,
+      equipment: a.equipment,
       rentals: a.rentals,
       apparelSizes: a.apparelSizes,
       repInsurance: a.repInsurance,
-      companions: a.companions,
       note: a.note,
       payerDiffers: a.payerDiffers,
       payerName: a.payerName,
@@ -480,6 +473,30 @@ export default function JayulApplyForm() {
       </div>
 
       <div className="mt-10">
+        <FormSectionTitle title="기초강습 · 대여 장비" />
+        <Field label="기초 단체 강습" required hint="대표 신청자 기준입니다. 동반 참가자는 신청 후 개별 입력합니다.">
+          <div className="space-y-2">
+            {JAYUL_LESSONS.map((l) => (
+              <OptionRow key={l.key} selected={form.lessonClass === l.key} onClick={() => set('lessonClass', l.key)}>
+                <span className="block">{l.label}</span>
+                <span className="mt-0.5 block text-[12px] font-[300] text-[#8a94a0]">{l.goal}</span>
+              </OptionRow>
+            ))}
+          </div>
+        </Field>
+        <Field label="대여 장비" required hint="사용할 장비 세트를 선택하세요.">
+          <div className="grid grid-cols-2 gap-2">
+            {EQUIPMENT_TYPES.map((eq) => (
+              <OptionRow key={eq.key} selected={form.equipment === eq.key} onClick={() => set('equipment', eq.key as 'ski' | 'board')}>
+                <span className="block">{eq.label}</span>
+                <span className="mt-0.5 block text-[11.5px] font-[300] text-[#8a94a0]">{eq.detail}</span>
+              </OptionRow>
+            ))}
+          </div>
+        </Field>
+      </div>
+
+      <div className="mt-10">
         <FormSectionTitle title="렌탈 (선택)" />
         <Field label="렌탈 장비" hint="필요한 수량을 선택하세요.">
           <div className="space-y-2">
@@ -525,44 +542,28 @@ export default function JayulApplyForm() {
       </div>
 
       <div className="mt-10">
-        <FormSectionTitle title="참가자 명단" />
+        <FormSectionTitle title="참가자" />
         <Field
           label={`참가자 ${form.headcount}명`}
-          hint="대표 외 참가자의 성함·연락처를 입력해 주세요. 연락처는 동명이인 구분·배정에 사용됩니다. 보험 가입 희망자는 체크해 주세요."
+          hint="신청 단계에서는 대표 본인만 등록됩니다. 동반 참가자 정보(성함·생년월일·보험 등)는 신청 완료 후 마이페이지에서 입력하거나 공유 링크로 각자 입력할 수 있습니다."
         >
-          <div className="space-y-2">
-            {/* 1번 = 대표(위 입력값 표시, 보험 희망만 선택) */}
-            <div className="rounded-[10px] border border-[#e5eaef] bg-[#f7f9fb] px-3.5 py-2.5">
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <span className="rounded-[6px] px-1.5 py-0.5 font-score text-[11px] font-[500]" style={{ background: GREEN + '1f', color: GREEN }}>대표</span>
-                <Text variant="sub" className="text-[#374151]">{form.name || '대표 신청자'}</Text>
-                {form.phone && <Text variant="caption" className="text-[#8a94a0]">{form.phone}</Text>}
-                <label className="ml-auto flex cursor-pointer items-center gap-1.5">
-                  <input type="checkbox" checked={form.repInsurance} onChange={(e) => set('repInsurance', e.target.checked)} className="h-4 w-4 accent-[#2f803a]" />
-                  <Text variant="caption" className="text-[#4b5563]">보험 희망</Text>
-                </label>
-              </div>
+          {/* 대표(위 입력값 표시, 보험 희망만 선택). 동반은 신청 후 입력 */}
+          <div className="rounded-[10px] border border-[#e5eaef] bg-[#f7f9fb] px-3.5 py-2.5">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="rounded-[6px] px-1.5 py-0.5 font-score text-[11px] font-[500]" style={{ background: GREEN + '1f', color: GREEN }}>대표</span>
+              <Text variant="sub" className="text-[#374151]">{form.name || '대표 신청자'}</Text>
+              {form.phone && <Text variant="caption" className="text-[#8a94a0]">{form.phone}</Text>}
+              <label className="ml-auto flex cursor-pointer items-center gap-1.5">
+                <input type="checkbox" checked={form.repInsurance} onChange={(e) => set('repInsurance', e.target.checked)} className="h-4 w-4 accent-[#2f803a]" />
+                <Text variant="caption" className="text-[#4b5563]">보험 희망</Text>
+              </label>
             </div>
-            {/* 2~N번 = 동반 참가자 */}
-            {form.companions.map((c, i) => (
-              <div key={i} className="rounded-[10px] border border-[#e5eaef] bg-white p-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <input className={inputCls} value={c.name} onChange={(e) => setCompanion(i, { name: e.target.value })} placeholder={`참가자 ${i + 2} 성함`} />
-                  <input
-                    className={inputCls}
-                    value={c.phone}
-                    onChange={(e) => setCompanion(i, { phone: e.target.value.replace(/\D/g, '').slice(0, 11) })}
-                    placeholder="연락처 (- 없이)"
-                    inputMode="numeric"
-                  />
-                </div>
-                <label className="mt-2 flex cursor-pointer items-center gap-1.5">
-                  <input type="checkbox" checked={c.insurance} onChange={(e) => setCompanion(i, { insurance: e.target.checked })} className="h-4 w-4 accent-[#2f803a]" />
-                  <Text variant="caption" className="text-[#4b5563]">보험 가입 희망</Text>
-                </label>
-              </div>
-            ))}
           </div>
+          {form.headcount > 1 && (
+            <Text variant="caption" as="p" className="mt-2 text-[#8a94a0]">
+              동반 참가자 {form.headcount - 1}명 정보는 신청 완료 후 입력합니다.
+            </Text>
+          )}
         </Field>
       </div>
 

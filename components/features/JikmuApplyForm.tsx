@@ -11,6 +11,7 @@ import { submitApplication } from '@/lib/applyClient'
 import ApplyComplete from '@/components/features/ApplyComplete'
 import type { SessionWithCourse, PriceItem } from '@/lib/types'
 import type { JikmuPayload } from '@/lib/applicationTypes'
+import { LESSON_SPORTS, LESSON_CLASSES, type LessonSport } from '@/lib/lessonOptions'
 
 // 직무연수 신청 폼(상세) — /application 마스터-디테일의 우측 페인(데스크탑) / 모달(모바일)에서 렌더. [[application-form-spec]]
 // 이번 슬라이스: 기본정보 + 강습수준 + 옵션·비용(객실·렌탈) 실시간 합계 + 임시저장(localStorage).
@@ -26,24 +27,7 @@ const REGIONS = [
   '경상북도', '경상남도', '제주특별자치도',
 ]
 
-// 강습 수준 — 종목(스키/스노보드) 선택 → 반(입문/초급/중상급) + 교육목표. 조편성용(가격 무관). 계획안 5번.
-const LESSON_SPORTS = [
-  { key: 'ski', label: '스키' },
-  { key: 'board', label: '스노보드' },
-] as const
-type LessonSport = (typeof LESSON_SPORTS)[number]['key']
-const LESSON_CLASSES: Record<LessonSport, { key: string; label: string; cond: string; goal: string }[]> = {
-  ski: [
-    { key: 'ski_beginner', label: '입문반', cond: '첫 입문자', goal: '스키 착용법, 지상 강습, 스노우플라우턴' },
-    { key: 'ski_basic', label: '초급반', cond: '1~3회 경험자', goal: '스노우플라우턴, 슈템턴' },
-    { key: 'ski_adv', label: '중상급반', cond: '중급 이상 슬로프에서 자유로운 턴 가능', goal: '베이직롱턴(패러렐), 숏턴' },
-  ],
-  board: [
-    { key: 'board_beginner', label: '입문반', cond: '첫 입문자', goal: '스노보드 착용법, 지상 강습, 사이드슬리핑, 펜쥴럼' },
-    { key: 'board_basic', label: '초급반', cond: '1~3회 경험자', goal: '펜쥴럼(낙엽), 비기너턴' },
-    { key: 'board_adv', label: '중상급반', cond: '중급 이상 슬로프에서 자유로운 턴 가능', goal: '너비스턴, 보드 컨트롤' },
-  ],
-}
+// 강습 수준(종목·반) 정의는 lib/lessonOptions 로 이관 — 신청폼·어드민 공용 진실원천. [[jikmu-form-is-componentization-source]]
 const APPAREL_SIZES = ['S', 'M', 'L', 'XL', '2XL']
 // 알게 된 경로(계획안 14번) — 필수X·중복선택.
 const ROUTE_OPTIONS = ['체육교육회 홈페이지', '교육청 연수원 게시글', '학교 내 공문', '지인 소개', '과거 참가자']

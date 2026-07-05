@@ -11,6 +11,7 @@ export type AdminIconKey =
   | 'Megaphone'
   | 'HelpCircle'
   | 'CalendarDays'
+  | 'Award'
 
 export const ADMIN_NAV: AdminNavGroup[] = [
   {
@@ -19,6 +20,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { href: '/admin', label: '대시보드', icon: 'LayoutDashboard' },
       { href: '/admin/applications', label: '신청 관리', icon: 'ClipboardList' },
       { href: '/admin/requests', label: '요청 관리', icon: 'Inbox' },
+      { href: '/admin/certificates', label: '증명서 발급', icon: 'Award' },
       { href: '/admin/inquiries', label: '문의 관리', icon: 'MessageSquare' },
     ],
   },

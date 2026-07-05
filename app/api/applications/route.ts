@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { encryptSecret } from '@/lib/serverCrypto'
 import { computeJikmu, computeJayul } from '@/lib/pricing'
+import { applicationPrefix } from '@/lib/programs'
 import type { PriceItem } from '@/lib/types'
 import type { JikmuPayload, JayulPayload } from '@/lib/applicationTypes'
 
@@ -54,10 +55,11 @@ const jayulSchema = z.object({
   variant: z.enum(['weekday_2n', 'weekend_2n', 'weekend_1n']),
   headcount: z.number().int().min(1).max(6),
   applicant,
+  lessonClass: z.string(),
+  equipment: z.enum(['ski', 'board']).or(z.literal('')),
   rentals: z.object({ apparel: z.number().int().min(0), goggle: z.number().int().min(0), protector: z.number().int().min(0), glove: z.number().int().min(0) }),
   apparelSizes: z.array(z.string()),
   repInsurance: z.boolean(),
-  companions: z.array(z.object({ name: z.string(), phone: optPhone, insurance: z.boolean() })),
   note: z.string(),
   payerDiffers: z.boolean(),
   payerName: z.string(),
@@ -77,16 +79,18 @@ export async function POST(req: Request) {
   if (!parsed.success) return fail('입력값이 올바르지 않습니다.')
   const payload = parsed.data
 
-  // 1) 세션 확인 — 존재·유형 일치 + 발번 연도(연수 시작연도).
+  // 1) 세션 확인 — 존재·유형 일치 + 발번 연도(연수 시작연도) + 종목(course.sport, 발번 접두어용).
   const { data: session, error: sErr } = await supabaseAdmin
     .from('sessions')
-    .select('id, schedule_type, starts_on')
+    .select('id, schedule_type, starts_on, course:courses(sport)')
     .eq('id', payload.sessionId)
     .maybeSingle()
   if (sErr) return fail('일정 조회 중 오류가 발생했습니다.', 500)
   if (!session) return fail('선택한 일정을 찾을 수 없습니다.')
   const expectType = payload.kind === 'jikmu' ? 'jikmu' : payload.variant
   if (session.schedule_type !== expectType) return fail('선택한 유형과 일정이 일치하지 않습니다.')
+  const courseRaw = (session as { course: unknown }).course
+  const sport = ((Array.isArray(courseRaw) ? courseRaw[0] : courseRaw) as { sport: string } | null)?.sport ?? null
 
   // 2) 단가 로드 + 가격 서버 재계산(권위).
   const { data: priceRows, error: pErr } = await supabaseAdmin
@@ -100,9 +104,13 @@ export async function POST(req: Request) {
     : computeJayul(payload as JayulPayload, items)
   if (breakdown.total <= 0) return fail('금액을 계산할 수 없습니다. 선택을 확인해 주세요.')
 
-  // 3) 발번(원자적 RPC).
+  // 3) 발번(원자적 RPC) — {종목}{유형}-{YY}-{5자리}. 접두어 = 종목코드 + 유형코드(CT/FP).
   const year = Number(session.starts_on.slice(0, 4))
-  const { data: appNo, error: nErr } = await supabaseAdmin.rpc('next_application_no', { p_year: year })
+  const prefix = applicationPrefix(sport, payload.kind)
+  const { data: appNo, error: nErr } = await supabaseAdmin.rpc('next_application_no', {
+    p_prefix: prefix,
+    p_year: year,
+  })
   if (nErr || typeof appNo !== 'string') return fail('신청번호 발급 중 오류가 발생했습니다.', 500)
 
   // 4) applications insert.
@@ -188,28 +196,28 @@ function buildParticipants(payload: JikmuPayload | JayulPayload, appId: string, 
     name: a.name.trim(),
     gender: a.gender || null,
     phone: a.phone,
-    lesson_level: null,
-    rentals: { insurance_wanted: payload.repInsurance },
+    lesson_level: payload.lessonClass || null,
+    rentals: { insurance_wanted: payload.repInsurance, equipment: payload.equipment || null },
     birth_front: a.birthFront,
     birth_back_enc: null,
     is_leader: true,
     sort_order: 0,
     line_amount: total,
   }
-  const companions = payload.companions
-    .filter((c) => c.name.trim())
-    .map((c, i) => ({
-      application_id: appId,
-      name: c.name.trim(),
-      gender: null,
-      phone: c.phone || null,
-      lesson_level: null,
-      rentals: { insurance_wanted: c.insurance },
-      birth_front: null,
-      birth_back_enc: null,
-      is_leader: false,
-      sort_order: i + 1,
-      line_amount: 0,
-    }))
+  // 동반 참가자 = 인원수만큼 빈 슬롯(placeholder). 상세는 신청 후 마이페이지/셀프필로 채운다.
+  const companionCount = Math.max(0, payload.headcount - 1)
+  const companions = Array.from({ length: companionCount }, (_, i) => ({
+    application_id: appId,
+    name: `동반 ${i + 2}`,
+    gender: null,
+    phone: null,
+    lesson_level: null,
+    rentals: {},
+    birth_front: null,
+    birth_back_enc: null,
+    is_leader: false,
+    sort_order: i + 1,
+    line_amount: 0,
+  }))
   return [leader, ...companions]
 }

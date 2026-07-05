@@ -51,10 +51,12 @@ export interface JayulPayload {
   variant: '' | 'weekday_2n' | 'weekend_2n' | 'weekend_1n'
   headcount: number // 1~6
   applicant: ApplicantInput
+  lessonClass: string // 대표 기초강습(jayul_ski/jayul_board/jayul_freeride) — 참고이미지 10번
+  equipment: '' | 'ski' | 'board' // 대표 대여 장비 세트 타입 — 금액 무관
   rentals: { apparel: number; goggle: number; protector: number; glove: number }
   apparelSizes: string[]
   repInsurance: boolean
-  companions: JayulCompanionInput[]
+  // 동반 참가자 상세는 신청폼에서 안 받는다 — 인원수만. 슬롯은 제출 시 생성, 정보는 신청 후 입력. [[companion-detail-post-signup-fill]]
   note: string
   payerDiffers: boolean
   payerName: string
