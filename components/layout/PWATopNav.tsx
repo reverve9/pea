@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { UserRound } from 'lucide-react'
 import { NAV_ITEMS, isNavActive } from './navItems'
 
 // 데스크탑(≥768) 상단 네비.
@@ -47,7 +48,8 @@ export default function PWATopNav() {
       style={isScrolled ? navStyle : undefined}
     >
       <div className="bg-white/95 backdrop-blur-sm shadow-[0_1px_2px_rgba(15,27,46,0.03)] border-b border-[#e2e8f0]/60">
-        <div className="flex items-stretch justify-around px-3 py-[18px]">
+        {/* 5열 그리드: 네비 4개(각 22.5%) + 마이 칩(10%). 헤더에서 칩을 여기로 이관해 집중도↑. */}
+        <div className="grid grid-cols-[22.5fr_22.5fr_22.5fr_22.5fr_10fr] items-stretch px-3 py-[18px]">
           {NAV_ITEMS.map((item) => {
             const active = isNavActive(pathname, item.href)
             const isHovered = hovered === item.href
@@ -59,7 +61,7 @@ export default function PWATopNav() {
                 aria-current={active ? 'page' : undefined}
                 onMouseEnter={() => setHovered(item.href)}
                 onMouseLeave={() => setHovered(null)}
-                className="relative flex flex-col items-center justify-center gap-[4px] px-3 text-[#1e3a5f] transition-all duration-200"
+                className="relative flex translate-y-[2px] flex-col items-center justify-center gap-[4px] px-3 text-[#1e3a5f] transition-all duration-200"
               >
                 {/* 나인브릿지 원형 배경 글로우(시안 리컬러) — active/hover 시 scale·opacity 페이드 */}
                 <span
@@ -108,6 +110,22 @@ export default function PWATopNav() {
               </Link>
             )
           })}
+
+          {/* 마이 — 네비 우측 끝(5번째 열). 텍스트 네비와 차별화 위해 채운 원형 칩(테두리 없음). 기본 네이비 솔리드 → 활성(/my) 시안(네비 활성색과 통일). */}
+          <Link
+            href="/my"
+            aria-label="마이페이지"
+            aria-current={pathname === '/my' ? 'page' : undefined}
+            className="flex items-center justify-center"
+          >
+            <span
+              className={`grid h-8 w-8 place-items-center rounded-full text-white transition-colors ${
+                pathname === '/my' ? 'bg-[#2f8ba0]' : 'bg-[#1e3a5f] hover:bg-[#2f8ba0]'
+              }`}
+            >
+              <UserRound size={16} strokeWidth={1.6} />
+            </span>
+          </Link>
         </div>
       </div>
     </nav>

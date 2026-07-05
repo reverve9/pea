@@ -31,16 +31,16 @@ export default function PWAHeader({ variant = 'mobile' }: PWAHeaderProps) {
         />
       </Link>
 
-      {/* 마이페이지 진입 (데·모 공통, 헤더 우측). 밝은 파스텔 우측 배경 → 흰 원형 칩 + 네이비 아이콘(반전, 로고 원형 마크와 호응). 아이콘 세트=lucide(앱 전역 통일). */}
-      <Link
-        href="/my"
-        aria-label="마이페이지"
-        className={`shrink-0 grid place-items-center rounded-full bg-white text-[#1e3a5f] hover:bg-white/85 transition-colors ${
-          isDesktop ? 'h-10 w-10' : 'h-9 w-9'
-        }`}
-      >
-        <UserRound size={isDesktop ? 22 : 20} strokeWidth={1.75} />
-      </Link>
+      {/* 마이페이지 진입 — 모바일만 헤더 우측 칩(축소). 데스크탑은 칩을 상단 네비(PWATopNav) 우측 끝으로 이관해 여기선 미표시. */}
+      {!isDesktop && (
+        <Link
+          href="/my"
+          aria-label="마이페이지"
+          className="shrink-0 grid h-8 w-8 place-items-center rounded-full bg-white text-[#1e3a5f] hover:bg-white/85 transition-colors"
+        >
+          <UserRound size={18} strokeWidth={1.75} />
+        </Link>
+      )}
     </header>
   )
 }

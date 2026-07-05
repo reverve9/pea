@@ -87,8 +87,10 @@ export interface MyApplicationRow {
   track_label: string
   period: string
   applicant_name: string
+  payer_name: string | null // 신청 시 입금자명(payerDiffers) — 입금확인요청 프리필용
   headcount: number
   total_amount: number
   status: 'pending' | 'paid' | 'completed' | 'cancelled' | 'refunded'
+  payment_claimed: boolean // 입금 확인 요청(신고) 여부
   created_at: string
 }

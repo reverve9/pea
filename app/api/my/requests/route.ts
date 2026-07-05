@@ -14,6 +14,7 @@ const base = { token: z.string().min(1), applicationId: z.string().uuid() }
 const schema = z.discriminatedUnion('type', [
   z.object({ ...base, type: z.literal('refund'), reason: z.string().trim().max(1000), refundAccount: z.string().trim().min(1).max(200) }),
   z.object({ ...base, type: z.literal('modification'), content: z.string().trim().min(1).max(2000) }),
+  z.object({ ...base, type: z.literal('payment'), payerName: z.string().trim().min(1).max(100) }),
 ])
 
 export async function POST(req: Request) {
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
       console.error('[my/requests] refund insert:', error)
       return NextResponse.json({ error: '환불 신청 저장 중 오류가 발생했습니다.' }, { status: 500 })
     }
-  } else {
+  } else if (body.type === 'modification') {
     const { error } = await supabaseAdmin.from('modification_requests').insert({
       application_id: body.applicationId,
       phone: claims.phone,
@@ -56,6 +57,22 @@ export async function POST(req: Request) {
     if (error) {
       console.error('[my/requests] modification insert:', error)
       return NextResponse.json({ error: '수정 요청 저장 중 오류가 발생했습니다.' }, { status: 500 })
+    }
+  } else {
+    // 입금 확인 요청 — status 는 안 바꾼다(관리자만 paid 전환). 입금대기 건에 신고 시각·입금자명만 기록.
+    const { data: upd, error } = await supabaseAdmin
+      .from('applications')
+      .update({ payment_claimed_at: new Date().toISOString(), payment_claim_name: body.payerName.trim() })
+      .eq('id', body.applicationId)
+      .eq('status', 'pending')
+      .is('payment_claimed_at', null) // 1회 정책 — 이미 신고된 건은 재요청 거부
+      .select('id')
+    if (error) {
+      console.error('[my/requests] payment claim:', error)
+      return NextResponse.json({ error: '입금 확인 요청 처리 중 오류가 발생했습니다.' }, { status: 500 })
+    }
+    if (!upd || upd.length === 0) {
+      return NextResponse.json({ error: '이미 처리되었거나 요청할 수 없는 상태입니다.' }, { status: 409 })
     }
   }
 

@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ShieldCheck, Smartphone, FileText, RefreshCcw, Pencil } from 'lucide-react'
+import { ShieldCheck, Smartphone, FileText, RefreshCcw, Pencil, CheckCircle2 } from 'lucide-react'
 import AppShell from '@/components/layout/AppShell'
-import PageTitle from '@/components/common/PageTitle'
+import ExtendedHeader from '@/components/layout/ExtendedHeader'
 import SectionTitle from '@/components/common/SectionTitle'
 import WhiteBox from '@/components/common/WhiteBox'
 import Text from '@/components/common/Text'
@@ -32,6 +32,17 @@ const STATUS: Record<ApplicationStatus, { label: string; color: BadgeColor }> = 
 
 const won = (n: number) => n.toLocaleString('ko-KR') + '원'
 
+// 텍스트 히어로 — 다른 페이지들과 동일한 중앙 인트로 문단. 데스크탑 전용(md:block):
+// 모바일은 서브헤더(← 마이페이지)가 컨텍스트를 이미 주므로 생략(세로 공간·중복 방지).
+function MyHero() {
+  return (
+    <p className="hidden px-4 pt-1 pb-7 text-center font-score text-[clamp(0.9375rem,3.4cqi,1.0625rem)] font-[300] leading-[1.85] text-[#4b5563] md:block">
+      본인 확인 후 <span className="font-[500] text-[#1e3a5f]">신청 내역</span>을 조회하고,<br />
+      정보 수정 · 환불 · 증명서 발급을 요청할 수 있습니다.
+    </p>
+  )
+}
+
 // 본인확인(방식 b, SMS 없음) — 게이트에서 이름+전화+생년월일(이미 수집한 값, 본인이 항상 아는 값) 입력 →
 // Task5에서 /api 가 매칭·검증하고 opaque 세션토큰 발급. localStorage 엔 원문 PII 대신 세션(토큰+표시이름)만
 // 저장해 같은 기기 재방문 시 자동 조회. 다른 기기 = 이름+전화+생년월일 재입력(분실 없음). [[application-plan-reference]]
@@ -56,8 +67,8 @@ function AuthGate({ onVerified, error, loading }: { onVerified: (v: Auth) => voi
   const inputCls =
     'w-full rounded-[10px] border border-[#e5eaef] bg-white px-3.5 py-2.5 text-center font-score text-[16px] text-[#1f2937] placeholder:text-[#b6bcc4] transition-colors focus:bg-[#f7f9fb] focus:outline-none'
   return (
-    <div className="pb-8">
-      <PageTitle title="마이페이지" en="MY" />
+    <div className="pb-8 pt-5">
+      <MyHero />
       <section className="px-4">
         <WhiteBox className="p-6 text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#eef2f7]">
@@ -118,13 +129,14 @@ const fieldCls =
 // 수정요청·환불신청 = 토큰으로 소유권 검증 후 접수(/api/my/requests). 증명서는 준비 중.
 function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; refundBody: string | null; token: string }) {
   const st = STATUS[app.status]
-  const [open, setOpen] = useState<null | 'modification' | 'refund'>(null)
+  const [open, setOpen] = useState<null | 'modification' | 'refund' | 'payment'>(null)
   const [refundAccount, setRefundAccount] = useState('')
   const [reason, setReason] = useState('')
   const [content, setContent] = useState('')
+  const [paymentName, setPaymentName] = useState(app.payer_name ?? app.applicant_name)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [done, setDone] = useState({ modification: false, refund: false })
+  const [done, setDone] = useState({ modification: false, refund: false, payment: false })
 
   const rows: [string, string][] = [
     ['신청자', app.applicant_name],
@@ -133,12 +145,12 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
     ['신청일', app.created_at],
   ]
 
-  const toggle = (k: 'modification' | 'refund') => {
+  const toggle = (k: 'modification' | 'refund' | 'payment') => {
     setError(null)
     setOpen((o) => (o === k ? null : k))
   }
 
-  const submit = async (type: 'modification' | 'refund') => {
+  const submit = async (type: 'modification' | 'refund' | 'payment') => {
     setError(null)
     if (type === 'refund' && !refundAccount.trim()) {
       setError('환불 받으실 계좌를 입력해 주세요.')
@@ -148,13 +160,19 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
       setError('수정할 내용을 입력해 주세요.')
       return
     }
+    if (type === 'payment' && !paymentName.trim()) {
+      setError('입금자 성명을 입력해 주세요.')
+      return
+    }
     setSubmitting(true)
     try {
-      await submitMyRequest(
+      const body =
         type === 'refund'
-          ? { token, applicationId: app.id, type, reason, refundAccount }
-          : { token, applicationId: app.id, type, content },
-      )
+          ? ({ token, applicationId: app.id, type, reason, refundAccount } as const)
+          : type === 'modification'
+            ? ({ token, applicationId: app.id, type, content } as const)
+            : ({ token, applicationId: app.id, type, payerName: paymentName } as const)
+      await submitMyRequest(body)
       setDone((d) => ({ ...d, [type]: true }))
       setOpen(null)
       setRefundAccount('')
@@ -187,6 +205,52 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
           <Text variant="num-lg">{won(app.total_amount)}</Text>
         </div>
       </dl>
+
+      {/* 입금 확인 완료 — paid 건. 배지만으론 약해 명시적 확인 노트로 안심시킴. */}
+      {app.status === 'paid' && (
+        <div className="mt-4 flex items-start gap-2 rounded-[10px] border border-[#cfe6d5] bg-[#eaf4ec] px-4 py-3">
+          <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-[#2f803a]" />
+          <Text variant="sub" className="text-[#2f803a]"><b>입금이 확인되었습니다.</b> 접수가 확정되었어요.</Text>
+        </div>
+      )}
+
+      {/* 입금 확인 요청 — 입금대기 건에서만. 상태는 안 바뀌고 담당자 대조 대기 신호 + 입금자명 백업(1회). */}
+      {app.status === 'pending' && (
+        app.payment_claimed || done.payment ? (
+          <div className="mt-4 rounded-[10px] border border-[#cfe6d5] bg-[#eaf4ec] px-4 py-3">
+            <Text variant="sub" className="text-[#2f803a]">입금 확인 요청이 접수되었습니다. 담당자가 통장 확인 후 처리하며, 확인까지 시간이 걸릴 수 있습니다.</Text>
+          </div>
+        ) : (
+          <div className="mt-4 rounded-[10px] border border-[#e5eaef] bg-[#f7f9fb] p-4">
+            <Text variant="label" className="text-[#374151]">입금을 완료하셨나요?</Text>
+            <Text variant="caption" as="p" className="mt-1 text-[#9ca3af]">입금 후에도 ‘입금 대기’로 보이면 확인을 요청할 수 있습니다. 담당자가 통장 대조 후 ‘입금 확인’으로 변경합니다.</Text>
+            {open === 'payment' ? (
+              <>
+                <input className={`${fieldCls} mt-2`} value={paymentName} onChange={(e) => setPaymentName(e.target.value)} placeholder="입금자 성명" />
+                <Text variant="caption" as="p" className="mt-1 text-[#9ca3af]">신청자명과 다르면 실제 입금하신 분 성함으로 적어주세요. 회계 대조에 사용됩니다.</Text>
+                <Text variant="caption" as="p" className="mt-1 text-[#c0685a]">※ 실제로 입금하신 경우에만 요청해 주세요. 입금 내역이 확인되지 않으면 처리되지 않습니다.</Text>
+                {error && <p className="mt-2 rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{error}</p>}
+                <button
+                  type="button"
+                  onClick={() => submit('payment')}
+                  disabled={submitting}
+                  className="mt-2 w-full rounded-[10px] bg-[#1e3a5f] py-2.5 font-score text-[14px] font-[500] text-white transition-colors hover:bg-[#16304f] disabled:opacity-40"
+                >
+                  {submitting ? '접수 중…' : '입금 확인 요청'}
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => toggle('payment')}
+                className="mt-2 w-full rounded-[10px] bg-[#1e3a5f] py-2.5 font-score text-[14px] font-[500] text-white transition-colors hover:bg-[#16304f]"
+              >
+                입금 확인 요청
+              </button>
+            )}
+          </div>
+        )
+      )}
 
       {/* 참가자 명단·상세 내역은 제출 파이프라인 배선 후 표시 */}
       <div className="mt-4 rounded-[10px] border border-dashed border-[#d7dde5] bg-[#f7f9fb] px-4 py-5 text-center">
@@ -360,7 +424,8 @@ export default function MyPage() {
         main={<AuthGate onVerified={verify} error={authError} loading={verifying} />}
         extended={
           <div>
-            <SectionTitle title="마이페이지 안내" />
+            <ExtendedHeader title="마이페이지" eyebrow="MY PAGE" />
+            <SectionTitle title="이용 안내" />
             <WhiteBox className="p-6">
               <Text variant="body" className="text-[#4b5563]">본인 확인 후 신청 내역 조회 · 정보 수정요청 · 환불 신청 · 증명서 발급을 이용할 수 있습니다.</Text>
             </WhiteBox>
@@ -375,12 +440,12 @@ export default function MyPage() {
     return (
       <AppShell
         main={
-          <div className="pb-8">
-            <PageTitle title="마이페이지" en="MY" />
+          <div className="pb-8 pt-5">
+            <MyHero />
             <div className="px-4"><LoadingState /></div>
           </div>
         }
-        extended={<div><SectionTitle title="신청 상세" /></div>}
+        extended={<div><ExtendedHeader title="마이페이지" eyebrow="MY PAGE" /><SectionTitle title="신청 상세" /></div>}
       />
     )
   }
@@ -390,8 +455,8 @@ export default function MyPage() {
     <MasterDetailProvider>
       <AppShell
         main={
-          <div className="pb-8">
-            <PageTitle title="마이페이지" en="MY" />
+          <div className="pb-8 pt-5">
+            <MyHero />
             <div className="flex items-center justify-between gap-2 px-4 pb-1">
               <Text variant="sub" className="text-[#6b7280]">{session.name} 님의 신청 내역 {apps.length}건</Text>
               <button type="button" onClick={clearSession} className="shrink-0 font-score text-[12px] text-[#9ca3af] underline underline-offset-2">다른 정보로 조회</button>
@@ -412,6 +477,7 @@ export default function MyPage() {
         }
         extended={
           <div>
+            <ExtendedHeader title="마이페이지" eyebrow="MY PAGE" />
             <SectionTitle title="신청 상세" />
             <WhiteBox className="p-6">
               <MasterDetailDetail items={apps} getKey={(a) => a.id} renderDetail={(a) => <ApplicationDetail key={a.id} app={a} refundBody={refundBody} token={session.token} />} variant="desktop" />

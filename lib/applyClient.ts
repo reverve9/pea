@@ -16,6 +16,7 @@ export async function submitApplication(payload: ApplyPayload): Promise<ApplyRes
 export type MyRequestBody =
   | { token: string; applicationId: string; type: 'refund'; reason: string; refundAccount: string }
   | { token: string; applicationId: string; type: 'modification'; content: string }
+  | { token: string; applicationId: string; type: 'payment'; payerName: string }
 
 export async function submitMyRequest(body: MyRequestBody): Promise<void> {
   const res = await fetch('/api/my/requests', {
