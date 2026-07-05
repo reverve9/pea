@@ -9,10 +9,12 @@ import WhiteBox from '@/components/common/WhiteBox'
 import Text from '@/components/common/Text'
 import { Button } from '@/components/common/Button'
 import { Badge, type BadgeColor } from '@/components/common/Badge'
+import { LoadingState } from '@/components/common/StateView'
 import { MasterDetailProvider, MasterDetailList, MasterDetailDetail } from '@/components/shell/MasterDetail'
 import { useQuery } from '@/lib/useQuery'
 import { getSiteContent } from '@/lib/queries'
 import type { SiteContent } from '@/lib/types'
+import type { MyApplicationRow } from '@/lib/applicationTypes'
 
 // §3-4 마이페이지 — 전화 조회 게이트 → 신청목록 마스터-디테일(셸 패턴2). [[jayul-apply-form-spec]]
 // 골격 단계: 레이아웃·선택상태·상태배지·빈/상세 구조만. 실제 조회(getApplicationsByPhone)·OTP 인증·
@@ -26,24 +28,6 @@ const STATUS: Record<ApplicationStatus, { label: string; color: BadgeColor }> = 
   cancelled: { label: '취소', color: 'slate' },
   refunded: { label: '환불 완료', color: 'slate' },
 }
-
-interface MyApplication {
-  id: string
-  application_no: string
-  track_label: string // 직무연수 / 자율패키지 · 주말 2박
-  period: string
-  applicant_name: string
-  headcount: number
-  total_amount: number
-  status: ApplicationStatus
-  created_at: string
-}
-
-// ⚠ 임시 목데이터 — 제출 파이프라인(Task 5) + getApplicationsByPhone 배선 시 제거하고 실데이터로 교체.
-const MOCK: MyApplication[] = [
-  { id: '1', application_no: 'PEA-2027-0042', track_label: '직무연수', period: '2027.01.20 – 01.22 (2박3일)', applicant_name: '홍길동', headcount: 1, total_amount: 303000, status: 'paid', created_at: '2026.12.18' },
-  { id: '2', application_no: 'PEA-2027-0117', track_label: '자율패키지 · 주말 2박', period: '2027.01.15 – 01.17 (2박3일)', applicant_name: '홍길동', headcount: 4, total_amount: 1156000, status: 'pending', created_at: '2026.12.20' },
-]
 
 const won = (n: number) => n.toLocaleString('ko-KR') + '원'
 
@@ -61,8 +45,8 @@ interface Session {
 }
 const SESSION_KEY = 'pea:my:auth'
 
-// 조회 게이트 — 이름 + 전화번호 + 신청번호로 본인확인(계획안 ④). SMS 없이 localStorage 기억.
-function AuthGate({ onVerified }: { onVerified: (v: Auth) => void }) {
+// 조회 게이트 — 이름 + 전화번호 + 생년월일로 본인확인(계획안 ④). SMS 없이 localStorage 기억.
+function AuthGate({ onVerified, error, loading }: { onVerified: (v: Auth) => void; error: string | null; loading: boolean }) {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [birth, setBirth] = useState('')
@@ -95,9 +79,10 @@ function AuthGate({ onVerified }: { onVerified: (v: Auth) => void }) {
             placeholder="생년월일 6자리 (YYMMDD)"
             inputMode="numeric"
           />
-          <Button size="md" variant="primary" disabled={!ok} onClick={() => onVerified({ name: name.trim(), phone, birth })} className="mt-3 w-full">
+          {error && <p className="mt-3 rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{error}</p>}
+          <Button size="md" variant="primary" disabled={!ok || loading} onClick={() => onVerified({ name: name.trim(), phone, birth })} className="mt-3 w-full">
             <Smartphone size={15} className="mr-1.5" />
-            조회하기
+            {loading ? '조회 중…' : '조회하기'}
           </Button>
         </WhiteBox>
       </section>
@@ -106,7 +91,7 @@ function AuthGate({ onVerified }: { onVerified: (v: Auth) => void }) {
 }
 
 // 신청 카드(마스터) — 버튼 래핑은 MasterDetailList 가 처리, 여기선 시각만.
-function ApplicationCard(app: MyApplication, selected: boolean) {
+function ApplicationCard(app: MyApplicationRow, selected: boolean) {
   const st = STATUS[app.status]
   return (
     <WhiteBox className={`p-4 transition-shadow ${selected ? 'ring-2 ring-[#1e3a5f]/30' : ''}`}>
@@ -125,7 +110,7 @@ function ApplicationCard(app: MyApplication, selected: boolean) {
 }
 
 // 신청 상세(디테일) — 데스크탑 우측 페인 / 모바일 모달 공용. refundBody = site_contents refund_policy(어드민 편집).
-function ApplicationDetail(app: MyApplication, refundBody: string | null) {
+function ApplicationDetail(app: MyApplicationRow, refundBody: string | null) {
   const st = STATUS[app.status]
   const rows: [string, string][] = [
     ['신청자', app.applicant_name],
@@ -186,6 +171,10 @@ function ApplicationDetail(app: MyApplication, refundBody: string | null) {
 
 export default function MyPage() {
   const [session, setSession] = useState<Session | null>(null)
+  const [authError, setAuthError] = useState<string | null>(null)
+  const [verifying, setVerifying] = useState(false)
+  const [apps, setApps] = useState<MyApplicationRow[] | null>(null)
+  const [listError, setListError] = useState<string | null>(null)
   const refund = useQuery<SiteContent | null>(() => getSiteContent('refund_policy'), null)
   const refundBody = refund.data?.body ?? null
 
@@ -199,19 +188,9 @@ export default function MyPage() {
     }
   }, [])
 
-  // 게이트 제출 — 실제로는 creds(이름+전화+신청번호)를 /api 로 보내 서버가 매칭·검증 후 opaque 토큰 발급(Task5).
-  // 토큰은 사용자가 볼/기억할 값이 아니며, 사용자가 보관할 크리덴셜은 '신청번호'. 여기선 미리보기 세션.
-  const verify = (creds: Auth) => {
-    const s: Session = { name: creds.name, token: 'preview' } // TODO(Task5): 서버 발급 opaque 토큰으로 교체
-    setSession(s)
-    try {
-      window.localStorage.setItem(SESSION_KEY, JSON.stringify(s))
-    } catch {
-      /* 저장 실패 무시 */
-    }
-  }
   const clearSession = () => {
     setSession(null)
+    setApps(null)
     try {
       window.localStorage.removeItem(SESSION_KEY)
     } catch {
@@ -219,11 +198,73 @@ export default function MyPage() {
     }
   }
 
+  // 세션(토큰) 확보 시 신청목록 조회. 토큰 만료(401)면 세션 해제 → 게이트 재노출.
+  useEffect(() => {
+    if (!session) {
+      setApps(null)
+      return
+    }
+    let cancelled = false
+    setListError(null)
+    setApps(null)
+    ;(async () => {
+      try {
+        const res = await fetch('/api/my/applications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: session.token }),
+        })
+        if (res.status === 401) {
+          if (!cancelled) clearSession()
+          return
+        }
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(json.error || '조회 중 오류가 발생했습니다.')
+        if (!cancelled) setApps((json.applications as MyApplicationRow[]) ?? [])
+      } catch (e) {
+        if (!cancelled) {
+          setListError(e instanceof Error ? e.message : '조회 중 오류가 발생했습니다.')
+          setApps([])
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [session])
+
+  // 게이트 제출 — creds(이름+전화+생년월일)를 /api/my/verify 로 보내 서버가 대표 참가자와 매칭·검증 후
+  // opaque 세션토큰 발급. 토큰은 사용자가 기억할 값이 아니며, 보관할 크리덴셜은 '신청번호'.
+  const verify = async (creds: Auth) => {
+    setAuthError(null)
+    setVerifying(true)
+    try {
+      const res = await fetch('/api/my/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(creds),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || !json.token) throw new Error(json.error || '조회에 실패했습니다.')
+      const s: Session = { name: json.name as string, token: json.token as string }
+      setSession(s)
+      try {
+        window.localStorage.setItem(SESSION_KEY, JSON.stringify(s))
+      } catch {
+        /* 저장 실패 무시 */
+      }
+    } catch (e) {
+      setAuthError(e instanceof Error ? e.message : '조회에 실패했습니다.')
+    } finally {
+      setVerifying(false)
+    }
+  }
+
   // 1) 조회 게이트
   if (!session) {
     return (
       <AppShell
-        main={<AuthGate onVerified={verify} />}
+        main={<AuthGate onVerified={verify} error={authError} loading={verifying} />}
         extended={
           <div>
             <SectionTitle title="마이페이지 안내" />
@@ -236,9 +277,22 @@ export default function MyPage() {
     )
   }
 
-  // 2) 신청목록 마스터-디테일. TODO: getApplicationsByPhone(phone) 배선 — 현재는 목데이터.
-  const apps = MOCK
+  // 2) 조회 중(토큰 확보~목록 도착)
+  if (apps === null) {
+    return (
+      <AppShell
+        main={
+          <div className="pb-8">
+            <PageTitle title="마이페이지" en="MY" />
+            <div className="px-4"><LoadingState /></div>
+          </div>
+        }
+        extended={<div><SectionTitle title="신청 상세" /></div>}
+      />
+    )
+  }
 
+  // 3) 신청목록 마스터-디테일 (실데이터, 토큰 조회 결과)
   return (
     <MasterDetailProvider>
       <AppShell
@@ -249,6 +303,11 @@ export default function MyPage() {
               <Text variant="sub" className="text-[#6b7280]">{session.name} 님의 신청 내역 {apps.length}건</Text>
               <button type="button" onClick={clearSession} className="shrink-0 font-score text-[12px] text-[#9ca3af] underline underline-offset-2">다른 정보로 조회</button>
             </div>
+            {listError && (
+              <div className="px-4 pb-2">
+                <p className="rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{listError}</p>
+              </div>
+            )}
             <MasterDetailList
               items={apps}
               getKey={(a) => a.id}

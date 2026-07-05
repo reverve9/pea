@@ -8,7 +8,10 @@ import { LoadingState } from '@/components/common/StateView'
 import { useQuery } from '@/lib/useQuery'
 import { getSessions, getPriceItems } from '@/lib/queries'
 import { formatPeriod } from '@/lib/display'
+import { submitApplication } from '@/lib/applyClient'
+import ApplyComplete from '@/components/features/ApplyComplete'
 import type { SessionWithCourse, PriceItem, ScheduleType } from '@/lib/types'
+import type { JayulPayload } from '@/lib/applicationTypes'
 
 // 자율패키지 신청 폼(상세) — /application 자율 트랙(데스크탑 우 페인 / 모바일 모달). [[jayul-apply-form-spec]]
 // 원칙: 무통장 1회 완납 → 금액 바꾸는 선택(인원·렌탈수량)은 신청 시 확정, 금액무관 정보(사이즈·명단)는 어드민 후속.
@@ -220,6 +223,9 @@ export default function JayulApplyForm() {
   const prices = useQuery<PriceItem[]>(getPriceItems, [])
   const [form, setForm] = useState<JayulForm>(EMPTY)
   const [saved, setSaved] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [resultNo, setResultNo] = useState<string | null>(null)
 
   useEffect(() => {
     const raw = typeof window !== 'undefined' ? window.localStorage.getItem(DRAFT_KEY) : null
@@ -321,9 +327,56 @@ export default function JayulApplyForm() {
     setSaved(true)
   }
 
-  const submit = () => {
-    /* TODO: service_role /api 제출 파이프라인(insert · 발번 · price_breakdown 스냅샷 · note 저장) [[jayul-apply-form-spec]] */
+  const submit = async () => {
+    setSubmitError(null)
+    const a = form
+    const err =
+      !a.variant ? '패키지 유형을 선택해 주세요.'
+      : !a.sessionId ? '참가 차수를 선택해 주세요.'
+      : !a.name.trim() ? '대표 신청자 성함을 입력해 주세요.'
+      : !a.gender ? '성별을 선택해 주세요.'
+      : a.phone.length < 10 ? '연락처를 정확히 입력해 주세요.'
+      : a.birthFront.length !== 6 ? '생년월일 6자리를 입력해 주세요.'
+      : !a.schoolName.trim() ? '소속을 입력해 주세요.'
+      : !a.region ? '지역을 선택해 주세요.'
+      : !a.privacyConsent || !a.confirmChecked ? '필수 동의 항목을 확인해 주세요.'
+      : null
+    if (err) {
+      setSubmitError(err)
+      return
+    }
+
+    const payload: JayulPayload = {
+      kind: 'jayul',
+      sessionId: a.sessionId,
+      variant: a.variant,
+      headcount: a.headcount,
+      applicant: { name: a.name.trim(), gender: a.gender, phone: a.phone, birthFront: a.birthFront, schoolName: a.schoolName.trim(), region: a.region },
+      rentals: a.rentals,
+      apparelSizes: a.apparelSizes,
+      repInsurance: a.repInsurance,
+      companions: a.companions,
+      note: a.note,
+      payerDiffers: a.payerDiffers,
+      payerName: a.payerName,
+      routes: a.routes,
+      privacyConsent: a.privacyConsent,
+      marketingOptIn: a.marketingOptIn,
+    }
+    setSubmitting(true)
+    try {
+      const { application_no } = await submitApplication(payload)
+      window.localStorage.removeItem(DRAFT_KEY)
+      setResultNo(application_no)
+      window.scrollTo({ top: 0 })
+    } catch (e) {
+      setSubmitError(e instanceof Error ? e.message : '신청 처리 중 오류가 발생했습니다.')
+    } finally {
+      setSubmitting(false)
+    }
   }
+
+  if (resultNo) return <ApplyComplete applicationNo={resultNo} accent={GREEN} />
 
   return (
     <div>
@@ -598,22 +651,26 @@ export default function JayulApplyForm() {
           <Text variant="card-title-sm">총 금액</Text>
           <Text variant="num-lg">{won(total)}</Text>
         </div>
+        {submitError && (
+          <p className="mt-3 rounded-[8px] bg-[#fbecea] px-3 py-2 text-center font-score text-[13px] text-[#b4483a]">{submitError}</p>
+        )}
         <div className="mt-4 grid grid-cols-[130px_1fr] gap-2">
           <button
             type="button"
             onClick={saveDraft}
-            className={`rounded-[10px] border border-[#e5eaef] bg-white px-4 py-3 ${BTN} text-[#4b5563] transition-colors hover:bg-[#f2f5f9]`}
+            disabled={submitting}
+            className={`rounded-[10px] border border-[#e5eaef] bg-white px-4 py-3 ${BTN} text-[#4b5563] transition-colors hover:bg-[#f2f5f9] disabled:opacity-40`}
           >
             {saved ? '저장됨 ✓' : '임시저장'}
           </button>
           <button
             type="button"
             onClick={submit}
-            disabled={!form.confirmChecked || !form.privacyConsent}
+            disabled={submitting || !form.confirmChecked || !form.privacyConsent}
             className={`rounded-[10px] py-3 ${BTN} text-white transition-colors disabled:cursor-not-allowed disabled:opacity-40`}
             style={{ background: GREEN }}
           >
-            신청하기
+            {submitting ? '신청 중…' : '신청하기'}
           </button>
         </div>
       </div>

@@ -7,7 +7,10 @@ import { LoadingState } from '@/components/common/StateView'
 import { useQuery } from '@/lib/useQuery'
 import { getSessions, getPriceItems } from '@/lib/queries'
 import { formatPeriod } from '@/lib/display'
+import { submitApplication } from '@/lib/applyClient'
+import ApplyComplete from '@/components/features/ApplyComplete'
 import type { SessionWithCourse, PriceItem } from '@/lib/types'
+import type { JikmuPayload } from '@/lib/applicationTypes'
 
 // 직무연수 신청 폼(상세) — /application 마스터-디테일의 우측 페인(데스크탑) / 모달(모바일)에서 렌더. [[application-form-spec]]
 // 이번 슬라이스: 기본정보 + 강습수준 + 옵션·비용(객실·렌탈) 실시간 합계 + 임시저장(localStorage).
@@ -231,6 +234,9 @@ export default function JikmuApplyForm() {
   const prices = useQuery<PriceItem[]>(getPriceItems, [])
   const [form, setForm] = useState<JikmuForm>(EMPTY)
   const [saved, setSaved] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [resultNo, setResultNo] = useState<string | null>(null)
 
   useEffect(() => {
     const raw = typeof window !== 'undefined' ? window.localStorage.getItem(DRAFT_KEY) : null
@@ -313,9 +319,64 @@ export default function JikmuApplyForm() {
     setSaved(true)
   }
 
-  const submit = () => {
-    /* TODO: service_role /api 제출 파이프라인(insert · 뒷자리 암호화 · 발번 · price_breakdown 스냅샷) */
+  const submit = async () => {
+    setSubmitError(null)
+    const a = form
+    const err =
+      !a.sessionId ? '참가 연수 일정을 선택해 주세요.'
+      : !a.name.trim() ? '참가자 성함을 입력해 주세요.'
+      : !a.gender ? '성별을 선택해 주세요.'
+      : a.phone.length < 10 ? '연락처를 정확히 입력해 주세요.'
+      : a.birthFront.length !== 6 ? '생년월일 6자리를 입력해 주세요.'
+      : !a.schoolName.trim() ? '소속을 입력해 주세요.'
+      : !a.region ? '지역을 선택해 주세요.'
+      : !a.lessonSport ? '종목을 선택해 주세요.'
+      : !a.lessonClass ? '희망 강습 수준을 선택해 주세요.'
+      : a.roomType === 'private' && !a.roomSpec ? '개별객실 평형·인실을 선택해 주세요.'
+      : a.insurance && a.birthBack.length !== 7 ? '보험 가입용 주민번호 뒷자리 7자리를 입력해 주세요.'
+      : !a.privacyConsent || !a.confirmChecked ? '필수 동의 항목을 확인해 주세요.'
+      : null
+    if (err) {
+      setSubmitError(err)
+      return
+    }
+
+    const payload: JikmuPayload = {
+      kind: 'jikmu',
+      sessionId: a.sessionId,
+      applicant: { name: a.name.trim(), gender: a.gender, phone: a.phone, birthFront: a.birthFront, schoolName: a.schoolName.trim(), region: a.region },
+      insurance: a.insurance,
+      birthBack: a.insurance ? a.birthBack : '',
+      lessonSport: a.lessonSport,
+      lessonClass: a.lessonClass,
+      roomType: a.roomType || 'group',
+      roomSpec: a.roomSpec,
+      rentals: a.rentals,
+      apparelSize: a.apparelSize,
+      hasCompanion: a.hasCompanion,
+      companion: a.companion,
+      companionPhone: a.companionPhone,
+      notes: a.notes,
+      payerDiffers: a.payerDiffers,
+      payerName: a.payerName,
+      routes: a.routes,
+      privacyConsent: a.privacyConsent,
+      marketingOptIn: a.marketingOptIn,
+    }
+    setSubmitting(true)
+    try {
+      const { application_no } = await submitApplication(payload)
+      window.localStorage.removeItem(DRAFT_KEY)
+      setResultNo(application_no)
+      window.scrollTo({ top: 0 })
+    } catch (e) {
+      setSubmitError(e instanceof Error ? e.message : '신청 처리 중 오류가 발생했습니다.')
+    } finally {
+      setSubmitting(false)
+    }
   }
+
+  if (resultNo) return <ApplyComplete applicationNo={resultNo} accent={NAVY} />
 
   return (
     <div>
@@ -593,21 +654,25 @@ export default function JikmuApplyForm() {
           <Text variant="card-title-sm">총 금액</Text>
           <Text variant="num-lg">{won(total)}</Text>
         </div>
+        {submitError && (
+          <p className="mt-3 rounded-[8px] bg-[#fbecea] px-3 py-2 text-center font-score text-[13px] text-[#b4483a]">{submitError}</p>
+        )}
         <div className="mt-4 grid grid-cols-[130px_1fr] gap-2">
           <button
             type="button"
             onClick={saveDraft}
-            className={`rounded-[10px] border border-[#e5eaef] bg-white px-4 py-3 ${BTN} text-[#4b5563] transition-colors hover:bg-[#f2f5f9]`}
+            disabled={submitting}
+            className={`rounded-[10px] border border-[#e5eaef] bg-white px-4 py-3 ${BTN} text-[#4b5563] transition-colors hover:bg-[#f2f5f9] disabled:opacity-40`}
           >
             {saved ? '저장됨 ✓' : '임시저장'}
           </button>
           <button
             type="button"
             onClick={submit}
-            disabled={!form.confirmChecked || !form.privacyConsent}
+            disabled={submitting || !form.confirmChecked || !form.privacyConsent}
             className={`rounded-[10px] bg-[#1e3a5f] py-3 ${BTN} text-white transition-colors hover:bg-[#16304f] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#1e3a5f]`}
           >
-            신청하기
+            {submitting ? '신청 중…' : '신청하기'}
           </button>
         </div>
       </div>
