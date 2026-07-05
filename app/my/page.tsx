@@ -13,6 +13,7 @@ import { LoadingState } from '@/components/common/StateView'
 import { MasterDetailProvider, MasterDetailList, MasterDetailDetail } from '@/components/shell/MasterDetail'
 import { useQuery } from '@/lib/useQuery'
 import { getSiteContent } from '@/lib/queries'
+import { submitMyRequest } from '@/lib/applyClient'
 import type { SiteContent } from '@/lib/types'
 import type { MyApplicationRow } from '@/lib/applicationTypes'
 
@@ -109,15 +110,63 @@ function ApplicationCard(app: MyApplicationRow, selected: boolean) {
   )
 }
 
+// 상세 폼 입력 — 통일 규칙(포커스 하드 테두리 없이 배경 틴트). 입력 16px(iOS 확대 방지).
+const fieldCls =
+  'w-full rounded-[10px] border border-[#e5eaef] bg-white px-3.5 py-2.5 font-score text-[16px] text-[#1f2937] placeholder:text-[#b6bcc4] transition-colors focus:bg-[#f7f9fb] focus:outline-none'
+
 // 신청 상세(디테일) — 데스크탑 우측 페인 / 모바일 모달 공용. refundBody = site_contents refund_policy(어드민 편집).
-function ApplicationDetail(app: MyApplicationRow, refundBody: string | null) {
+// 수정요청·환불신청 = 토큰으로 소유권 검증 후 접수(/api/my/requests). 증명서는 준비 중.
+function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; refundBody: string | null; token: string }) {
   const st = STATUS[app.status]
+  const [open, setOpen] = useState<null | 'modification' | 'refund'>(null)
+  const [refundAccount, setRefundAccount] = useState('')
+  const [reason, setReason] = useState('')
+  const [content, setContent] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [done, setDone] = useState({ modification: false, refund: false })
+
   const rows: [string, string][] = [
     ['신청자', app.applicant_name],
     ['일정', app.period],
     ['인원', `${app.headcount}명`],
     ['신청일', app.created_at],
   ]
+
+  const toggle = (k: 'modification' | 'refund') => {
+    setError(null)
+    setOpen((o) => (o === k ? null : k))
+  }
+
+  const submit = async (type: 'modification' | 'refund') => {
+    setError(null)
+    if (type === 'refund' && !refundAccount.trim()) {
+      setError('환불 받으실 계좌를 입력해 주세요.')
+      return
+    }
+    if (type === 'modification' && !content.trim()) {
+      setError('수정할 내용을 입력해 주세요.')
+      return
+    }
+    setSubmitting(true)
+    try {
+      await submitMyRequest(
+        type === 'refund'
+          ? { token, applicationId: app.id, type, reason, refundAccount }
+          : { token, applicationId: app.id, type, content },
+      )
+      setDone((d) => ({ ...d, [type]: true }))
+      setOpen(null)
+      setRefundAccount('')
+      setReason('')
+      setContent('')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '요청 처리 중 오류가 발생했습니다.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between gap-2">
@@ -145,11 +194,55 @@ function ApplicationDetail(app: MyApplicationRow, refundBody: string | null) {
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-2">
-        <Button variant="outline" size="sm" disabled><Pencil size={13} className="mr-1" />수정요청</Button>
-        <Button variant="outline" size="sm" disabled><RefreshCcw size={13} className="mr-1" />환불신청</Button>
+        <Button variant={open === 'modification' ? 'primary' : 'outline'} size="sm" onClick={() => toggle('modification')} disabled={done.modification}>
+          <Pencil size={13} className="mr-1" />{done.modification ? '요청됨' : '수정요청'}
+        </Button>
+        <Button variant={open === 'refund' ? 'primary' : 'outline'} size="sm" onClick={() => toggle('refund')} disabled={done.refund}>
+          <RefreshCcw size={13} className="mr-1" />{done.refund ? '신청됨' : '환불신청'}
+        </Button>
         <Button variant="outline" size="sm" disabled><FileText size={13} className="mr-1" />증명서</Button>
       </div>
-      <Text variant="caption" as="p" className="mt-2 text-center text-[#b6bcc4]">수정·환불·증명서 기능은 준비 중입니다.</Text>
+
+      {/* 수정 요청 폼 */}
+      {open === 'modification' && (
+        <div className="mt-3 rounded-[10px] border border-[#e5eaef] bg-white p-4">
+          <Text variant="label" className="text-[#374151]">수정 요청</Text>
+          <Text variant="caption" as="p" className="mt-1 text-[#9ca3af]">변경이 필요한 내용을 적어주세요. (예: 렌탈 사이즈 M→L, 동반인 연락처 변경 등) 담당자 확인 후 반영됩니다.</Text>
+          <textarea className={`${fieldCls} mt-2 min-h-[90px] resize-y`} value={content} onChange={(e) => setContent(e.target.value)} placeholder="기존 내용 → 변경할 내용" />
+          {error && <p className="mt-2 rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{error}</p>}
+          <button
+            type="button"
+            onClick={() => submit('modification')}
+            disabled={submitting}
+            className="mt-2 w-full rounded-[10px] bg-[#1e3a5f] py-2.5 font-score text-[14px] font-[500] text-white transition-colors hover:bg-[#16304f] disabled:opacity-40"
+          >
+            {submitting ? '접수 중…' : '수정 요청 접수'}
+          </button>
+        </div>
+      )}
+
+      {/* 환불 신청 폼 */}
+      {open === 'refund' && (
+        <div className="mt-3 rounded-[10px] border border-[#e5eaef] bg-white p-4">
+          <Text variant="label" className="text-[#374151]">환불 신청</Text>
+          <Text variant="caption" as="p" className="mt-1 text-[#9ca3af]">아래 환불 규정을 확인하신 뒤 신청해 주세요. 담당자 확인 후 처리됩니다.</Text>
+          <input className={`${fieldCls} mt-2`} value={refundAccount} onChange={(e) => setRefundAccount(e.target.value)} placeholder="환불 계좌 (은행 · 예금주 · 계좌번호)" />
+          <textarea className={`${fieldCls} mt-2 min-h-[70px] resize-y`} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="환불 사유 (선택)" />
+          {error && <p className="mt-2 rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{error}</p>}
+          <button
+            type="button"
+            onClick={() => submit('refund')}
+            disabled={submitting}
+            className="mt-2 w-full rounded-[10px] bg-[#1e3a5f] py-2.5 font-score text-[14px] font-[500] text-white transition-colors hover:bg-[#16304f] disabled:opacity-40"
+          >
+            {submitting ? '접수 중…' : '환불 신청 접수'}
+          </button>
+        </div>
+      )}
+
+      {done.modification && <p className="mt-3 rounded-[8px] bg-[#eaf4ec] px-3 py-2 font-score text-[13px] text-[#2f803a]">수정 요청이 접수되었습니다. 담당자 확인 후 반영됩니다.</p>}
+      {done.refund && <p className="mt-3 rounded-[8px] bg-[#eaf4ec] px-3 py-2 font-score text-[13px] text-[#2f803a]">환불 신청이 접수되었습니다. 담당자 확인 후 처리됩니다.</p>}
+      <Text variant="caption" as="p" className="mt-2 text-center text-[#b6bcc4]">증명서 발급은 준비 중입니다.</Text>
 
       {/* 환불 규정 — site_contents(refund_policy) 실데이터. 환불신청 맥락에서 노출. */}
       <div className="mt-4 rounded-[10px] border border-[#e5eaef] bg-[#f7f9fb] p-4">
@@ -314,14 +407,14 @@ export default function MyPage() {
               renderCard={(a, { selected }) => ApplicationCard(a, selected)}
               emptyLabel="조회된 신청 내역이 없습니다."
             />
-            <MasterDetailDetail items={apps} getKey={(a) => a.id} renderDetail={(a) => ApplicationDetail(a, refundBody)} variant="mobile" />
+            <MasterDetailDetail items={apps} getKey={(a) => a.id} renderDetail={(a) => <ApplicationDetail key={a.id} app={a} refundBody={refundBody} token={session.token} />} variant="mobile" />
           </div>
         }
         extended={
           <div>
             <SectionTitle title="신청 상세" />
             <WhiteBox className="p-6">
-              <MasterDetailDetail items={apps} getKey={(a) => a.id} renderDetail={(a) => ApplicationDetail(a, refundBody)} variant="desktop" />
+              <MasterDetailDetail items={apps} getKey={(a) => a.id} renderDetail={(a) => <ApplicationDetail key={a.id} app={a} refundBody={refundBody} token={session.token} />} variant="desktop" />
             </WhiteBox>
           </div>
         }
