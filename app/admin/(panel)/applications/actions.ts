@@ -3,8 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { requireAdmin } from '@/lib/adminGuard'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import { decryptSecret } from '@/lib/serverCrypto'
-import { updateParticipantDetail as applyParticipantDetail } from '@/lib/participantDetail'
+import { decryptSecret, issueFillToken } from '@/lib/serverCrypto'
+import { updateParticipantDetail as applyParticipantDetail, type ParticipantDetailInput } from '@/lib/participantDetail'
 import type { ApplicationStatus, InsuranceRosterEntry } from '@/lib/types'
 
 // 신청 관리 서버 액션 — requireAdmin 후 service_role 로 RLS 우회.
@@ -48,22 +48,33 @@ export async function releasePaymentClaim(id: string): Promise<ActionResult> {
   }
 }
 
-// 참가자 상세(생년월일·성별·뒷자리) 어드민 수기 입력 — 유선 확인 후 대신 입력. 셀프필과 동일 로직 공유.
+// 참가자 상세(성함·연락처·생년월일·성별·뒷자리·기초강습·장비·의류사이즈) 어드민 수기 입력.
+// 유선/동반인 확인 후 대신 입력. 셀프필과 동일 로직(participantDetail) 공유.
 export async function updateParticipantDetail(
   participantId: string,
-  birthFront: string,
-  gender: string,
-  birthBack: string,
+  input: ParticipantDetailInput,
 ): Promise<ActionResult> {
   try {
     await requireAdmin()
-    const res = await applyParticipantDetail(participantId, { birthFront, gender, birthBack })
+    const res = await applyParticipantDetail(participantId, input)
     if (!res.ok) return res
     revalidatePath('/admin/applications')
     return { ok: true }
   } catch (e) {
     console.error('[applications] updateParticipantDetail:', e)
     return { ok: false, error: '저장에 실패했습니다.' }
+  }
+}
+
+// 셀프필 링크 발급(어드민) — 동반인 후속입력용 링크 토큰. 관리자가 대표에게 안내/공유.
+export type FillLinkResult = { ok: true; fillToken: string } | { ok: false; error: string }
+export async function issueFillLink(applicationId: string): Promise<FillLinkResult> {
+  try {
+    await requireAdmin()
+    return { ok: true, fillToken: issueFillToken(applicationId, Date.now()) }
+  } catch (e) {
+    console.error('[applications] issueFillLink:', e)
+    return { ok: false, error: '링크 발급에 실패했습니다.' }
   }
 }
 

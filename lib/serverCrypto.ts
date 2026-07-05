@@ -77,3 +77,40 @@ export function verifyMyToken(token: string, now: number): MyToken | null {
     return null
   }
 }
+
+// ── 셀프필 링크 토큰 (동반인 후속입력 공개페이지) ─────────────────────────────
+// 대표가 URL 을 복사해 단톡 공유(시스템 발송 없음=SMS 비용 0). 토큰 자체가 크리덴셜.
+// applicationId 만 담고, 서명은 'fill:' 도메인 분리 → 마이 세션토큰과 교차 사용 불가.
+// PII·뒷자리는 담지 않는다(로스터는 서버가 aid 로 조회, 뒷자리는 write-only).
+export interface FillToken {
+  aid: string // application id
+  iat: number // 발급 시각(ms)
+}
+
+const FILL_TTL_MS = 60 * 60 * 24 * 120 * 1000 // 120일 — 신청~연수 종료까지 충분
+
+function signFill(payloadB64: string): string {
+  return createHmac('sha256', tokenSecret()).update(`fill:${payloadB64}`).digest('base64url')
+}
+
+export function issueFillToken(applicationId: string, iat: number): string {
+  const payloadB64 = Buffer.from(JSON.stringify({ aid: applicationId, iat } satisfies FillToken)).toString('base64url')
+  return `${payloadB64}.${signFill(payloadB64)}`
+}
+
+export function verifyFillToken(token: string, now: number): FillToken | null {
+  const [payloadB64, sig] = token.split('.')
+  if (!payloadB64 || !sig) return null
+  const expected = signFill(payloadB64)
+  const a = Buffer.from(sig)
+  const b = Buffer.from(expected)
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return null
+  try {
+    const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8')) as FillToken
+    if (typeof payload.aid !== 'string' || typeof payload.iat !== 'number') return null
+    if (now - payload.iat > FILL_TTL_MS) return null
+    return payload
+  } catch {
+    return null
+  }
+}

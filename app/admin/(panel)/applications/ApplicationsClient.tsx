@@ -2,13 +2,14 @@
 
 import React, { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, ChevronRight, Eye, Search } from 'lucide-react'
+import { AlertTriangle, ChevronRight, Eye, Link2, Search } from 'lucide-react'
 import { Badge } from '@/components/common/Badge'
 import AdminModal from '@/components/admin/AdminModal'
 import AdminList, { type AdminListColumn } from '@/components/admin/AdminList'
 import { formatDate, formatKRW, APPLICATION_STATUS } from '@/lib/display'
-import { lessonLevelLabel } from '@/lib/lessonOptions'
+import { lessonLevelLabel, equipmentLabel, JAYUL_LESSONS, EQUIPMENT_TYPES } from '@/lib/lessonOptions'
 import { PROGRAMS } from '@/lib/programs'
+import type { ParticipantDetailInput } from '@/lib/participantDetail'
 import type { ApplicationAdmin, ApplicationStatus, InsuranceRosterEntry, ParticipantAdmin } from '@/lib/types'
 import {
   setApplicationStatus,
@@ -16,6 +17,7 @@ import {
   saveAdminMemo,
   revealInsuranceRoster,
   updateParticipantDetail,
+  issueFillLink,
 } from './actions'
 
 // 정상 생애주기(순방향 진행) vs 예외/종료(오프램프) — 같은 층위 아님.
@@ -250,6 +252,26 @@ function DetailModal({
   const [roster, setRoster] = useState<InsuranceRosterEntry[] | null>(null)
   const [rosterPending, startRoster] = useTransition()
   const [editingPart, setEditingPart] = useState<ParticipantAdmin | null>(null)
+  const [fillLink, setFillLink] = useState<'idle' | 'loading' | 'copied'>('idle')
+
+  // 셀프필 링크 발급·복사 — 관리자가 대표에게 안내/공유용. 동반인이 /fill 에서 각자 입력.
+  const copyFillLink = async () => {
+    setFillLink('loading')
+    const res = await issueFillLink(app.id)
+    if (!res.ok) {
+      alert(res.error)
+      setFillLink('idle')
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/fill/${res.fillToken}`)
+      setFillLink('copied')
+      setTimeout(() => setFillLink('idle'), 2500)
+    } catch {
+      setFillLink('idle')
+      alert('클립보드 복사에 실패했습니다.')
+    }
+  }
 
   const runAndRefresh = (fn: () => Promise<{ ok: boolean; error?: string }>) => {
     startTransition(async () => {
@@ -395,22 +417,34 @@ function DetailModal({
             참가자 {app.participants.length}명
             {insuranceCount > 0 && <span className="ml-1 font-[300] text-[#9ca3af]">· 보험 {insuranceCount}명</span>}
           </p>
-          {insuranceCount > 0 && !roster && (
-            <button
-              type="button"
-              disabled={rosterPending}
-              onClick={() =>
-                startRoster(async () => {
-                  const res = await revealInsuranceRoster(app.id)
-                  if (res.ok) setRoster(res.roster)
-                  else alert(res.error)
-                })
-              }
-              className="inline-flex items-center gap-1 text-[12px] font-[400] text-[#3f6a99] hover:underline disabled:opacity-40"
-            >
-              <Eye size={13} /> 보험 뒷자리 표시
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {app.kind === 'jayul' && (
+              <button
+                type="button"
+                disabled={fillLink === 'loading'}
+                onClick={copyFillLink}
+                className="inline-flex items-center gap-1 text-[12px] font-[400] text-[#3f6a99] hover:underline disabled:opacity-40"
+              >
+                <Link2 size={13} /> {fillLink === 'copied' ? '복사됨' : '셀프필 링크 복사'}
+              </button>
+            )}
+            {insuranceCount > 0 && !roster && (
+              <button
+                type="button"
+                disabled={rosterPending}
+                onClick={() =>
+                  startRoster(async () => {
+                    const res = await revealInsuranceRoster(app.id)
+                    if (res.ok) setRoster(res.roster)
+                    else alert(res.error)
+                  })
+                }
+                className="inline-flex items-center gap-1 text-[12px] font-[400] text-[#3f6a99] hover:underline disabled:opacity-40"
+              >
+                <Eye size={13} /> 보험 뒷자리 표시
+              </button>
+            )}
+          </div>
         </div>
         <div className="overflow-hidden rounded-[9px] border border-[#eceef1]">
           <table className="w-full text-left">
@@ -501,34 +535,56 @@ function DetailModal({
     {editingPart && (
       <ParticipantEditModal
         part={editingPart}
+        kind={app.kind}
         pending={pending}
         onClose={() => setEditingPart(null)}
-        onSubmit={(birthFront, gender, birthBack) =>
-          runAndRefresh(() => updateParticipantDetail(editingPart.id, birthFront, gender, birthBack))
-        }
+        onSubmit={(input) => runAndRefresh(() => updateParticipantDetail(editingPart.id, input))}
       />
     )}
     </>
   )
 }
 
-// 참가자 상세(생년월일·성별·뒷자리) 수기 입력 모달 — 신청 상세에서 열림. 셀프필과 동일 갱신 로직.
+// 참가자 상세 수기 입력 모달 — 신청 상세에서 열림. 셀프필과 동일 갱신 로직(participantDetail).
+// 자율=동반인 후속입력(성함·연락처·기초강습·장비·의류사이즈까지) / 직무=대표 정보 보정(생년월일·성별·뒷자리).
 function ParticipantEditModal({
   part,
+  kind,
   pending,
   onClose,
   onSubmit,
 }: {
   part: ParticipantAdmin
+  kind: 'jikmu' | 'jayul'
   pending: boolean
   onClose: () => void
-  onSubmit: (birthFront: string, gender: string, birthBack: string) => void
+  onSubmit: (input: ParticipantDetailInput) => void
 }) {
+  const rentals = part.rentals
+  const [name, setName] = useState(part.name ?? '')
+  const [phone, setPhone] = useState(part.phone ?? '')
   const [birthFront, setBirthFront] = useState(part.birth_front ?? '')
   const [gender, setGender] = useState(part.gender ?? '')
   const [birthBack, setBirthBack] = useState('')
+  const [lessonClass, setLessonClass] = useState(part.lesson_level ?? '')
+  const [equipment, setEquipment] = useState(typeof rentals.equipment === 'string' ? rentals.equipment : '')
+  const [apparelSize, setApparelSize] = useState(typeof rentals.apparel_size === 'string' ? rentals.apparel_size : '')
+  const isJayul = kind === 'jayul'
   const inputClass =
     'w-full rounded-[9px] border border-[#e2e5e9] bg-white px-3 py-2.5 text-[13.5px] text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:border-[#1e3a5f]'
+  const labelClass = 'mb-1.5 block text-[12.5px] font-[500] text-[#4b5563]'
+
+  const submit = () => {
+    const input: ParticipantDetailInput = { birthFront, gender, birthBack }
+    if (isJayul) {
+      input.name = name
+      input.phone = phone
+      input.lessonClass = lessonClass
+      input.equipment = equipment
+      input.apparelSize = apparelSize
+    }
+    onSubmit(input)
+  }
 
   return (
     <AdminModal title={`참가자 정보 · ${part.name}`} onClose={onClose} maxWidth={420}>
@@ -536,8 +592,27 @@ function ParticipantEditModal({
         신청 후 추가로 받은 정보를 입력합니다. 주민번호 뒷자리는 보험 가입 시에만 필요하며 서버에서 암호화되어 저장됩니다.
       </p>
 
-      <label className="block">
-        <span className="mb-1.5 block text-[12.5px] font-[500] text-[#4b5563]">생년월일 (YYMMDD)</span>
+      {isJayul && (
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block">
+            <span className={labelClass}>성함</span>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="성함" className={inputClass} />
+          </label>
+          <label className="block">
+            <span className={labelClass}>연락처</span>
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              inputMode="tel"
+              placeholder="010-0000-0000"
+              className={inputClass}
+            />
+          </label>
+        </div>
+      )}
+
+      <label className={isJayul ? 'mt-3 block' : 'block'}>
+        <span className={labelClass}>생년월일 (YYMMDD)</span>
         <input
           value={birthFront}
           onChange={(e) => setBirthFront(e.target.value.replace(/\D/g, '').slice(0, 6))}
@@ -548,7 +623,7 @@ function ParticipantEditModal({
       </label>
 
       <label className="mt-3 block">
-        <span className="mb-1.5 block text-[12.5px] font-[500] text-[#4b5563]">성별</span>
+        <span className={labelClass}>성별</span>
         <select value={gender} onChange={(e) => setGender(e.target.value)} className={inputClass}>
           <option value="">선택 안 함</option>
           <option value="male">남</option>
@@ -556,8 +631,47 @@ function ParticipantEditModal({
         </select>
       </label>
 
+      {isJayul && (
+        <>
+          <label className="mt-3 block">
+            <span className={labelClass}>기초강습</span>
+            <select value={lessonClass} onChange={(e) => setLessonClass(e.target.value)} className={inputClass}>
+              <option value="">선택 안 함</option>
+              {JAYUL_LESSONS.map((l) => (
+                <option key={l.key} value={l.key}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className={labelClass}>대여장비</span>
+              <select value={equipment} onChange={(e) => setEquipment(e.target.value)} className={inputClass}>
+                <option value="">선택 안 함</option>
+                {EQUIPMENT_TYPES.map((e) => (
+                  <option key={e.key} value={e.key}>
+                    {e.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className={labelClass}>의류 사이즈</span>
+              <input
+                value={apparelSize}
+                onChange={(e) => setApparelSize(e.target.value)}
+                placeholder="예: 95, L"
+                className={inputClass}
+              />
+            </label>
+          </div>
+        </>
+      )}
+
       <label className="mt-3 block">
-        <span className="mb-1.5 block text-[12.5px] font-[500] text-[#4b5563]">
+        <span className={labelClass}>
           주민번호 뒷자리 <span className="font-[300] text-[#9ca3af]">(보험 가입 시)</span>
         </span>
         <input
@@ -583,7 +697,7 @@ function ParticipantEditModal({
         <button
           type="button"
           disabled={pending}
-          onClick={() => onSubmit(birthFront, gender, birthBack)}
+          onClick={submit}
           className="rounded-[9px] bg-[#1e3a5f] px-5 py-2.5 text-[13px] font-[500] text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {pending ? '저장 중…' : '저장'}
@@ -606,16 +720,24 @@ function lessonLabel(p: ParticipantAdmin): string {
   return lessonLevelLabel(p.lesson_level)
 }
 
-// 렌탈 — 직무 대표의 의류/고글/보호대/장갑(개별 품목). 자율은 per-person 렌탈이 없다(총량은 결제에 반영).
+// 렌탈 — 직무 대표=의류/고글/보호대/장갑(개별 품목) / 자율=대여장비 세트(rentals.equipment)+의류사이즈(후속입력).
 function rentalLabel(p: ParticipantAdmin): string {
   const r = p.rentals
-  if (typeof r.apparel !== 'boolean') return '—' // 직무 대표 형태(apparel:boolean)만 품목 노출
-  const items: string[] = []
-  if (r.apparel) items.push(`의류${r.apparel_size ? `(${r.apparel_size})` : ''}`)
-  if (r.goggle) items.push('고글')
-  if (r.protector) items.push('보호대')
-  if (r.glove) items.push('장갑')
-  return items.length ? items.join('·') : '없음'
+  if (typeof r.apparel === 'boolean') {
+    // 직무 대표 형태
+    const items: string[] = []
+    if (r.apparel) items.push(`의류${r.apparel_size ? `(${r.apparel_size})` : ''}`)
+    if (r.goggle) items.push('고글')
+    if (r.protector) items.push('보호대')
+    if (r.glove) items.push('장갑')
+    return items.length ? items.join('·') : '없음'
+  }
+  // 자율 형태 — 대여장비 세트 + 의류사이즈(후속입력으로 채워짐)
+  if (typeof r.equipment === 'string' && r.equipment) {
+    const size = typeof r.apparel_size === 'string' && r.apparel_size ? `·의류(${r.apparel_size})` : ''
+    return `${equipmentLabel(r.equipment)}${size}`
+  }
+  return '—'
 }
 
 // 보험 — 직무: 뒷자리 보유 = 가입 / 자율: insurance_wanted 플래그 = 희망(뒷자리 미수집).

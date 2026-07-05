@@ -96,3 +96,37 @@ export interface MyApplicationRow {
   payment_claimed: boolean // 입금 확인 요청(신고) 여부
   created_at: string
 }
+
+// 마이페이지 참가자 로스터 — 대표가 동반인 후속정보를 대신 입력할 때 쓰는 안전 필드만.
+// 주민번호 뒷자리(birth_back)는 절대 싣지 않는다 — has_insurance 플래그로만 등록여부 노출.
+export interface MyRosterParticipant {
+  id: string
+  name: string
+  is_leader: boolean
+  gender: Gender | null
+  phone: string | null
+  birth_front: string | null
+  lesson_level: string | null
+  equipment: string | null // rentals.equipment
+  apparel_size: string | null // rentals.apparel_size
+  has_insurance: boolean // birth_back_enc != null
+}
+
+// 셀프필 공개페이지 헤더 요약 — 어떤 신청인지 최소 식별(연수유형·일정·대표명). 금액·연락처 미노출.
+export interface RosterSummary {
+  track_label: string
+  period: string
+  applicant_name: string
+}
+
+// 참가자 후속입력 페이로드(마이페이지 대표 대신입력). 서버의 ParticipantDetailInput 과 동일 필드셋(클라 안전 사본).
+export interface MyParticipantInput {
+  name?: string
+  phone?: string
+  birthFront?: string
+  gender?: string
+  birthBack?: string
+  lessonClass?: string
+  equipment?: string
+  apparelSize?: string
+}

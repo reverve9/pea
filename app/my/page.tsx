@@ -13,9 +13,10 @@ import { LoadingState } from '@/components/common/StateView'
 import { MasterDetailProvider, MasterDetailList, MasterDetailDetail } from '@/components/shell/MasterDetail'
 import { useQuery } from '@/lib/useQuery'
 import { getSiteContent } from '@/lib/queries'
-import { submitMyRequest } from '@/lib/applyClient'
+import { submitMyRequest, fetchMyRoster, submitMyParticipant, requestMyFillLink } from '@/lib/applyClient'
+import ParticipantFillSlot from '@/components/features/ParticipantFillSlot'
 import type { SiteContent } from '@/lib/types'
-import type { MyApplicationRow } from '@/lib/applicationTypes'
+import type { MyApplicationRow, MyRosterParticipant } from '@/lib/applicationTypes'
 
 // §3-4 마이페이지 — 전화 조회 게이트 → 신청목록 마스터-디테일(셸 패턴2). [[jayul-apply-form-spec]]
 // 골격 단계: 레이아웃·선택상태·상태배지·빈/상세 구조만. 실제 조회(getApplicationsByPhone)·OTP 인증·
@@ -124,6 +125,103 @@ function ApplicationCard(app: MyApplicationRow, selected: boolean) {
 // 상세 폼 입력 — 통일 규칙(포커스 하드 테두리 없이 배경 틴트). 입력 16px(iOS 확대 방지).
 const fieldCls =
   'w-full rounded-[10px] border border-[#e5eaef] bg-white px-3.5 py-2.5 font-score text-[16px] text-[#1f2937] placeholder:text-[#b6bcc4] transition-colors focus:bg-[#f7f9fb] focus:outline-none'
+
+// 동반인 후속입력 — 자율패키지 신청 후 대표가 동반인 성함·생년월일·강습·장비·(보험시)뒷자리를 대신 입력.
+// 신청 단계를 단순 유지하기 위해 상세는 신청 후 채운다([[companion-detail-post-signup-fill]]).
+// 두 경로: 대표 대신입력(/api/my/participant) + 셀프필 링크 복사(동반인 각자입력, /fill/[token]).
+function CompanionFill({ applicationId, token }: { applicationId: string; token: string }) {
+  const [roster, setRoster] = useState<MyRosterParticipant[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [openId, setOpenId] = useState<string | null>(null)
+  const [linkState, setLinkState] = useState<'idle' | 'loading' | 'copied' | 'error'>('idle')
+  const [linkError, setLinkError] = useState<string | null>(null)
+
+  const copyFillLink = async () => {
+    setLinkError(null)
+    setLinkState('loading')
+    try {
+      const fillToken = await requestMyFillLink(token, applicationId)
+      const url = `${window.location.origin}/fill/${fillToken}`
+      await navigator.clipboard.writeText(url)
+      setLinkState('copied')
+      setTimeout(() => setLinkState('idle'), 2500)
+    } catch (e) {
+      setLinkError(e instanceof Error ? e.message : '링크 복사에 실패했습니다.')
+      setLinkState('error')
+    }
+  }
+
+  const load = async () => {
+    setError(null)
+    try {
+      setRoster(await fetchMyRoster(token, applicationId))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '참가자 정보를 불러오지 못했습니다.')
+      setRoster([])
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const r = await fetchMyRoster(token, applicationId)
+        if (!cancelled) setRoster(r)
+      } catch (e) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : '참가자 정보를 불러오지 못했습니다.')
+          setRoster([])
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [token, applicationId])
+
+  return (
+    <div className="mt-4 rounded-[10px] border border-[#e5eaef] bg-[#f7f9fb] p-4">
+      <Text variant="label" className="text-[#374151]">참가자 정보</Text>
+      <Text variant="caption" as="p" className="mt-1 text-[#9ca3af]">
+        동반인 성함 · 생년월일 · 강습 · 대여장비를 대표가 대신 입력하거나, 아래 링크를 복사해 동반인에게 공유하면 각자 입력할 수 있습니다. 보험 가입자는 주민번호 뒷자리도 필요합니다.
+      </Text>
+
+      {/* 셀프필 링크 복사 — 대표가 단톡 등에 공유(시스템 발송 없음). 동반인이 /fill 에서 각자 입력. */}
+      <button
+        type="button"
+        onClick={copyFillLink}
+        disabled={linkState === 'loading'}
+        className="mt-3 w-full rounded-[10px] border border-[#d3dbe4] bg-white py-2.5 font-score text-[13px] font-[500] text-[#1e3a5f] transition-colors hover:bg-[#f2f5f8] disabled:opacity-40"
+      >
+        {linkState === 'loading' ? '링크 생성 중…' : linkState === 'copied' ? '✓ 링크가 복사되었습니다' : '동반인 입력 링크 복사'}
+      </button>
+      {linkError && <p className="mt-2 rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{linkError}</p>}
+
+      {roster === null ? (
+        <Text variant="caption" as="p" className="mt-3 text-[#9ca3af]">참가자 정보를 불러오는 중…</Text>
+      ) : error ? (
+        <p className="mt-3 rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{error}</p>
+      ) : (
+        <div className="mt-3 space-y-2">
+          {roster.map((p, i) => (
+            <ParticipantFillSlot
+              key={p.id}
+              part={p}
+              index={i}
+              open={openId === p.id}
+              onToggle={() => setOpenId((o) => (o === p.id ? null : p.id))}
+              onSave={(input) => submitMyParticipant(token, applicationId, p.id, input)}
+              onSaved={() => {
+                setOpenId(null)
+                load()
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 // 신청 상세(디테일) — 데스크탑 우측 페인 / 모바일 모달 공용. refundBody = site_contents refund_policy(어드민 편집).
 // 수정요청·환불신청 = 토큰으로 소유권 검증 후 접수(/api/my/requests). 증명서는 준비 중.
@@ -252,10 +350,8 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
         )
       )}
 
-      {/* 참가자 명단·상세 내역은 제출 파이프라인 배선 후 표시 */}
-      <div className="mt-4 rounded-[10px] border border-dashed border-[#d7dde5] bg-[#f7f9fb] px-4 py-5 text-center">
-        <Text variant="sub" color="#9ca3af">참가자 명단·상세 내역은 준비 중입니다.</Text>
-      </div>
+      {/* 참가자 정보 — 자율패키지는 동반인 후속입력(대표 대신입력). 직무연수는 단독 신청이라 생략. */}
+      {app.kind === 'jayul' && <CompanionFill applicationId={app.id} token={token} />}
 
       <div className="mt-4 grid grid-cols-3 gap-2">
         <Button variant={open === 'modification' ? 'primary' : 'outline'} size="sm" onClick={() => toggle('modification')} disabled={done.modification}>
