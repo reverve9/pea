@@ -3,14 +3,17 @@
 import { useState } from 'react'
 import Text from '@/components/common/Text'
 import { lessonLevelLabel, equipmentLabel, JAYUL_LESSONS, EQUIPMENT_TYPES } from '@/lib/lessonOptions'
+import { RENTAL_OPTIONS } from '@/lib/rentalOptions'
 import type { MyRosterParticipant, MyParticipantInput } from '@/lib/applicationTypes'
 
 // 참가자 후속입력 슬롯 — 마이페이지(대표 대신입력)·셀프필 공개페이지(참가자 각자입력) 공용.
-// 접힘 시 요약(입력완료/미입력), 펼침 시 폼. birth_front 보유 = 입력완료로 간주. 뒷자리는 write-only.
-// onSave 는 네트워크 호출(실패 시 throw), 성공하면 뒷자리 클리어 후 onSaved(부모 새로고침).
+// 렌탈 옵션 귀속·보험 여부는 대표가 배정(잠금) → 여기선 배정된 옵션의 "사이즈"와 본인정보만 입력.
+// 접힘 시 요약, 펼침 시 폼. birth_front 보유 = 입력완료. 뒷자리는 write-only(보험 배정 시에만 노출).
 
 const fieldCls =
   'w-full rounded-[10px] border border-[#e5eaef] bg-white px-3.5 py-2.5 font-score text-[16px] text-[#1f2937] placeholder:text-[#b6bcc4] transition-colors focus:bg-[#f7f9fb] focus:outline-none'
+
+type SizeState = { apparelSize: string; protectorSize: string; gloveSize: string }
 
 export default function ParticipantFillSlot({
   part,
@@ -35,26 +38,55 @@ export default function ParticipantFillSlot({
   const [gender, setGender] = useState(part.gender ?? '')
   const [lessonClass, setLessonClass] = useState(part.lesson_level ?? '')
   const [equipment, setEquipment] = useState(part.equipment ?? '')
-  const [apparelSize, setApparelSize] = useState(part.apparel_size ?? '')
+  const [sizes, setSizes] = useState<SizeState>({
+    apparelSize: part.apparel_size ?? '',
+    protectorSize: part.protector_size ?? '',
+    gloveSize: part.glove_size ?? '',
+  })
   const [birthBack, setBirthBack] = useState('')
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
   const filled = part.birth_front != null
   const label = part.is_leader ? '대표' : `참가자 ${part.sort_order + 1}`
+
+  // 배정된 렌탈 옵션(대표가 정한 것) — 잠금 표시 + 사이즈 입력 대상.
+  const assigned = RENTAL_OPTIONS.filter((o) => part[o.key])
+  const rentalSummary = assigned
+    .map((o) => {
+      if (!o.sizeField) return o.label
+      const sz = sizes[o.sizeField]
+      return `${o.label}${sz ? `(${sz})` : ''}`
+    })
+    .join('·')
+
   const summary = [
     part.birth_front,
     part.lesson_level ? lessonLevelLabel(part.lesson_level) : null,
     part.equipment ? equipmentLabel(part.equipment) : null,
+    rentalSummary || null,
   ]
     .filter(Boolean)
     .join(' · ')
+
+  const setSize = (field: keyof SizeState, v: string) => setSizes((s) => ({ ...s, [field]: v }))
 
   const save = async () => {
     setErr(null)
     setSaving(true)
     try {
-      await onSave({ name, phone, birthFront, gender, birthBack, lessonClass, equipment, apparelSize })
+      await onSave({
+        name,
+        phone,
+        birthFront,
+        gender,
+        birthBack,
+        lessonClass,
+        equipment,
+        apparelSize: sizes.apparelSize,
+        protectorSize: sizes.protectorSize,
+        gloveSize: sizes.gloveSize,
+      })
       setBirthBack('') // write-only — 저장 후 잔존 방지
       onSaved()
     } catch (e) {
@@ -117,30 +149,57 @@ export default function ParticipantFillSlot({
               <option key={l.key} value={l.key}>{l.label}</option>
             ))}
           </select>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <select className={fieldCls} value={equipment} onChange={(e) => setEquipment(e.target.value)}>
-              <option value="">대여장비 선택</option>
-              {EQUIPMENT_TYPES.map((eq) => (
-                <option key={eq.key} value={eq.key}>{eq.label}</option>
-              ))}
-            </select>
-            <input
-              className={fieldCls}
-              value={apparelSize}
-              onChange={(e) => setApparelSize(e.target.value)}
-              placeholder="의류 사이즈 (예: 95, L)"
-            />
+          <select className={`${fieldCls} mt-2`} value={equipment} onChange={(e) => setEquipment(e.target.value)}>
+            <option value="">용품세트(대여장비) 선택</option>
+            {EQUIPMENT_TYPES.map((eq) => (
+              <option key={eq.key} value={eq.key}>{eq.label}</option>
+            ))}
+          </select>
+
+          {/* 배정된 렌탈 — 대표가 정한 옵션(잠금). 사이즈 있는 항목만 사이즈 입력. */}
+          <div className="mt-3 rounded-[10px] border border-[#eef1f4] bg-[#f7f9fb] p-3">
+            <Text variant="caption" className="text-[#8a94a0]">배정된 렌탈</Text>
+            {assigned.length === 0 ? (
+              <Text variant="caption" as="p" className="mt-1 text-[#9ca3af]">배정된 렌탈이 없습니다. (대표가 신청 시 배정)</Text>
+            ) : (
+              <div className="mt-2 space-y-2">
+                {assigned.map((o) =>
+                  o.sizeField && o.sizes ? (
+                    <div key={o.key} className="flex items-center gap-2.5">
+                      <span className="w-14 shrink-0 rounded-[6px] bg-[#e9eef4] px-2 py-1 text-center font-score text-[12px] text-[#4b5563]">{o.label}</span>
+                      <select
+                        className={fieldCls}
+                        value={sizes[o.sizeField]}
+                        onChange={(e) => setSize(o.sizeField as keyof SizeState, e.target.value)}
+                      >
+                        <option value="">{o.label} 사이즈 선택</option>
+                        {o.sizes.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <span key={o.key} className="mr-1.5 inline-block rounded-[6px] bg-[#e9eef4] px-2 py-1 font-score text-[12px] text-[#4b5563]">{o.label} (사이즈 없음)</span>
+                  ),
+                )}
+              </div>
+            )}
           </div>
-          {part.has_insurance && (
-            <Text variant="caption" as="p" className="mt-2 text-[#2f803a]">주민번호 뒷자리가 등록되어 있습니다. 새로 입력하면 교체됩니다.</Text>
+
+          {part.insurance_wanted && (
+            <>
+              {part.has_insurance && (
+                <Text variant="caption" as="p" className="mt-3 text-[#2f803a]">주민번호 뒷자리가 등록되어 있습니다. 새로 입력하면 교체됩니다.</Text>
+              )}
+              <input
+                className={`${fieldCls} mt-2`}
+                value={birthBack}
+                onChange={(e) => setBirthBack(e.target.value.replace(/\D/g, '').slice(0, 7))}
+                inputMode="numeric"
+                placeholder="주민번호 뒷자리 (보험 가입 · 7자리)"
+              />
+            </>
           )}
-          <input
-            className={`${fieldCls} mt-2`}
-            value={birthBack}
-            onChange={(e) => setBirthBack(e.target.value.replace(/\D/g, '').slice(0, 7))}
-            inputMode="numeric"
-            placeholder="주민번호 뒷자리 (보험 가입 시 · 7자리)"
-          />
           {err && <p className="mt-2 rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{err}</p>}
           <button
             type="button"

@@ -2,7 +2,7 @@
 // 저장되는 total_amount·price_breakdown 은 반드시 이 모듈이 price_items 원본으로 산출한다.
 // (클라가 보낸 금액 불신뢰 — 조작 방지.)
 import type { PriceItem } from './types'
-import type { JikmuPayload, JayulPayload } from './applicationTypes'
+import type { JikmuPayload, JayulPayload, RentalQty } from './applicationTypes'
 
 export interface PriceLine {
   key: string
@@ -19,6 +19,17 @@ export interface PriceBreakdown {
 const JIKMU_BASE_FALLBACK = 303000
 const JIKMU_RENTAL_KEYS = ['apparel', 'protector', 'goggle', 'glove'] as const
 const JAYUL_RENTAL_KEYS = ['apparel', 'goggle', 'protector', 'glove'] as const
+
+// price_breakdown.meta.rental_qty 추출(자율). 없거나 직무면 전부 0.
+export function extractRentalQty(breakdown: { meta?: Record<string, unknown> } | null | undefined): RentalQty {
+  const q = (breakdown?.meta?.rental_qty ?? {}) as Partial<Record<keyof RentalQty, unknown>>
+  return {
+    apparel: Number(q.apparel) || 0,
+    goggle: Number(q.goggle) || 0,
+    protector: Number(q.protector) || 0,
+    glove: Number(q.glove) || 0,
+  }
+}
 
 function indexByKey(items: PriceItem[]): Record<string, PriceItem> {
   const m: Record<string, PriceItem> = {}

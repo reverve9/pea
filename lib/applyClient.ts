@@ -1,5 +1,5 @@
 // 폼 → 제출 파이프라인(/api/applications) 호출 헬퍼. 클라 전용(fetch).
-import type { ApplyPayload, ApplyResult, MyParticipantInput, MyRosterParticipant, RosterSummary } from './applicationTypes'
+import type { ApplyPayload, ApplyResult, MyParticipantInput, MyRosterParticipant, RosterSummary, RosterResult, RentalAssignmentInput } from './applicationTypes'
 
 export async function submitApplication(payload: ApplyPayload): Promise<ApplyResult> {
   const res = await fetch('/api/applications', {
@@ -28,16 +28,31 @@ export async function submitMyRequest(body: MyRequestBody): Promise<void> {
   if (!res.ok || !json.ok) throw new Error(json.error || '요청 처리 중 오류가 발생했습니다.')
 }
 
-// 마이페이지 참가자 로스터 조회 — 대표 대신 동반인 후속입력용. 뒷자리 미포함.
-export async function fetchMyRoster(token: string, applicationId: string): Promise<MyRosterParticipant[]> {
+// 마이페이지 참가자 로스터 조회 — 대표 대신입력·렌탈 배정용. 로스터 + 구매 수량(배정 카운터) 반환. 뒷자리 미포함.
+export async function fetchMyRoster(token: string, applicationId: string): Promise<RosterResult> {
   const res = await fetch('/api/my/roster', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token, applicationId }),
   })
-  const json = (await res.json().catch(() => ({}))) as { roster?: MyRosterParticipant[]; error?: string }
-  if (!res.ok || !json.roster) throw new Error(json.error || '참가자 정보를 불러오지 못했습니다.')
-  return json.roster
+  const json = (await res.json().catch(() => ({}))) as { roster?: MyRosterParticipant[]; rentalQty?: RosterResult['rentalQty']; error?: string }
+  if (!res.ok || !json.roster || !json.rentalQty) throw new Error(json.error || '참가자 정보를 불러오지 못했습니다.')
+  return { roster: json.roster, rentalQty: json.rentalQty }
+}
+
+// 대표 렌탈 배정 저장 — 참가자별 옵션 귀속 + 보험. 서버가 소유권·정합성(구매수량 초과 차단) 검증.
+export async function assignParticipantOptions(
+  token: string,
+  applicationId: string,
+  assignments: RentalAssignmentInput[],
+): Promise<void> {
+  const res = await fetch('/api/my/assign', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, applicationId, assignments }),
+  })
+  const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string }
+  if (!res.ok || !json.ok) throw new Error(json.error || '배정 저장 중 오류가 발생했습니다.')
 }
 
 // 참가자 후속입력 저장 — 대표가 동반인 정보를 대신 입력. 토큰 소유권 검증은 서버(/api/my/participant).

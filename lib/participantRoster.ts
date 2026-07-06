@@ -39,7 +39,14 @@ export async function getRoster(applicationId: string): Promise<MyRosterParticip
       birth_front: p.birth_front,
       lesson_level: p.lesson_level,
       equipment: typeof r.equipment === 'string' ? r.equipment : null,
+      apparel: r.apparel === true,
       apparel_size: typeof r.apparel_size === 'string' ? r.apparel_size : null,
+      protector: r.protector === true,
+      protector_size: typeof r.protector_size === 'string' ? r.protector_size : null,
+      goggle: r.goggle === true,
+      glove: r.glove === true,
+      glove_size: typeof r.glove_size === 'string' ? r.glove_size : null,
+      insurance_wanted: r.insurance_wanted === true,
       has_insurance: p.birth_back_enc != null,
     }
   })

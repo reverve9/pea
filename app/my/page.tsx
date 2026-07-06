@@ -13,10 +13,11 @@ import { LoadingState } from '@/components/common/StateView'
 import { MasterDetailProvider, MasterDetailList, MasterDetailDetail } from '@/components/shell/MasterDetail'
 import { useQuery } from '@/lib/useQuery'
 import { getSiteContent } from '@/lib/queries'
-import { submitMyRequest, fetchMyRoster, submitMyParticipant, requestMyFillLink } from '@/lib/applyClient'
+import { submitMyRequest, fetchMyRoster, submitMyParticipant, requestMyFillLink, assignParticipantOptions } from '@/lib/applyClient'
 import ParticipantFillSlot from '@/components/features/ParticipantFillSlot'
+import { RENTAL_OPTIONS, type RentalOptionKey } from '@/lib/rentalOptions'
 import type { SiteContent } from '@/lib/types'
-import type { MyApplicationRow, MyRosterParticipant } from '@/lib/applicationTypes'
+import type { MyApplicationRow, MyRosterParticipant, RentalQty, RentalAssignmentInput } from '@/lib/applicationTypes'
 
 // §3-4 마이페이지 — 전화 조회 게이트 → 신청목록 마스터-디테일(셸 패턴2). [[jayul-apply-form-spec]]
 // 골격 단계: 레이아웃·선택상태·상태배지·빈/상세 구조만. 실제 조회(getApplicationsByPhone)·OTP 인증·
@@ -129,13 +130,28 @@ const fieldCls =
 // 참가자 후속입력 — 자율패키지 신청 후 대표가 참가자 성함·생년월일·강습·장비·(보험시)뒷자리를 대신 입력.
 // 신청 단계를 단순 유지하기 위해 상세는 신청 후 채운다([[companion-detail-post-signup-fill]]).
 // 두 경로: 대표 대신입력(/api/my/participant) + 셀프필 링크 복사(참가자 각자입력, /fill/[token]).
+// 참가자별 렌탈 옵션 귀속(대표 배정) 로컬 선택.
+type OptSel = { apparel: boolean; protector: boolean; goggle: boolean; glove: boolean; insuranceWanted: boolean }
+const NAVY = '#1e3a5f'
+
 function CompanionFill({ applicationId, token }: { applicationId: string; token: string }) {
   const [roster, setRoster] = useState<MyRosterParticipant[] | null>(null)
+  const [rentalQty, setRentalQty] = useState<RentalQty | null>(null)
+  const [assign, setAssign] = useState<Record<string, OptSel>>({})
+  const [savingAssign, setSavingAssign] = useState(false)
+  const [assignError, setAssignError] = useState<string | null>(null)
+  const [assignSaved, setAssignSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [openId, setOpenId] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [linkError, setLinkError] = useState<string | null>(null)
+
+  const initAssign = (r: MyRosterParticipant[]) => {
+    const m: Record<string, OptSel> = {}
+    for (const p of r) m[p.id] = { apparel: p.apparel, protector: p.protector, goggle: p.goggle, glove: p.glove, insuranceWanted: p.insurance_wanted }
+    return m
+  }
 
   // 참가자별 개별 링크 — 각 링크는 본인 슬롯만 수정 가능. 대표가 각자에게 전달(단톡 등).
   const copyLink = async (participantId: string) => {
@@ -156,7 +172,10 @@ function CompanionFill({ applicationId, token }: { applicationId: string; token:
   const load = async () => {
     setError(null)
     try {
-      setRoster(await fetchMyRoster(token, applicationId))
+      const r = await fetchMyRoster(token, applicationId)
+      setRoster(r.roster)
+      setRentalQty(r.rentalQty)
+      setAssign(initAssign(r.roster))
     } catch (e) {
       setError(e instanceof Error ? e.message : '참가자 정보를 불러오지 못했습니다.')
       setRoster([])
@@ -168,7 +187,11 @@ function CompanionFill({ applicationId, token }: { applicationId: string; token:
     ;(async () => {
       try {
         const r = await fetchMyRoster(token, applicationId)
-        if (!cancelled) setRoster(r)
+        if (!cancelled) {
+          setRoster(r.roster)
+          setRentalQty(r.rentalQty)
+          setAssign(initAssign(r.roster))
+        }
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : '참가자 정보를 불러오지 못했습니다.')
@@ -181,12 +204,124 @@ function CompanionFill({ applicationId, token }: { applicationId: string; token:
     }
   }, [token, applicationId])
 
+  // 옵션별 배정 합계(정합성 카운터).
+  const counts: Record<RentalOptionKey, number> = { apparel: 0, protector: 0, goggle: 0, glove: 0 }
+  for (const sel of Object.values(assign)) {
+    for (const o of RENTAL_OPTIONS) if (sel[o.key]) counts[o.key]++
+  }
+  const hasRentals = !!rentalQty && RENTAL_OPTIONS.some((o) => rentalQty[o.key] > 0)
+
+  const toggleOpt = (pid: string, key: RentalOptionKey) => {
+    setAssign((prev) => {
+      const cur = prev[pid]
+      if (!cur) return prev
+      // 켜는 방향에서 구매 수량 초과면 무시(초과 배정 차단).
+      if (!cur[key] && rentalQty && counts[key] >= rentalQty[key]) return prev
+      setAssignSaved(false)
+      return { ...prev, [pid]: { ...cur, [key]: !cur[key] } }
+    })
+  }
+  const toggleInsurance = (pid: string) => {
+    setAssign((prev) => {
+      const cur = prev[pid]
+      if (!cur) return prev
+      setAssignSaved(false)
+      return { ...prev, [pid]: { ...cur, insuranceWanted: !cur.insuranceWanted } }
+    })
+  }
+
+  const saveAssign = async () => {
+    if (!roster) return
+    setAssignError(null)
+    setSavingAssign(true)
+    try {
+      const assignments: RentalAssignmentInput[] = roster.map((p) => ({ participantId: p.id, ...assign[p.id] }))
+      await assignParticipantOptions(token, applicationId, assignments)
+      setAssignSaved(true)
+      await load() // 배정 반영 → 슬롯 사이즈 입력 대상 갱신
+    } catch (e) {
+      setAssignError(e instanceof Error ? e.message : '배정 저장 중 오류가 발생했습니다.')
+    } finally {
+      setSavingAssign(false)
+    }
+  }
+
   return (
     <div className="mt-4 rounded-[10px] border border-[#e5eaef] bg-[#f7f9fb] p-4">
       <Text variant="label" className="text-[#374151]">참가자 정보</Text>
       <Text variant="caption" as="p" className="mt-1 text-[#9ca3af]">
-        참가자 성함 · 생년월일 · 강습 · 대여장비를 대표가 대신 입력하거나, 참가자별 입력 링크를 복사해 각자에게 전달하면 본인이 직접 입력할 수 있습니다. 각 링크는 본인 정보만 수정 가능합니다. 보험 가입자는 주민번호 뒷자리도 필요합니다.
+        참가자 성함 · 생년월일 · 강습 · 대여장비를 대표가 대신 입력하거나, 참가자별 입력 링크를 복사해 각자에게 전달하면 본인이 직접 입력할 수 있습니다. 각 링크는 본인 정보만 수정 가능합니다.
       </Text>
+
+      {/* 렌탈 배정 — 구매한 렌탈 옵션을 참가자별로 귀속. 사이즈는 각 참가자가 입력. */}
+      {hasRentals && roster && rentalQty && (
+        <div className="mt-3 rounded-[10px] border border-[#e5eaef] bg-white p-3">
+          <Text variant="label" className="text-[#374151]">렌탈 배정</Text>
+          <Text variant="caption" as="p" className="mt-1 text-[#9ca3af]">
+            구매한 렌탈을 참가자별로 배정하세요. 옵션·보험은 대표가 정하고(잠금), 사이즈는 각 참가자가 입력합니다. 배정 합계는 구매 수량을 넘을 수 없습니다.
+          </Text>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {RENTAL_OPTIONS.filter((o) => rentalQty[o.key] > 0).map((o) => {
+              const done = counts[o.key] === rentalQty[o.key]
+              return (
+                <span key={o.key} className="rounded-[6px] px-2 py-1 font-score text-[12px] tabular-nums" style={{ background: done ? '#eaf4ec' : '#eef2f7', color: done ? '#2f803a' : '#4b5563' }}>
+                  {o.label} {counts[o.key]}/{rentalQty[o.key]}
+                </span>
+              )
+            })}
+          </div>
+          <div className="mt-3 space-y-2">
+            {roster.map((p) => {
+              const sel = assign[p.id]
+              if (!sel) return null
+              return (
+                <div key={p.id} className="rounded-[9px] border border-[#eef1f4] px-3 py-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <Text variant="caption" className="shrink-0 text-[#8a94a0]">{p.is_leader ? '대표' : `참가자 ${p.sort_order + 1}`}</Text>
+                    <Text variant="sub" className="truncate text-[#374151]">{p.name}</Text>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {RENTAL_OPTIONS.filter((o) => rentalQty[o.key] > 0).map((o) => {
+                      const on = sel[o.key]
+                      const full = !on && counts[o.key] >= rentalQty[o.key]
+                      return (
+                        <button
+                          key={o.key}
+                          type="button"
+                          onClick={() => toggleOpt(p.id, o.key)}
+                          disabled={full}
+                          className="rounded-[7px] border px-2.5 py-1 font-score text-[12.5px] transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                          style={{ borderColor: on ? NAVY : '#e5eaef', background: on ? NAVY : '#ffffff', color: on ? '#ffffff' : '#4b5563' }}
+                        >
+                          {o.label}
+                        </button>
+                      )
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => toggleInsurance(p.id)}
+                      className="rounded-[7px] border px-2.5 py-1 font-score text-[12.5px] transition-colors"
+                      style={{ borderColor: sel.insuranceWanted ? '#0f5a3c' : '#e5eaef', background: sel.insuranceWanted ? '#eaf4ec' : '#ffffff', color: sel.insuranceWanted ? '#0f5a3c' : '#9ca3af' }}
+                    >
+                      보험
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          {assignError && <p className="mt-2 rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{assignError}</p>}
+          <button
+            type="button"
+            onClick={saveAssign}
+            disabled={savingAssign}
+            className="mt-3 w-full rounded-[10px] bg-[#1e3a5f] py-2.5 font-score text-[14px] font-[500] text-white transition-colors hover:bg-[#16304f] disabled:opacity-40"
+          >
+            {savingAssign ? '저장 중…' : assignSaved ? '배정 저장됨 ✓' : '배정 저장'}
+          </button>
+        </div>
+      )}
+
       {linkError && <p className="mt-2 rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{linkError}</p>}
 
       {roster === null ? (

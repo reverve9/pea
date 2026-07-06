@@ -22,6 +22,8 @@ const schema = z.object({
   lessonClass: z.string().optional(),
   equipment: z.string().optional(),
   apparelSize: z.string().optional(),
+  protectorSize: z.string().optional(),
+  gloveSize: z.string().optional(),
 })
 
 export async function POST(req: Request) {
@@ -62,6 +64,8 @@ export async function POST(req: Request) {
     lessonClass: b.lessonClass,
     equipment: b.equipment,
     apparelSize: b.apparelSize,
+    protectorSize: b.protectorSize,
+    gloveSize: b.gloveSize,
   })
   if (!res.ok) return NextResponse.json({ error: res.error }, { status: 400 })
 

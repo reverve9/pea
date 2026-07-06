@@ -109,9 +109,41 @@ export interface MyRosterParticipant {
   phone: string | null
   birth_front: string | null
   lesson_level: string | null
-  equipment: string | null // rentals.equipment
-  apparel_size: string | null // rentals.apparel_size
-  has_insurance: boolean // birth_back_enc != null
+  equipment: string | null // rentals.equipment(용품세트 스키/보드)
+  // 렌탈 옵션 귀속(대표 배정) + 사이즈(참가자 입력). 고글은 사이즈 없음.
+  apparel: boolean
+  apparel_size: string | null
+  protector: boolean
+  protector_size: string | null
+  goggle: boolean
+  glove: boolean
+  glove_size: string | null
+  insurance_wanted: boolean // 대표 배정 보험 여부(뒷자리는 참가자가 write-only 입력)
+  has_insurance: boolean // birth_back_enc != null(뒷자리 실제 등록됨)
+}
+
+// 신청 시 구매한 렌탈 수량 — 대표 배정 정합성 대조 원천(price_breakdown.meta.rental_qty).
+export interface RentalQty {
+  apparel: number
+  goggle: number
+  protector: number
+  glove: number
+}
+
+// 마이 로스터 응답 — 참가자 목록 + 구매 수량(배정 카운터용).
+export interface RosterResult {
+  roster: MyRosterParticipant[]
+  rentalQty: RentalQty
+}
+
+// 대표 렌탈 배정 — 참가자별 옵션 귀속 + 보험 여부. 사이즈는 참가자가 별도 입력.
+export interface RentalAssignmentInput {
+  participantId: string
+  apparel: boolean
+  protector: boolean
+  goggle: boolean
+  glove: boolean
+  insuranceWanted: boolean
 }
 
 // 셀프필 공개페이지 헤더 요약 — 어떤 신청인지 최소 식별(연수유형·일정·대표명). 금액·연락처 미노출.
@@ -131,4 +163,6 @@ export interface MyParticipantInput {
   lessonClass?: string
   equipment?: string
   apparelSize?: string
+  protectorSize?: string
+  gloveSize?: string
 }

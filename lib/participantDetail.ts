@@ -15,6 +15,8 @@ export interface ParticipantDetailInput {
   lessonClass?: string // lesson_level key(직무 반 or 자율 jayul_*). 빈값 → 미변경
   equipment?: string // 'ski' | 'board' | '' → rentals.equipment (merge). 그 외/빈값 → 미변경
   apparelSize?: string // rentals.apparel_size (merge). 빈값 → 미변경
+  protectorSize?: string // rentals.protector_size (merge). 빈값 → 미변경
+  gloveSize?: string // rentals.glove_size (merge). 빈값 → 미변경
 }
 export type ParticipantUpdateResult = { ok: true } | { ok: false; error: string }
 
@@ -60,6 +62,14 @@ export async function updateParticipantDetail(
   if (input.apparelSize != null) {
     const s = input.apparelSize.trim()
     if (s) rentalsPatch.apparel_size = s
+  }
+  if (input.protectorSize != null) {
+    const s = input.protectorSize.trim()
+    if (s) rentalsPatch.protector_size = s
+  }
+  if (input.gloveSize != null) {
+    const s = input.gloveSize.trim()
+    if (s) rentalsPatch.glove_size = s
   }
   if (Object.keys(rentalsPatch).length > 0) {
     const { data: cur, error: fetchErr } = await supabaseAdmin
