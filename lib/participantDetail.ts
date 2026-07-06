@@ -17,6 +17,13 @@ export interface ParticipantDetailInput {
   apparelSize?: string // rentals.apparel_size (merge). 빈값 → 미변경
   protectorSize?: string // rentals.protector_size (merge). 빈값 → 미변경
   gloveSize?: string // rentals.glove_size (merge). 빈값 → 미변경
+  // 렌탈 옵션 귀속·보험 — 대표 배정(/api/my/assign)·어드민 보정 전용. 참가자 셀프필 라우트는 넘기지 않아 잠금 유지.
+  // boolean 명시 시에만 반영(undefined = 미변경). false 로 끄면 해당 사이즈도 제거.
+  apparel?: boolean
+  protector?: boolean
+  goggle?: boolean
+  glove?: boolean
+  insuranceWanted?: boolean
 }
 export type ParticipantUpdateResult = { ok: true } | { ok: false; error: string }
 
@@ -71,6 +78,20 @@ export async function updateParticipantDetail(
     const s = input.gloveSize.trim()
     if (s) rentalsPatch.glove_size = s
   }
+  // 옵션 플래그(어드민 보정) — 명시된 것만. 끄면 해당 사이즈 제거.
+  const flagFields: { flag: boolean | undefined; key: string; size: string | null }[] = [
+    { flag: input.apparel, key: 'apparel', size: 'apparel_size' },
+    { flag: input.protector, key: 'protector', size: 'protector_size' },
+    { flag: input.goggle, key: 'goggle', size: null },
+    { flag: input.glove, key: 'glove', size: 'glove_size' },
+  ]
+  for (const f of flagFields) {
+    if (typeof f.flag === 'boolean') {
+      rentalsPatch[f.key] = f.flag
+      if (!f.flag && f.size) rentalsPatch[f.size] = null
+    }
+  }
+  if (typeof input.insuranceWanted === 'boolean') rentalsPatch.insurance_wanted = input.insuranceWanted
   if (Object.keys(rentalsPatch).length > 0) {
     const { data: cur, error: fetchErr } = await supabaseAdmin
       .from('participants')

@@ -8,6 +8,7 @@ import AdminModal from '@/components/admin/AdminModal'
 import AdminList, { type AdminListColumn } from '@/components/admin/AdminList'
 import { formatDate, formatKRW, APPLICATION_STATUS } from '@/lib/display'
 import { lessonLevelLabel, equipmentLabel, JAYUL_LESSONS, EQUIPMENT_TYPES } from '@/lib/lessonOptions'
+import { APPAREL_SIZES, GEAR_SIZES } from '@/lib/rentalOptions'
 import { PROGRAMS } from '@/lib/programs'
 import type { ParticipantDetailInput } from '@/lib/participantDetail'
 import type { ApplicationAdmin, ApplicationStatus, InsuranceRosterEntry, ParticipantAdmin } from '@/lib/types'
@@ -566,7 +567,14 @@ function ParticipantEditModal({
   const [birthBack, setBirthBack] = useState('')
   const [lessonClass, setLessonClass] = useState(part.lesson_level ?? '')
   const [equipment, setEquipment] = useState(typeof rentals.equipment === 'string' ? rentals.equipment : '')
+  const [apparel, setApparel] = useState(rentals.apparel === true)
+  const [protector, setProtector] = useState(rentals.protector === true)
+  const [goggle, setGoggle] = useState(rentals.goggle === true)
+  const [glove, setGlove] = useState(rentals.glove === true)
+  const [insuranceWanted, setInsuranceWanted] = useState(rentals.insurance_wanted === true)
   const [apparelSize, setApparelSize] = useState(typeof rentals.apparel_size === 'string' ? rentals.apparel_size : '')
+  const [protectorSize, setProtectorSize] = useState(typeof rentals.protector_size === 'string' ? rentals.protector_size : '')
+  const [gloveSize, setGloveSize] = useState(typeof rentals.glove_size === 'string' ? rentals.glove_size : '')
   const isJayul = kind === 'jayul'
   const inputClass =
     'w-full rounded-[9px] border border-[#e2e5e9] bg-white px-3 py-2.5 text-[13.5px] text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:border-[#1e3a5f]'
@@ -579,7 +587,14 @@ function ParticipantEditModal({
       input.phone = phone
       input.lessonClass = lessonClass
       input.equipment = equipment
+      input.apparel = apparel
+      input.protector = protector
+      input.goggle = goggle
+      input.glove = glove
+      input.insuranceWanted = insuranceWanted
       input.apparelSize = apparelSize
+      input.protectorSize = protectorSize
+      input.gloveSize = gloveSize
     }
     onSubmit(input)
   }
@@ -643,28 +658,79 @@ function ParticipantEditModal({
             </select>
           </label>
 
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className={labelClass}>대여장비</span>
-              <select value={equipment} onChange={(e) => setEquipment(e.target.value)} className={inputClass}>
-                <option value="">선택 안 함</option>
-                {EQUIPMENT_TYPES.map((e) => (
-                  <option key={e.key} value={e.key}>
-                    {e.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className={labelClass}>의류 사이즈</span>
-              <input
-                value={apparelSize}
-                onChange={(e) => setApparelSize(e.target.value)}
-                placeholder="예: 95, L"
-                className={inputClass}
-              />
-            </label>
+          <label className="mt-3 block">
+            <span className={labelClass}>용품세트(대여장비)</span>
+            <select value={equipment} onChange={(e) => setEquipment(e.target.value)} className={inputClass}>
+              <option value="">선택 안 함</option>
+              {EQUIPMENT_TYPES.map((e) => (
+                <option key={e.key} value={e.key}>
+                  {e.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {/* 렌탈 옵션 귀속 — 어드민 보정(대표 배정과 동일 필드). 사이즈는 켠 항목만 노출. */}
+          <div className="mt-3">
+            <span className={labelClass}>렌탈 옵션 · 보험</span>
+            <div className="flex flex-wrap gap-1.5">
+              {([
+                { label: '의류', on: apparel, toggle: () => setApparel((v) => !v) },
+                { label: '보호대', on: protector, toggle: () => setProtector((v) => !v) },
+                { label: '고글', on: goggle, toggle: () => setGoggle((v) => !v) },
+                { label: '장갑', on: glove, toggle: () => setGlove((v) => !v) },
+                { label: '보험', on: insuranceWanted, toggle: () => setInsuranceWanted((v) => !v) },
+              ] as const).map((t) => (
+                <button
+                  key={t.label}
+                  type="button"
+                  onClick={t.toggle}
+                  className="rounded-[7px] border px-2.5 py-1 text-[12.5px] transition-colors"
+                  style={{ borderColor: t.on ? '#1e3a5f' : '#e2e5e9', background: t.on ? '#1e3a5f' : '#ffffff', color: t.on ? '#ffffff' : '#6b7280' }}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
+
+          {(apparel || protector || glove) && (
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {apparel && (
+                <label className="block">
+                  <span className={labelClass}>의류 사이즈</span>
+                  <select value={apparelSize} onChange={(e) => setApparelSize(e.target.value)} className={inputClass}>
+                    <option value="">선택</option>
+                    {APPAREL_SIZES.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {protector && (
+                <label className="block">
+                  <span className={labelClass}>보호대 사이즈</span>
+                  <select value={protectorSize} onChange={(e) => setProtectorSize(e.target.value)} className={inputClass}>
+                    <option value="">선택</option>
+                    {GEAR_SIZES.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {glove && (
+                <label className="block">
+                  <span className={labelClass}>장갑 사이즈</span>
+                  <select value={gloveSize} onChange={(e) => setGloveSize(e.target.value)} className={inputClass}>
+                    <option value="">선택</option>
+                    {GEAR_SIZES.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </div>
+          )}
         </>
       )}
 
@@ -718,24 +784,17 @@ function lessonLabel(p: ParticipantAdmin): string {
   return lessonLevelLabel(p.lesson_level)
 }
 
-// 렌탈 — 직무 대표=의류/고글/보호대/장갑(개별 품목) / 자율=대여장비 세트(rentals.equipment)+의류사이즈(후속입력).
+// 렌탈 — 용품세트(equipment) + 렌탈 옵션(의류/보호대/고글/장갑)+사이즈. 직무·자율 동일 형태.
+// 직무=신청 시 확정 / 자율=대표 배정(옵션)+참가자(사이즈). 미배정 자율은 용품세트만 또는 '—'.
 function rentalLabel(p: ParticipantAdmin): string {
   const r = p.rentals
-  if (typeof r.apparel === 'boolean') {
-    // 직무 대표 형태
-    const items: string[] = []
-    if (r.apparel) items.push(`의류${r.apparel_size ? `(${r.apparel_size})` : ''}`)
-    if (r.goggle) items.push('고글')
-    if (r.protector) items.push(`보호대${r.protector_size ? `(${r.protector_size})` : ''}`)
-    if (r.glove) items.push(`장갑${r.glove_size ? `(${r.glove_size})` : ''}`)
-    return items.length ? items.join('·') : '없음'
-  }
-  // 자율 형태 — 대여장비 세트 + 의류사이즈(후속입력으로 채워짐)
-  if (typeof r.equipment === 'string' && r.equipment) {
-    const size = typeof r.apparel_size === 'string' && r.apparel_size ? `·의류(${r.apparel_size})` : ''
-    return `${equipmentLabel(r.equipment)}${size}`
-  }
-  return '—'
+  const items: string[] = []
+  if (typeof r.equipment === 'string' && r.equipment) items.push(equipmentLabel(r.equipment))
+  if (r.apparel) items.push(`의류${r.apparel_size ? `(${r.apparel_size})` : ''}`)
+  if (r.protector) items.push(`보호대${r.protector_size ? `(${r.protector_size})` : ''}`)
+  if (r.goggle) items.push('고글')
+  if (r.glove) items.push(`장갑${r.glove_size ? `(${r.glove_size})` : ''}`)
+  return items.length ? items.join('·') : '—'
 }
 
 // 보험 — 직무: 뒷자리 보유 = 가입 / 자율: insurance_wanted 플래그 = 희망(뒷자리 미수집).
