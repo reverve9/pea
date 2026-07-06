@@ -45,6 +45,7 @@ export default function CourseProgramMaster({
                     <CourseTypeMetaCard
                       key={meta.key}
                       meta={meta}
+                      square
                       scheduleText={scheduleSummary(progSessions, meta.key)}
                       selected={selectedType === meta.key}
                       onClick={() => onSelectType(meta.key)}

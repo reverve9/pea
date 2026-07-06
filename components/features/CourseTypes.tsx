@@ -118,7 +118,7 @@ const TYPES: CourseType[] = [
     from: '300,500원',
     includes: [
       { label: '숙박', sub: '22평(1~4인) · 33평(5~6인)' },
-      { label: '리프트권', sub: '야간권 포함', note: '옵션별 상이(아래 표)' },
+      { label: '리프트권', sub: '야간권 포함', note: '옵션별 상이 *하단 표 참조' },
       '기초 단체 강습 1회',
       ADDON_RENTAL,
     ],
@@ -229,10 +229,10 @@ function TypeDetail({ t }: { t: CourseType }) {
                   )}
                   <DetailSub sub={item.sub} note={item.note} />
                   {item.grid && (
-                    <div className="mt-1.5 grid grid-cols-2 gap-x-5 gap-y-1 md:grid-cols-4">
+                    <div className="mt-1.5 grid grid-cols-2 gap-x-5 gap-y-1 md:flex md:flex-wrap md:justify-between md:gap-x-6">
                       {item.grid.map((g) => (
-                        <div key={g.name} className="flex items-baseline justify-between gap-2">
-                          <Text variant="sub">{g.name}</Text>
+                        <div key={g.name} className="flex items-baseline justify-between gap-2 md:justify-start">
+                          <Text variant="sub" className="whitespace-nowrap">{g.name}</Text>
                           <Text variant="num">{g.price}</Text>
                         </div>
                       ))}
@@ -386,11 +386,13 @@ function MetaCell({ label, value, accent }: { label: string; value: string; acce
 // 유형 카드(정본) — 해설 1줄 + 기간·학점·일정·비용 메타 그리드. 데스크탑 좌측 마스터·모바일 공용.
 // 데스크탑: 클릭 → 우측 유형 상세 선택(selected 하이라이트) / 모바일: 클릭 → 중앙 팝업 모달.
 export function CourseTypeMetaCard({
-  meta, scheduleText, selected, onClick,
+  meta, scheduleText, selected, square, onClick,
 }: {
   meta: CourseTypeMeta
   scheduleText: string
   selected?: boolean
+  // square: 겉 박스(좌 마스터 흰 패널)가 이미 라운드라 안쪽 카드는 각(rounded-0). 모바일 단독 카드는 rounded 유지.
+  square?: boolean
   onClick: () => void
 }) {
   return (
@@ -398,7 +400,7 @@ export function CourseTypeMetaCard({
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className="block w-full rounded-[10px] border border-[#e5eaef] p-4 text-left transition-colors"
+      className={`block w-full border border-[#e5eaef] p-4 text-left transition-colors ${square ? '' : 'rounded-[10px]'}`}
       style={{ background: selected ? meta.accent + '14' : '#f2f5f9' }}
     >
       <div className="flex items-start gap-3">

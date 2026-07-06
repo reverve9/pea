@@ -101,7 +101,8 @@ export default function CoursesPage() {
       extended={
         <div className="pb-[60px]">
           <ExtendedHeader title="연수안내" eyebrow="COURSES" />
-          {/* 프로그램 선택은 좌측 마스터가 담당(데스크탑) — 우측은 순수 상세. */}
+          {/* 프로그램(종목) 탭 — 신청 페이지 우측 상단과 동일. 좌측 마스터와 program 상태 공유(양방향 동기화). */}
+          <ProgramTabs active={program} onSelect={setProgram} />
           {activeProgram.ready ? (
             <>
               {/* 연수 개요 — 데스크탑 우측 페인(모바일은 좌측 main에 표시) */}
