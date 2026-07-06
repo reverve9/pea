@@ -583,16 +583,6 @@ export default function JikmuApplyForm() {
       <div className="mt-10">
         <FormSectionTitle title="확인 · 동의" />
 
-        <Field label="입금자" hint="입금자가 참가자와 다르면 체크해 주세요. 신청 성함과 입금자명이 다르면 접수 확정이 지연될 수 있습니다.">
-          <label className="flex items-center gap-2">
-            <input type="checkbox" checked={form.payerDiffers} onChange={(e) => togglePayerDiffers(e.target.checked)} className="h-4 w-4 accent-[#1e3a5f]" />
-            <Text variant="sub" className="text-[#4b5563]">입금자가 참가자와 다릅니다</Text>
-          </label>
-          {form.payerDiffers && (
-            <input className={`${inputCls} mt-2`} value={form.payerName} onChange={(e) => set('payerName', e.target.value)} placeholder="입금자 성함" />
-          )}
-        </Field>
-
         {/* 17 개인정보 수집·이용/촬영 활용 고지문 — 스크롤 박스 + 필수 동의 체크. */}
         <div className="mb-4 max-h-[220px] overflow-y-auto rounded-[10px] border border-[#e5eaef] bg-[#f7f9fb] p-4 [container-type:inline-size]">
           <Text variant="sub" className="text-[#4b5563]">
@@ -643,6 +633,17 @@ export default function JikmuApplyForm() {
         <div className="mt-3 flex items-center justify-between border-t border-[#e5eaef] pt-3">
           <Text variant="card-title-sm">총 금액</Text>
           <Text variant="num-lg">{won(total)}</Text>
+        </div>
+        {/* 입금자 확인 — 금액 바로 아래, 신청 버튼 위(맥락상 금액과 함께). */}
+        <div className="mt-3 border-t border-[#e5eaef] pt-3">
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={form.payerDiffers} onChange={(e) => togglePayerDiffers(e.target.checked)} className="h-4 w-4 accent-[#1e3a5f]" />
+            <Text variant="sub" className="text-[#4b5563]">입금자가 참가자와 다릅니다</Text>
+          </label>
+          {form.payerDiffers && (
+            <input className={`${inputCls} mt-2`} value={form.payerName} onChange={(e) => set('payerName', e.target.value)} placeholder="입금자 성함" />
+          )}
+          <Text variant="caption" as="p" className="mt-1.5 text-[#9ca3af]">신청 성함과 입금자명이 다르면 접수 확정이 지연될 수 있습니다.</Text>
         </div>
         {submitError && (
           <p className="mt-3 rounded-[8px] bg-[#fbecea] px-3 py-2 text-center font-score text-[13px] text-[#b4483a]">{submitError}</p>
