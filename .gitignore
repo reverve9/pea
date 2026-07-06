@@ -26,3 +26,6 @@ next-env.d.ts
 # logs
 *.log
 npm-debug.log*
+
+# claude auto-memory (lives on drive, shared across machines via symlink; not a repo artifact)
+_DEV/memory/
