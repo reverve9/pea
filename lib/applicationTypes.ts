@@ -27,7 +27,9 @@ export interface JikmuPayload {
   roomType: '' | RoomType
   roomSpec: string // room_surcharge item_key(개별객실일 때)
   rentals: { apparel: boolean; goggle: boolean; protector: boolean; glove: boolean }
-  apparelSize: string
+  apparelSize: string // 의류 사이즈(S/M/L/XL/2XL). 고글은 사이즈 없음
+  protectorSize: string // 보호대 사이즈(S/M/L)
+  gloveSize: string // 장갑 사이즈(S/M/L)
   hasCompanion: boolean
   companion: string
   companionPhone: string

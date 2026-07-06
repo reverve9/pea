@@ -28,15 +28,17 @@ const REGIONS = [
 ]
 
 // 강습 수준(종목·반) 정의는 lib/lessonOptions 로 이관 — 신청폼·어드민 공용 진실원천. [[jikmu-form-is-componentization-source]]
-const APPAREL_SIZES = ['S', 'M', 'L', 'XL', '2XL']
+const APPAREL_SIZES = ['S', 'M', 'L', 'XL', '2XL'] // 의류(스키복) 사이즈
+const GEAR_SIZES = ['S', 'M', 'L'] // 보호대·장갑 사이즈
 // 알게 된 경로(계획안 14번) — 필수X·중복선택.
 const ROUTE_OPTIONS = ['체육교육회 홈페이지', '교육청 연수원 게시글', '학교 내 공문', '지인 소개', '과거 참가자']
-// 렌탈 항목 — item_key = price_items 매칭. apparel 은 사이즈 부속 선택.
-const RENTAL_ITEMS: { key: string; field: keyof RentalSel }[] = [
-  { key: 'apparel', field: 'apparel' },
-  { key: 'protector', field: 'protector' },
+// 렌탈 항목 — item_key = price_items 매칭. sizeField 있으면 선택 시 사이즈 부속 노출(고글만 사이즈 없음).
+type SizeField = 'apparelSize' | 'protectorSize' | 'gloveSize'
+const RENTAL_ITEMS: { key: string; field: keyof RentalSel; sizeField?: SizeField; sizes?: string[] }[] = [
+  { key: 'apparel', field: 'apparel', sizeField: 'apparelSize', sizes: APPAREL_SIZES },
+  { key: 'protector', field: 'protector', sizeField: 'protectorSize', sizes: GEAR_SIZES },
   { key: 'goggle', field: 'goggle' },
-  { key: 'glove', field: 'glove' },
+  { key: 'glove', field: 'glove', sizeField: 'gloveSize', sizes: GEAR_SIZES },
 ]
 
 interface RentalSel {
@@ -62,6 +64,8 @@ interface JikmuForm {
   roomSpec: string // room_surcharge item_key (개별객실일 때)
   rentals: RentalSel
   apparelSize: string
+  protectorSize: string
+  gloveSize: string
   // 마무리(계획안 11~17)
   hasCompanion: boolean // 11 동반인 유무(옵션·비용 섹션에서 토글)
   companion: string // 11 동반인 성함
@@ -80,7 +84,7 @@ const EMPTY: JikmuForm = {
   insurance: false, birthBack: '', schoolName: '', region: '',
   lessonSport: '', lessonClass: '', roomType: 'group', roomSpec: '',
   rentals: { apparel: false, goggle: false, protector: false, glove: false },
-  apparelSize: '',
+  apparelSize: '', protectorSize: '', gloveSize: '',
   hasCompanion: false, companion: '', companionPhone: '', notes: '', payerDiffers: false, payerName: '', routes: [],
   confirmChecked: false, privacyConsent: false, marketingOptIn: false,
 }
@@ -337,6 +341,8 @@ export default function JikmuApplyForm() {
       roomSpec: a.roomSpec,
       rentals: a.rentals,
       apparelSize: a.apparelSize,
+      protectorSize: a.protectorSize,
+      gloveSize: a.gloveSize,
       hasCompanion: a.hasCompanion,
       companion: a.companion,
       companionPhone: a.companionPhone,
@@ -527,21 +533,21 @@ export default function JikmuApplyForm() {
 
         <Field label="렌탈" hint="필요한 장비를 선택하세요.">
           <div className="space-y-2">
-            {RENTAL_ITEMS.map(({ key, field }) => {
+            {RENTAL_ITEMS.map(({ key, field, sizeField, sizes }) => {
               const item = itemBy[key]
               if (!item) return null
               return (
                 <div key={key}>
                   <ToggleRow selected={form.rentals[field]} onClick={() => toggleRental(field)} label={item.label} amount={item.amount} />
-                  {field === 'apparel' && form.rentals.apparel && (
+                  {sizeField && sizes && form.rentals[field] && (
                     <select
                       className={`${selectCls} mt-2`}
-                      value={form.apparelSize}
-                      onChange={(e) => set('apparelSize', e.target.value)}
-                      style={{ background: form.apparelSize ? NAVY + '12' : '#ffffff' }}
+                      value={form[sizeField]}
+                      onChange={(e) => set(sizeField, e.target.value)}
+                      style={{ background: form[sizeField] ? NAVY + '12' : '#ffffff' }}
                     >
-                      <option value="">스키복 사이즈 선택</option>
-                      {APPAREL_SIZES.map((sz) => (
+                      <option value="">{item.label} 사이즈 선택</option>
+                      {sizes.map((sz) => (
                         <option key={sz} value={sz}>{sz}</option>
                       ))}
                     </select>

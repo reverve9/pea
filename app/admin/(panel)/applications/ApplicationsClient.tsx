@@ -726,8 +726,8 @@ function rentalLabel(p: ParticipantAdmin): string {
     const items: string[] = []
     if (r.apparel) items.push(`의류${r.apparel_size ? `(${r.apparel_size})` : ''}`)
     if (r.goggle) items.push('고글')
-    if (r.protector) items.push('보호대')
-    if (r.glove) items.push('장갑')
+    if (r.protector) items.push(`보호대${r.protector_size ? `(${r.protector_size})` : ''}`)
+    if (r.glove) items.push(`장갑${r.glove_size ? `(${r.glove_size})` : ''}`)
     return items.length ? items.join('·') : '없음'
   }
   // 자율 형태 — 대여장비 세트 + 의류사이즈(후속입력으로 채워짐)

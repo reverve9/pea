@@ -58,7 +58,7 @@ INSERT INTO price_items (category, item_key, label, amount, sort_order) VALUES
   -- rental (4)
   ('rental',        'apparel',     '의류 대여(스키복 상하의)',  30000, 11),
   ('rental',        'goggle',      '고글 대여',                20000, 12),
-  ('rental',        'protector',   '보호대 대여',              20000, 13),
+  ('rental',        'protector',   '보호대 대여(엉덩이+무릎)',  20000, 13),
   ('rental',        'glove',       '장갑 구매',                15000, 14),
   -- room_surcharge (7) — 개별객실 추가요금, 2박 기준
   ('room_surcharge','room_22_4_1', '22평 4인실 1인 사용',     157500, 21),
