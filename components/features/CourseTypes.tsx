@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Plus, Check, GraduationCap, Boxes, X, ArrowRight, ChevronDown } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import Text, { BTN } from '@/components/common/Text'
+import type { ScheduleType } from '@/lib/types'
 
 // /courses 연수 유형 — 계획안(연수비용 및 포함사항) 4개 유형을 공개용으로 큐레이션.
 // 모바일 드롭다운(아코디언): 헤더(유형명+일정+학점) 클릭 → 포함사항 체크리스트 + 비용을 회색 패널로.
@@ -41,25 +42,43 @@ const ADDON_RENTAL: IncludeDetail = {
 }
 
 interface CourseType {
-  key: string
+  key: 'jikmu' | 'jayul'
   name: string
-  variant?: string // 베이스명과 차별화할 괄호 표기(예: 주말 2박)
   icon: LucideIcon // 신청 페이지와 동일 아이콘(직무=GraduationCap / 자율=Boxes)
   schedule: string
   credit: string
   accent: string
+  from: string // 카드 가격 힌트 시작가(최저)
   includes: IncludeItem[]
-  prices: Price[]
+  prices?: Price[] // 직무 = 단일 요금표
+  variants?: JayulVariant[] // 자율 = 변형(주말2박/1박·주중2박) 비교표
 }
 
-// 자율 3종 공통 세부 — 리프트 박수권·일정·조식 매수만 다르므로 파라미터로.
-// 조식: 박수만큼 지급(2박=2매 / 1박=1매, 1인당).
-const jayulIncludes = (liftTerm: string, liftTime: string, breakfast: number): IncludeItem[] => [
-  { label: '숙박', sub: '22평(1~4인) · 33평(5~6인)' },
-  { label: `리프트권 ${liftTerm}`, sub: liftTime, note: '야간권 포함' },
-  { label: '조식 뷔페 입장권', sub: `1인당 ${breakfast}매` },
-  '기초 단체 강습 1회',
-  ADDON_RENTAL,
+// 자율패키지 변형 — 유형(자율) 하위 층위(신청 자율폼에서 폼 안에서 고르는 것과 동일 층위).
+// 유형 카드는 자율 1장으로 유지하고, 3변형 차이(일정·리프트·조식·인원별 가격)는 상세 비교표로.
+// 공통 세부(숙박·기초강습·추가렌탈)는 CourseType.includes, 변형별로 다른 것만 여기.
+interface JayulVariant {
+  key: Exclude<ScheduleType, 'jikmu'> // schedule_type 매칭
+  label: string
+  schedule: string
+  lift: string
+  breakfast: string
+  prices: Price[] // 1~6인
+}
+
+const JAYUL_VARIANTS: JayulVariant[] = [
+  {
+    key: 'weekend_2n', label: '주말 2박', schedule: '2박 3일', lift: '2박3일권', breakfast: '1인 2매',
+    prices: [['1인', '472,000원'], ['2인', '700,000원'], ['3인', '928,000원'], ['4인', '1,156,000원'], ['5인', '1,445,000원'], ['6인', '1,734,000원']],
+  },
+  {
+    key: 'weekend_1n', label: '주말 1박', schedule: '1박 2일', lift: '1박2일권', breakfast: '1인 1매',
+    prices: [['1인', '300,500원'], ['2인', '479,000원'], ['3인', '657,500원'], ['4인', '836,000원'], ['5인', '1,045,000원'], ['6인', '1,254,000원']],
+  },
+  {
+    key: 'weekday_2n', label: '주중 2박', schedule: '2박 3일', lift: '2박3일권', breakfast: '1인 2매',
+    prices: [['1인', '437,500원'], ['2인', '665,000원'], ['3인', '892,500원'], ['4인', '1,120,000원'], ['5인', '1,400,000원'], ['6인', '1,680,000원']],
+  },
 ]
 
 const TYPES: CourseType[] = [
@@ -70,6 +89,7 @@ const TYPES: CourseType[] = [
     schedule: '2박 3일',
     credit: 'NEIS 1학점 인정',
     accent: NAVY,
+    from: '303,000원',
     includes: [
       {
         label: '숙박',
@@ -89,58 +109,20 @@ const TYPES: CourseType[] = [
     ],
   },
   {
-    key: 'weekend_2n',
+    key: 'jayul',
     name: '자율패키지',
-    variant: '주말 2박',
     icon: Boxes,
-    schedule: '2박 3일',
+    schedule: '주중·주말 선택',
     credit: '학점 미인정',
     accent: GREEN,
-    includes: jayulIncludes('2박3일권', '(1일차 오후~3일차 오전)', 2),
-    prices: [
-      ['1인', '472,000원'],
-      ['2인', '700,000원'],
-      ['3인', '928,000원'],
-      ['4인', '1,156,000원'],
-      ['5인', '1,445,000원'],
-      ['6인', '1,734,000원'],
+    from: '300,500원',
+    includes: [
+      { label: '숙박', sub: '22평(1~4인) · 33평(5~6인)' },
+      { label: '리프트권', sub: '야간권 포함', note: '변형별 상이(아래 표)' },
+      '기초 단체 강습 1회',
+      ADDON_RENTAL,
     ],
-  },
-  {
-    key: 'weekend_1n',
-    name: '자율패키지',
-    variant: '주말 1박',
-    icon: Boxes,
-    schedule: '1박 2일',
-    credit: '학점 미인정',
-    accent: GREEN,
-    includes: jayulIncludes('1박2일권', '(1일차 오후~2일차 오전)', 1),
-    prices: [
-      ['1인', '300,500원'],
-      ['2인', '479,000원'],
-      ['3인', '657,500원'],
-      ['4인', '836,000원'],
-      ['5인', '1,045,000원'],
-      ['6인', '1,254,000원'],
-    ],
-  },
-  {
-    key: 'weekday_2n',
-    name: '자율패키지',
-    variant: '주중 2박',
-    icon: Boxes,
-    schedule: '2박 3일',
-    credit: '학점 미인정',
-    accent: GREEN,
-    includes: jayulIncludes('2박3일권', '(1일차 오후~3일차 오전)', 2),
-    prices: [
-      ['1인', '437,500원'],
-      ['2인', '665,000원'],
-      ['3인', '892,500원'],
-      ['4인', '1,120,000원'],
-      ['5인', '1,400,000원'],
-      ['6인', '1,680,000원'],
-    ],
+    variants: JAYUL_VARIANTS,
   },
 ]
 
@@ -156,12 +138,9 @@ function TypeHeader({ t, onClick }: { t: CourseType; onClick?: () => void }) {
         <t.icon size={18} strokeWidth={1.75} style={{ color: t.accent }} />
       </span>
       <span className="min-w-0 flex-1">
-        {/* 제목 텍스트는 네이비 통일(card-title) — 색 구분은 아이콘 칩으로만. 변형명은 em 비례. */}
+        {/* 제목 텍스트는 네이비 통일(card-title) — 색 구분은 아이콘 칩으로만. */}
         <Text variant="card-title" as="span" className="block">
           {t.name}
-          {t.variant && (
-            <span className="ml-1 text-[0.9em] font-[400] text-[#4b5563]">({t.variant})</span>
-          )}
         </Text>
         <Text variant="card-sub" as="span" className="mt-0.5 block">
           {t.schedule} · {t.credit}
@@ -197,6 +176,61 @@ function DetailSub({ sub, note }: { sub?: string; note?: string }) {
       {subText}
       {note && `${sub ? ' ' : ''}(${note})`}
     </Text>
+  )
+}
+
+// 자율 변형 비교표 — 유형(자율) 하위 3변형(주말2박/1박·주중2박)의 일정·리프트·조식·인원별 가격을 한 표로.
+// 유형은 자율 1장으로 유지, 변형 차이는 여기서만. 모바일(좁은 모달)은 x-스크롤 허용.
+function VariantCompare({ variants, accent }: { variants: JayulVariant[]; accent: string }) {
+  const specs: [string, (v: JayulVariant) => string][] = [
+    ['일정', (v) => v.schedule],
+    ['리프트권', (v) => v.lift],
+    ['조식', (v) => v.breakfast],
+  ]
+  const tiers = variants[0].prices.length
+  return (
+    <div className="mt-4 border-t border-[#e5eaef] pt-3">
+      <Text as="p" variant="label" color={accent} className="mb-2">
+        변형별 안내 · 비용
+      </Text>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[300px] border-collapse">
+          <thead>
+            <tr>
+              <th className="w-[56px]" />
+              {variants.map((v) => (
+                <th key={v.key} className="pb-2 text-right align-bottom">
+                  <Text variant="card-title-sm" as="span" color={accent}>{v.label}</Text>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {specs.map(([label, get]) => (
+              <tr key={label}>
+                <th className="py-1 pr-2 text-left align-top"><Text variant="label" as="span">{label}</Text></th>
+                {variants.map((v) => (
+                  <td key={v.key} className="py-1 pl-2 text-right align-top"><Text variant="sub" as="span">{get(v)}</Text></td>
+                ))}
+              </tr>
+            ))}
+            <tr>
+              <td colSpan={variants.length + 1} className="pt-1.5">
+                <div className="border-t border-[#eef1f4]" />
+              </td>
+            </tr>
+            {Array.from({ length: tiers }).map((_, i) => (
+              <tr key={i}>
+                <th className="py-1 pr-2 text-left"><Text variant="label" as="span">{variants[0].prices[i][0]}</Text></th>
+                {variants.map((v) => (
+                  <td key={v.key} className="py-1 pl-2 text-right"><Text variant="num" as="span">{v.prices[i][1]}</Text></td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   )
 }
 
@@ -251,28 +285,32 @@ function TypeDetail({ t }: { t: CourseType }) {
         })}
       </ul>
 
-      <div className="mt-4 border-t border-[#e5eaef] pt-3">
-        <Text as="p" variant="label" color={t.accent} className="mb-2">
-          비용
-        </Text>
-        <div className="grid grid-cols-2 gap-x-8 gap-y-1.5">
-          {t.prices.map(([label, value, sub]) => (
-            <div key={label} className="flex items-start justify-between gap-2">
-              <Text variant="sub">{label}</Text>
-              <span className="text-right">
-                <Text variant="num" className="block">
-                  {value}
-                </Text>
-                {sub && (
-                  <Text variant="caption" className="mt-0.5 block">
-                    {sub}
+      {t.variants ? (
+        <VariantCompare variants={t.variants} accent={t.accent} />
+      ) : (
+        <div className="mt-4 border-t border-[#e5eaef] pt-3">
+          <Text as="p" variant="label" color={t.accent} className="mb-2">
+            비용
+          </Text>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-1.5">
+            {t.prices?.map(([label, value, sub]) => (
+              <div key={label} className="flex items-start justify-between gap-2">
+                <Text variant="sub">{label}</Text>
+                <span className="text-right">
+                  <Text variant="num" className="block">
+                    {value}
                   </Text>
-                )}
-              </span>
-            </div>
-          ))}
+                  {sub && (
+                    <Text variant="caption" className="mt-0.5 block">
+                      {sub}
+                    </Text>
+                  )}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </>
   )
 }
@@ -319,9 +357,6 @@ function CenterModal({ t, onClose }: { t: CourseType; onClose: () => void }) {
           <div className="min-w-0 flex-1">
             <Text variant="card-title" as="p">
               {t.name}
-              {t.variant && (
-                <span className="ml-1 text-[0.9em] font-[400] text-[#4b5563]">({t.variant})</span>
-              )}
             </Text>
             <Text variant="card-sub" as="p" className="mt-0.5">
               {t.schedule} · {t.credit}
@@ -409,9 +444,6 @@ export function CourseTypeCards({
               <span className="min-w-0 flex-1">
                 <Text variant="card-title" as="span" className="block">
                   {t.name}
-                  {t.variant && (
-                    <span className="ml-1 text-[0.9em] font-[400] text-[#4b5563]">({t.variant})</span>
-                  )}
                 </Text>
                 <Text variant="card-sub" as="span" className="mt-0.5 block">
                   {t.schedule} · {t.credit}
@@ -421,7 +453,7 @@ export function CourseTypeCards({
                 className="shrink-0 font-score text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[500] tabular-nums"
                 style={{ color: on ? t.accent : '#9ca3af' }}
               >
-                {t.prices[0][1]}~
+                {t.from}~
               </span>
             </div>
           </button>
@@ -480,14 +512,6 @@ export function CourseTypeAccordion({
                 color={on ? '#ffffff' : undefined}
               >
                 {t.name}
-                {t.variant && (
-                  <span
-                    className="ml-1 text-[0.9em] font-[400]"
-                    style={{ color: on ? 'rgba(255,255,255,0.8)' : '#4b5563' }}
-                  >
-                    ({t.variant})
-                  </span>
-                )}
               </Text>
               <ChevronDown
                 size={18}

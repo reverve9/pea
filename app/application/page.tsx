@@ -12,6 +12,7 @@ import Modal from '@/components/common/Modal'
 import ExtendedHeader from '@/components/layout/ExtendedHeader'
 import JikmuApplyForm from '@/components/features/JikmuApplyForm'
 import JayulApplyForm from '@/components/features/JayulApplyForm'
+import { ProgramTabs, PendingPanel } from '@/components/features/ProgramTabs'
 import { PROGRAMS, type Program } from '@/lib/programs'
 
 // §3-5 연수신청 — 좌우 동일 층위(프로그램 → 유형). 좌(main)=마스터 인덱스, 우(extended)=상세.
@@ -58,15 +59,6 @@ function trackBody(key: string) {
     <WhiteBox className="p-6">
       <Text variant="body">해당 유형은 준비 중입니다.</Text>
     </WhiteBox>
-  )
-}
-
-// 준비중 프로그램 패널 — 우 상세/모바일 모달 공용.
-function PendingPanel({ title }: { title: string }) {
-  return (
-    <div className="flex items-center justify-center rounded-[10px] border border-[#e5eaef] py-10" style={{ background: '#f2f5f9' }}>
-      <Text variant="sub" color="#9ca3af">{title} 연수는 준비 중입니다.</Text>
-    </div>
   )
 }
 
@@ -149,33 +141,6 @@ function PendingCard({ selected, onSelect }: { selected: boolean; onSelect: () =
     >
       <Text variant="sub" color="#9ca3af">준비중</Text>
     </button>
-  )
-}
-
-// 프로그램 탭(층1) — 4열 박스 그리드. 선택 시 네이비 틴트. 4종 모두 클릭 가능.
-function ProgramTabs({ active, onSelect }: { active: string; onSelect: (k: string) => void }) {
-  return (
-    <div className="mb-5 grid grid-cols-4 gap-2">
-      {PROGRAMS.map((p) => {
-        const on = p.key === active
-        return (
-          <button
-            key={p.key}
-            type="button"
-            onClick={() => onSelect(p.key)}
-            aria-selected={on}
-            className="rounded-[5px] border px-2 py-2.5 text-center font-score text-[clamp(0.6875rem,2.6cqi,0.8125rem)] font-[500] transition-colors"
-            style={{
-              borderColor: on ? NAVY : '#e5eaef',
-              background: on ? NAVY : '#f2f5f9',
-              color: on ? '#ffffff' : '#8a94a0',
-            }}
-          >
-            {p.title}
-          </button>
-        )
-      })}
-    </div>
   )
 }
 
