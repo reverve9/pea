@@ -253,12 +253,12 @@ function CompanionFill({ applicationId, token }: { applicationId: string; token:
         참가자 성함 · 생년월일 · 강습 · 대여장비를 대표가 대신 입력하거나, 참가자별 입력 링크를 복사해 각자에게 전달하면 본인이 직접 입력할 수 있습니다. 각 링크는 본인 정보만 수정 가능합니다.
       </Text>
 
-      {/* 렌탈 배정 — 구매한 렌탈 옵션을 참가자별로 귀속. 사이즈는 각 참가자가 입력. */}
-      {hasRentals && roster && rentalQty && (
+      {/* 렌탈·보험 배정 — 옵션 귀속·보험은 대표가 결정(잠금). 렌탈이 없어도 다인원이면 보험 배정을 위해 노출. */}
+      {roster && rentalQty && (hasRentals || roster.length > 1) && (
         <div className="mt-3 rounded-[10px] border border-[#e5eaef] bg-white p-3">
-          <Text variant="label" className="text-[#374151]">렌탈 배정</Text>
+          <Text variant="label" className="text-[#374151]">렌탈 · 보험 배정</Text>
           <Text variant="caption" as="p" className="mt-1 text-[#9ca3af]">
-            구매한 렌탈을 참가자별로 배정하세요. 옵션·보험은 대표가 정하고(잠금), 사이즈는 각 참가자가 입력합니다. 배정 합계는 구매 수량을 넘을 수 없습니다.
+            옵션·보험을 참가자별로 배정하세요. 대표가 정하고(잠금) 사이즈는 각 참가자가 입력합니다. 렌탈 배정 합계는 구매 수량을 넘을 수 없습니다.
           </Text>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {RENTAL_OPTIONS.filter((o) => rentalQty[o.key] > 0).map((o) => {
