@@ -57,5 +57,12 @@ export function computeJayul(p: JayulPayload, items: PriceItem[]): PriceBreakdow
     if (qty > 0 && by[key]) lines.push({ key: `${key}_x${qty}`, label: `${by[key].label} ×${qty}`, amount: by[key].amount * qty })
   }
   const total = lines.reduce((s, l) => s + l.amount, 0)
-  return { kind: 'jayul', lines, total, meta: { apparel_sizes: p.apparelSizes } }
+  // 구매 수량을 meta 에 보존 — 신청 후 마이페이지 대표 배정 단계의 정합성 대조(배정 합계 = 구매 수량) 원천.
+  const rental_qty = {
+    apparel: p.rentals.apparel ?? 0,
+    goggle: p.rentals.goggle ?? 0,
+    protector: p.rentals.protector ?? 0,
+    glove: p.rentals.glove ?? 0,
+  }
+  return { kind: 'jayul', lines, total, meta: { rental_qty } }
 }

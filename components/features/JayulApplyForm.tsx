@@ -49,8 +49,7 @@ const RENTAL_KEYS = ['apparel', 'goggle', 'protector', 'glove'] as const
 type RentalKey = (typeof RENTAL_KEYS)[number]
 // 알게 된 경로(계획안 14번) — 필수X·중복선택. 직무폼과 동일(내일 컴포넌트화 시 공용화).
 const ROUTE_OPTIONS = ['체육교육회 홈페이지', '교육청 연수원 게시글', '학교 내 공문', '지인 소개', '과거 참가자']
-const APPAREL_SIZES = ['S', 'M', 'L', 'XL', '2XL'] // 스키복 대여 사이즈
-// 동반 참가자 상세는 신청폼에서 받지 않는다 — 신청 후 마이페이지/셀프필로 입력. [[companion-detail-post-signup-fill]]
+// 렌탈 사이즈·귀속은 신청 단계에서 받지 않는다 — 수량·비용만. 신청 후 마이페이지 대표 배정에서 수집. [[companion-detail-post-signup-fill]]
 
 interface JayulForm {
   variant: '' | JayulVariant // 패키지 유형(선행 선택) → 차수·가격 결정
@@ -65,8 +64,7 @@ interface JayulForm {
   region: string
   lessonClass: string // 대표 기초강습(jayul_ski/jayul_board/jayul_freeride)
   equipment: '' | 'ski' | 'board' // 대표 대여 장비 세트
-  rentals: Record<RentalKey, number> // 항목별 수량
-  apparelSizes: string[] // 스키복 대여 수량만큼 사이즈(길이 = rentals.apparel)
+  rentals: Record<RentalKey, number> // 항목별 수량(비용만). 사이즈·귀속은 신청 후 대표 배정
   repInsurance: boolean // 대표 본인 보험 희망
   note: string // 기타 요청사항(자유기술)
   // 추가 정보·확인·동의(직무폼과 공통 — 내일 컴포넌트화)
@@ -82,7 +80,7 @@ const EMPTY: JayulForm = {
   variant: '', sessionId: '', headcount: 1, name: '', gender: '', phone: '', birthFront: '',
   schoolName: '', region: '', lessonClass: '', equipment: '',
   rentals: { apparel: 0, goggle: 0, protector: 0, glove: 0 },
-  apparelSizes: [], repInsurance: false,
+  repInsurance: false,
   note: '',
   payerDiffers: false, payerName: '', routes: [],
   confirmChecked: false, privacyConsent: false, marketingOptIn: false,
@@ -271,36 +269,18 @@ export default function JayulApplyForm() {
     setForm((f) => (f.variant === v ? f : { ...f, variant: v, sessionId: '' }))
     setSaved(false)
   }
-  // 배열을 목표 길이로 리사이즈(초과분 절삭, 부족분 factory로 채움).
-  const resize = <T,>(arr: T[], len: number, factory: () => T): T[] => {
-    const out = arr.slice(0, len)
-    while (out.length < len) out.push(factory())
-    return out
-  }
-  // 인원 변경 → 렌탈 수량 클램프 + 스키복 사이즈 리사이즈. 동반 명단은 신청폼에서 안 받음.
+  // 인원 변경 → 렌탈 수량 클램프(인원 초과 방지). 동반 명단은 신청폼에서 안 받음.
   const setHeadcount = (n: number) => {
     setForm((f) => {
       const rentals = { ...f.rentals }
       for (const key of RENTAL_KEYS) rentals[key] = Math.min(rentals[key], n)
-      return {
-        ...f,
-        headcount: n,
-        rentals,
-        apparelSizes: resize(f.apparelSizes, rentals.apparel, () => ''),
-      }
+      return { ...f, headcount: n, rentals }
     })
     setSaved(false)
   }
-  // 렌탈 수량 변경 → 스키복이면 사이즈 칸 개수 동기화.
+  // 렌탈 수량 변경 — 사이즈·귀속은 신청 후 대표 배정 단계에서 참가자별로 수집(신청 단계는 수량·비용만).
   const setRental = (key: RentalKey, n: number) => {
-    setForm((f) => {
-      const rentals = { ...f.rentals, [key]: n }
-      return { ...f, rentals, apparelSizes: key === 'apparel' ? resize(f.apparelSizes, n, () => '') : f.apparelSizes }
-    })
-    setSaved(false)
-  }
-  const setApparelSize = (i: number, v: string) => {
-    setForm((f) => ({ ...f, apparelSizes: f.apparelSizes.map((s, idx) => (idx === i ? v : s)) }))
+    setForm((f) => ({ ...f, rentals: { ...f.rentals, [key]: n } }))
     setSaved(false)
   }
   const togglePayerDiffers = (v: boolean) => {
@@ -347,7 +327,6 @@ export default function JayulApplyForm() {
       lessonClass: a.lessonClass,
       equipment: a.equipment,
       rentals: a.rentals,
-      apparelSizes: a.apparelSizes,
       repInsurance: a.repInsurance,
       note: a.note,
       payerDiffers: a.payerDiffers,
@@ -498,7 +477,7 @@ export default function JayulApplyForm() {
 
       <div className="mt-10">
         <FormSectionTitle title="렌탈 (선택)" />
-        <Field label="렌탈 장비" hint="필요한 수량을 선택하세요.">
+        <Field label="렌탈 장비" hint="필요한 수량을 선택하세요. 사이즈는 신청 후 마이페이지에서 참가자별로 배정·입력합니다.">
           <div className="space-y-2">
             {RENTAL_KEYS.map((key) => {
               const item = itemBy[key]
@@ -516,29 +495,6 @@ export default function JayulApplyForm() {
             })}
           </div>
         </Field>
-
-        {form.rentals.apparel > 0 && (
-          <Field label="스키복 사이즈" hint="대여하신 스키복 수량만큼 사이즈를 선택해 주세요.">
-            <div className="space-y-2">
-              {form.apparelSizes.map((sz, i) => (
-                <div key={i} className="flex items-center gap-2.5">
-                  <Text variant="sub" className="w-12 shrink-0 text-[#6b7280]">{i + 1}벌</Text>
-                  <select
-                    className={selectCls}
-                    value={sz}
-                    onChange={(e) => setApparelSize(i, e.target.value)}
-                    style={{ background: sz ? GREEN + '12' : '#ffffff' }}
-                  >
-                    <option value="">사이즈 선택</option>
-                    {APPAREL_SIZES.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
-              ))}
-            </div>
-          </Field>
-        )}
       </div>
 
       <div className="mt-10">

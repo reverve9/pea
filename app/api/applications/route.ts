@@ -60,7 +60,6 @@ const jayulSchema = z.object({
   lessonClass: z.string(),
   equipment: z.enum(['ski', 'board']).or(z.literal('')),
   rentals: z.object({ apparel: z.number().int().min(0), goggle: z.number().int().min(0), protector: z.number().int().min(0), glove: z.number().int().min(0) }),
-  apparelSizes: z.array(z.string()),
   repInsurance: z.boolean(),
   note: z.string(),
   payerDiffers: z.boolean(),
