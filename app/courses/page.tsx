@@ -7,11 +7,10 @@ import SectionTitle from '@/components/common/SectionTitle'
 import ExtendedHeader from '@/components/layout/ExtendedHeader'
 import { LoadingState } from '@/components/common/StateView'
 import ScheduleCalendar, { scheduleMonths } from '@/components/features/ScheduleCalendar'
-import ScheduleMaster from '@/components/features/ScheduleMaster'
+import CourseProgramMaster from '@/components/features/CourseProgramMaster'
 import CourseOverview from '@/components/features/CourseOverview'
 import {
   CourseTypesMobile,
-  CourseTypeCards,
   CourseTypeAccordion,
   DEFAULT_TYPE_KEY,
 } from '@/components/features/CourseTypes'
@@ -47,7 +46,7 @@ export default function CoursesPage() {
   return (
     <AppShell
       main={
-        <div className="pb-8">
+        <div className="pb-[60px]">
           <PageTitle title="연수안내" en="COURSES" />
           {/* 도입 리드 — 홈 슬로건/소개 레지스터(경량 font-300 + 넉넉한 행간 + 키워드만 강조). "볼드≠강조". */}
           <p className="px-4 pt-1 pb-8 font-score text-center text-[clamp(0.9375rem,3.4cqi,1.0625rem)] font-[300] leading-[1.85] text-[#4b5563]">
@@ -55,63 +54,54 @@ export default function CoursesPage() {
             신청 전 회차와 유형을 확인하세요.
           </p>
 
-          {/* 프로그램 층 — 4종(스키 개설 + 준비중 3). 신청 페이지와 동일. */}
-          <div className="px-4">
+          {/* 프로그램 탭 — 모바일 전용(데스크탑은 아래 좌측 프로그램 마스터가 선택 담당). */}
+          <div className="px-4 md:hidden">
             <ProgramTabs active={program} onSelect={setProgram} />
           </div>
 
-          {activeProgram.ready ? (
-            <>
-              {/* 연수 개요 — 모바일 전용(데스크탑은 우측 extended 페인에 표시) */}
-              <section className="px-4 mb-10 md:hidden">
-                <CourseOverview />
-              </section>
+          {/* 데스크탑 좌측 단일 마스터 — 프로그램 아코디언 → 유형 카드(일정+유형 통합). 전 프로그램 항상 렌더. */}
+          <section className="px-4 hidden md:block">
+            {sessions.loading ? (
+              <LoadingState />
+            ) : (
+              <CourseProgramMaster
+                sessions={sessions.data}
+                program={program}
+                onProgram={setProgram}
+                selectedType={selectedType}
+                onSelectType={setSelectedType}
+              />
+            )}
+          </section>
 
-              {/* 연수일정 — 모바일: 캘린더(자체 월탭). 데스크탑: 월별 요약 마스터(우측 캘린더 제어). */}
-              <section className="px-4 mb-8">
-                <SectionTitle title="일정" en="Schedule" rail />
-                {sessions.loading ? (
-                  <LoadingState />
-                ) : (
-                  <>
-                    <div className="md:hidden">
-                      <ScheduleCalendar sessions={sessions.data} />
-                    </div>
-                    <div className="hidden md:block">
-                      <ScheduleMaster
-                        sessions={sessions.data}
-                        selectedId={selSession}
-                        onSelect={selectSession}
-                      />
-                    </div>
-                  </>
-                )}
-              </section>
-
-              {/* 유형 — 모바일: 카드 → 중앙 팝업 모달(건드리지 않음) */}
-              <section className="px-4 md:hidden">
-                <SectionTitle title="유형" en="Types" />
-                <CourseTypesMobile />
-              </section>
-
-              {/* 유형 — 데스크탑 좌측 마스터(요약 카드). 우측 아코디언을 제어. */}
-              <section className="px-4 hidden md:block">
-                <SectionTitle title="유형" en="Types" rail />
-                <CourseTypeCards selected={selectedType} onSelect={setSelectedType} />
-              </section>
-            </>
-          ) : (
-            <div className="px-4">
-              <PendingPanel title={activeProgram.title} />
-            </div>
-          )}
+          {/* 모바일 콘텐츠 — 개요·캘린더·유형. 준비중 프로그램이면 안내 패널. */}
+          <div className="md:hidden">
+            {activeProgram.ready ? (
+              <>
+                <section className="px-4 mb-10">
+                  <CourseOverview />
+                </section>
+                <section className="px-4 mb-8">
+                  <SectionTitle title="일정" en="Schedule" rail />
+                  {sessions.loading ? <LoadingState /> : <ScheduleCalendar sessions={sessions.data} />}
+                </section>
+                <section className="px-4">
+                  <SectionTitle title="유형" en="Types" />
+                  <CourseTypesMobile sessions={(sessions.data ?? []).filter((s) => s.course?.sport === activeProgram.sport)} />
+                </section>
+              </>
+            ) : (
+              <div className="px-4">
+                <PendingPanel title={activeProgram.title} />
+              </div>
+            )}
+          </div>
         </div>
       }
       extended={
-        <div>
+        <div className="pb-[60px]">
           <ExtendedHeader title="연수안내" eyebrow="COURSES" />
-          {/* 프로그램 층 — 좌측과 동일 선택 상태 공유. */}
-          <ProgramTabs active={program} onSelect={setProgram} />
+          {/* 프로그램 선택은 좌측 마스터가 담당(데스크탑) — 우측은 순수 상세. */}
           {activeProgram.ready ? (
             <>
               {/* 연수 개요 — 데스크탑 우측 페인(모바일은 좌측 main에 표시) */}

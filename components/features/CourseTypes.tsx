@@ -3,10 +3,10 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
-import { Plus, Check, GraduationCap, Boxes, X, ArrowRight, ChevronDown } from 'lucide-react'
+import { Check, GraduationCap, Boxes, X, ArrowRight, ChevronDown } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import Text, { BTN } from '@/components/common/Text'
-import type { ScheduleType } from '@/lib/types'
+import type { ScheduleType, SessionWithCourse } from '@/lib/types'
 
 // /courses 연수 유형 — 계획안(연수비용 및 포함사항) 4개 유형을 공개용으로 큐레이션.
 // 모바일 드롭다운(아코디언): 헤더(유형명+일정+학점) 클릭 → 포함사항 체크리스트 + 비용을 회색 패널로.
@@ -118,53 +118,13 @@ const TYPES: CourseType[] = [
     from: '300,500원',
     includes: [
       { label: '숙박', sub: '22평(1~4인) · 33평(5~6인)' },
-      { label: '리프트권', sub: '야간권 포함', note: '변형별 상이(아래 표)' },
+      { label: '리프트권', sub: '야간권 포함', note: '옵션별 상이(아래 표)' },
       '기초 단체 강습 1회',
       ADDON_RENTAL,
     ],
     variants: JAYUL_VARIANTS,
   },
 ]
-
-// 유형 헤더 — 아이콘 칩 + 이름 + 일정·학점. as='button'(모바일 시트 트리거) / as='div'(데스크탑 정적)
-function TypeHeader({ t, onClick }: { t: CourseType; onClick?: () => void }) {
-  const inner = (
-    <>
-      {/* 아이콘 칩 — 신청 페이지 아이콘 + 유형 색. 직무/자율 색 구분은 여기에. */}
-      <span
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-        style={{ background: t.accent + '14' }}
-      >
-        <t.icon size={18} strokeWidth={1.75} style={{ color: t.accent }} />
-      </span>
-      <span className="min-w-0 flex-1">
-        {/* 제목 텍스트는 네이비 통일(card-title) — 색 구분은 아이콘 칩으로만. */}
-        <Text variant="card-title" as="span" className="block">
-          {t.name}
-        </Text>
-        <Text variant="card-sub" as="span" className="mt-0.5 block">
-          {t.schedule} · {t.credit}
-        </Text>
-      </span>
-    </>
-  )
-
-  // 데스크탑 정적 헤더(토글 없음)
-  if (!onClick) {
-    return <div className="flex items-center gap-3 px-4 py-3">{inner}</div>
-  }
-  // 모바일 모달 트리거 — 우측 Plus(열기/더보기 관용, 아코디언 느낌 안 남). 카드 전체가 탭 타깃.
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-center gap-3 px-4 py-3 text-left"
-    >
-      {inner}
-      <Plus size={17} className="shrink-0 text-[#9ca3af]" />
-    </button>
-  )
-}
 
 // 세부 항목의 일정/부가 한 줄 — sub 티어(Pretendard·진한 회색). note가 있으면 일정 바깥 괄호는
 // 벗기고 note만 괄호로 감쌈: "1일차 오후~3일차 오전 (야간권 포함)".
@@ -191,7 +151,7 @@ function VariantCompare({ variants, accent }: { variants: JayulVariant[]; accent
   return (
     <div className="mt-4 border-t border-[#e5eaef] pt-3">
       <Text as="p" variant="label" color={accent} className="mb-2">
-        변형별 안내 · 비용
+        옵션별 안내
       </Text>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[300px] border-collapse">
@@ -395,71 +355,89 @@ function CenterModal({ t, onClose }: { t: CourseType; onClose: () => void }) {
 // 기본 선택 유형(첫 항목) — 페이지가 좌 마스터/우 디테일 공유 상태 초기값으로 사용.
 export const DEFAULT_TYPE_KEY = TYPES[0].key
 
-// 모바일 — 행 탭 → 중앙 팝업 모달. 아코디언 인라인 없음.
-export function CourseTypesMobile() {
+// 유형 요약 메타 — 좌측 프로그램 마스터(CourseProgramMaster) 카드용(정본). period·credit은 카드 그리드 표기용 축약.
+export type CourseTypeMeta = { key: 'jikmu' | 'jayul'; name: string; icon: LucideIcon; desc: string; period: string; credit: string; accent: string; from: string }
+const CARD_META: Record<'jikmu' | 'jayul', { desc: string; period: string; credit: string }> = {
+  jikmu: { desc: '교원 대상 · 현장 적용 지도법과 안전관리 중심', period: '2박 3일', credit: 'NEIS 1학점' },
+  jayul: { desc: '가족·지인과 함께 · 일정·인원 자유 선택형', period: '1~2박', credit: '미인정' },
+}
+export const COURSE_TYPE_META: CourseTypeMeta[] = TYPES.map(({ key, name, icon, accent, from }) => ({ key, name, icon, accent, from, ...CARD_META[key] }))
+
+// 유형(직무/자율) 차수 → 시기·개수 요약(리스트 대신 한 조각). 데스크탑 마스터·모바일 카드 공용.
+export function scheduleSummary(sessions: SessionWithCourse[], typeKey: 'jikmu' | 'jayul'): string {
+  const ss = sessions.filter((s) => (typeKey === 'jikmu' ? s.schedule_type === 'jikmu' : s.schedule_type !== 'jikmu'))
+  if (ss.length === 0) return '개설 예정'
+  const months = ss.map((s) => Number(s.starts_on.slice(5, 7)))
+  const min = Math.min(...months), max = Math.max(...months)
+  const label = min === max ? `${min}월` : `${min}~${max}월`
+  return `${label} · ${ss.length}차수`
+}
+
+// 메타 셀 — 라벨(muted, 고정폭) + 값. 2열 정렬용.
+function MetaCell({ label, value, accent }: { label: string; value: string; accent?: string }) {
+  return (
+    <div className="flex items-baseline gap-2">
+      <Text variant="caption" as="span" className="w-7 shrink-0 text-[#9ca3af]">{label}</Text>
+      <Text variant="sub" as="span" className="min-w-0 truncate" color={accent}>{value}</Text>
+    </div>
+  )
+}
+
+// 유형 카드(정본) — 해설 1줄 + 기간·학점·일정·비용 메타 그리드. 데스크탑 좌측 마스터·모바일 공용.
+// 데스크탑: 클릭 → 우측 유형 상세 선택(selected 하이라이트) / 모바일: 클릭 → 중앙 팝업 모달.
+export function CourseTypeMetaCard({
+  meta, scheduleText, selected, onClick,
+}: {
+  meta: CourseTypeMeta
+  scheduleText: string
+  selected?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className="block w-full rounded-[10px] border border-[#e5eaef] p-4 text-left transition-colors"
+      style={{ background: selected ? meta.accent + '14' : '#f2f5f9' }}
+    >
+      <div className="flex items-start gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ background: meta.accent + '14' }}>
+          <meta.icon size={18} strokeWidth={1.75} style={{ color: meta.accent }} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <Text variant="card-title" as="span" className="block">{meta.name}</Text>
+          <Text variant="card-sub" as="span" className="mt-0.5 block">{meta.desc}</Text>
+        </span>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
+        <MetaCell label="기간" value={meta.period} />
+        <MetaCell label="학점" value={meta.credit} />
+        <MetaCell label="일정" value={scheduleText} />
+        <MetaCell label="비용" value={`${meta.from}~`} accent={selected ? meta.accent : undefined} />
+      </div>
+    </button>
+  )
+}
+
+// 모바일 — 유형 카드(데스크탑과 동일 스타일=CourseTypeMetaCard) 탭 → 중앙 팝업 모달. 일정 요약은 sessions 기반.
+export function CourseTypesMobile({ sessions }: { sessions: SessionWithCourse[] }) {
   const [selected, setSelected] = useState<string | null>(null)
   const sel = TYPES.find((t) => t.key === selected) ?? null
   return (
     <>
-      <div className="space-y-2">
-        {TYPES.map((t) => (
-          <div key={t.key} className="rounded-[10px] border border-[#e5eaef] bg-[#f2f5f9]">
-            <TypeHeader t={t} onClick={() => setSelected(t.key)} />
-          </div>
+      <div className="space-y-3">
+        {COURSE_TYPE_META.map((meta) => (
+          <CourseTypeMetaCard
+            key={meta.key}
+            meta={meta}
+            scheduleText={scheduleSummary(sessions, meta.key)}
+            onClick={() => setSelected(meta.key)}
+          />
         ))}
       </div>
       {sel && <CenterModal t={sel} onClose={() => setSelected(null)} />}
     </>
-  )
-}
-
-// 데스크탑 좌측 마스터 — 유형 요약 카드(선택 하이라이트 + 가격 힌트). 클릭 → 우측 아코디언 제어.
-export function CourseTypeCards({
-  selected,
-  onSelect,
-}: {
-  selected: string | null
-  onSelect: (k: string | null) => void
-}) {
-  return (
-    <div className="space-y-3">
-      {TYPES.map((t) => {
-        const on = t.key === selected
-        return (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => onSelect(t.key)}
-            aria-pressed={on}
-            className="block w-full rounded-[10px] border border-[#e5eaef] text-left transition-colors"
-            style={{ background: on ? t.accent + '14' : '#f2f5f9' }}
-          >
-            <div className="flex items-center gap-3 px-4 py-4">
-              <span
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-                style={{ background: t.accent + '14' }}
-              >
-                <t.icon size={18} strokeWidth={1.75} style={{ color: t.accent }} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <Text variant="card-title" as="span" className="block">
-                  {t.name}
-                </Text>
-                <Text variant="card-sub" as="span" className="mt-0.5 block">
-                  {t.schedule} · {t.credit}
-                </Text>
-              </span>
-              <span
-                className="shrink-0 font-score text-[clamp(0.625rem,2.4cqi,0.75rem)] font-[500] tabular-nums"
-                style={{ color: on ? t.accent : '#9ca3af' }}
-              >
-                {t.from}~
-              </span>
-            </div>
-          </button>
-        )
-      })}
-    </div>
   )
 }
 
