@@ -187,14 +187,9 @@ function CompanionFill({ applicationId, token }: { applicationId: string; token:
       </Text>
 
       {/* 셀프필 링크 복사 — 대표가 단톡 등에 공유(시스템 발송 없음). 동반인이 /fill 에서 각자 입력. */}
-      <button
-        type="button"
-        onClick={copyFillLink}
-        disabled={linkState === 'loading'}
-        className="mt-3 w-full rounded-[10px] border border-[#d3dbe4] bg-white py-2.5 font-score text-[13px] font-[500] text-[#1e3a5f] transition-colors hover:bg-[#f2f5f8] disabled:opacity-40"
-      >
+      <Button variant="primary" size="md" onClick={copyFillLink} disabled={linkState === 'loading'} className="mt-3 w-full">
         {linkState === 'loading' ? '링크 생성 중…' : linkState === 'copied' ? '✓ 링크가 복사되었습니다' : '동반인 입력 링크 복사'}
-      </button>
+      </Button>
       {linkError && <p className="mt-2 rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{linkError}</p>}
 
       {roster === null ? (
@@ -328,23 +323,14 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
                 <Text variant="caption" as="p" className="mt-1 text-[#9ca3af]">신청자명과 다르면 실제 입금하신 분 성함으로 적어주세요. 회계 대조에 사용됩니다.</Text>
                 <Text variant="caption" as="p" className="mt-1 text-[#c0685a]">※ 실제로 입금하신 경우에만 요청해 주세요. 입금 내역이 확인되지 않으면 처리되지 않습니다.</Text>
                 {error && <p className="mt-2 rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{error}</p>}
-                <button
-                  type="button"
-                  onClick={() => submit('payment')}
-                  disabled={submitting}
-                  className="mt-2 w-full rounded-[10px] bg-[#1e3a5f] py-2.5 font-score text-[14px] font-[500] text-white transition-colors hover:bg-[#16304f] disabled:opacity-40"
-                >
+                <Button variant="primary" size="md" onClick={() => submit('payment')} disabled={submitting} className="mt-2 w-full">
                   {submitting ? '접수 중…' : '입금 확인 요청'}
-                </button>
+                </Button>
               </>
             ) : (
-              <button
-                type="button"
-                onClick={() => toggle('payment')}
-                className="mt-2 w-full rounded-[10px] bg-[#1e3a5f] py-2.5 font-score text-[14px] font-[500] text-white transition-colors hover:bg-[#16304f]"
-              >
+              <Button variant="primary" size="md" onClick={() => toggle('payment')} className="mt-2 w-full">
                 입금 확인 요청
-              </button>
+              </Button>
             )}
           </div>
         )
@@ -354,13 +340,13 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
       {app.kind === 'jayul' && <CompanionFill applicationId={app.id} token={token} />}
 
       <div className="mt-4 grid grid-cols-3 gap-2">
-        <Button variant={open === 'modification' ? 'primary' : 'outline'} size="sm" onClick={() => toggle('modification')} disabled={done.modification}>
+        <Button variant="primary" size="sm" onClick={() => toggle('modification')} disabled={done.modification}>
           <Pencil size={13} className="mr-1" />{done.modification ? '요청됨' : '수정요청'}
         </Button>
-        <Button variant={open === 'refund' ? 'primary' : 'outline'} size="sm" onClick={() => toggle('refund')} disabled={done.refund}>
+        <Button variant="primary" size="sm" onClick={() => toggle('refund')} disabled={done.refund}>
           <RefreshCcw size={13} className="mr-1" />{done.refund ? '신청됨' : '환불신청'}
         </Button>
-        <Button variant="outline" size="sm" disabled><FileText size={13} className="mr-1" />증명서</Button>
+        <Button variant="primary" size="sm" disabled><FileText size={13} className="mr-1" />증명서</Button>
       </div>
 
       {/* 수정 요청 폼 */}
@@ -370,14 +356,9 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
           <Text variant="caption" as="p" className="mt-1 text-[#9ca3af]">변경이 필요한 내용을 적어주세요. (예: 렌탈 사이즈 M→L, 동반인 연락처 변경 등) 담당자 확인 후 반영됩니다.</Text>
           <textarea className={`${fieldCls} mt-2 min-h-[90px] resize-y`} value={content} onChange={(e) => setContent(e.target.value)} placeholder="기존 내용 → 변경할 내용" />
           {error && <p className="mt-2 rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{error}</p>}
-          <button
-            type="button"
-            onClick={() => submit('modification')}
-            disabled={submitting}
-            className="mt-2 w-full rounded-[10px] bg-[#1e3a5f] py-2.5 font-score text-[14px] font-[500] text-white transition-colors hover:bg-[#16304f] disabled:opacity-40"
-          >
+          <Button variant="primary" size="md" onClick={() => submit('modification')} disabled={submitting} className="mt-2 w-full">
             {submitting ? '접수 중…' : '수정 요청 접수'}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -389,14 +370,9 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
           <input className={`${fieldCls} mt-2`} value={refundAccount} onChange={(e) => setRefundAccount(e.target.value)} placeholder="환불 계좌 (은행 · 예금주 · 계좌번호)" />
           <textarea className={`${fieldCls} mt-2 min-h-[70px] resize-y`} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="환불 사유 (선택)" />
           {error && <p className="mt-2 rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{error}</p>}
-          <button
-            type="button"
-            onClick={() => submit('refund')}
-            disabled={submitting}
-            className="mt-2 w-full rounded-[10px] bg-[#1e3a5f] py-2.5 font-score text-[14px] font-[500] text-white transition-colors hover:bg-[#16304f] disabled:opacity-40"
-          >
+          <Button variant="primary" size="md" onClick={() => submit('refund')} disabled={submitting} className="mt-2 w-full">
             {submitting ? '접수 중…' : '환불 신청 접수'}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -536,7 +512,7 @@ export default function MyPage() {
     return (
       <AppShell
         main={
-          <div className="pb-8 pt-5">
+          <div className="pb-8 pt-10 md:pt-5">
             <MyHero />
             <div className="px-4"><LoadingState /></div>
           </div>
@@ -551,7 +527,7 @@ export default function MyPage() {
     <MasterDetailProvider>
       <AppShell
         main={
-          <div className="pb-8 pt-5">
+          <div className="pb-8 pt-10 md:pt-5">
             <MyHero />
             <div className="flex items-center justify-between gap-2 px-4 pb-1">
               <Text variant="sub" className="text-[#6b7280]">{session.name} 님의 신청 내역 {apps.length}건</Text>
