@@ -148,6 +148,9 @@ body {
 /* 선택 영역 / 포커스 */
 ::selection { background: rgba(48, 113, 165, 0.2); }
 :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+/* 신청폼 셀렉트: native <select>는 마우스로 열어도 :focus-visible이 걸려 위 네이비 아웃라인이 뜸(옵션 버튼과 달라 보임).
+   억제하고 선택 상태는 틴트 채움(selectTint)으로만 표시 → 옵션 버튼과 통일. */
+.apply-select:focus-visible { outline: none !important; }
 
 /* Safe Area */
 .safe-area-top { padding-top: env(safe-area-inset-top); }

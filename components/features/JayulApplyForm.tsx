@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Minus, Plus } from 'lucide-react'
 import FormSectionTitle from '@/components/common/FormSectionTitle'
-import Text, { BTN } from '@/components/common/Text'
+import Text from '@/components/common/Text'
 import { LoadingState } from '@/components/common/StateView'
 import { useQuery } from '@/lib/useQuery'
 import { getSessions, getPriceItems } from '@/lib/queries'
@@ -11,7 +11,7 @@ import { formatPeriod } from '@/lib/display'
 import { submitApplication } from '@/lib/applyClient'
 import ApplyComplete from '@/components/features/ApplyComplete'
 import { JAYUL_LESSONS, EQUIPMENT_TYPES } from '@/lib/lessonOptions'
-import { Field, RouteSelect, PrivacyConsentBox, ConsentChecks, PayerConfirm, won, inputCls, selectCls, REGIONS } from './apply/shared'
+import { Field, ApplicantFields, RouteSelect, PrivacyConsentBox, ConsentChecks, SummaryActions, won, inputCls } from './apply/shared'
 import type { SessionWithCourse, PriceItem, ScheduleType } from '@/lib/types'
 import type { JayulPayload } from '@/lib/applicationTypes'
 
@@ -195,6 +195,11 @@ export default function JayulApplyForm() {
     setForm((f) => ({ ...f, [k]: v }))
     setSaved(false)
   }
+  // 기본정보 공통 필드셋(ApplicantFields)용 patch 세터.
+  const patch = (p: Partial<JayulForm>) => {
+    setForm((f) => ({ ...f, ...p }))
+    setSaved(false)
+  }
   // 유형 변경 시 선택 차수 초기화(차수는 유형에 종속).
   const setVariant = (v: JayulVariant) => {
     setForm((f) => (f.variant === v ? f : { ...f, variant: v, sessionId: '' }))
@@ -338,48 +343,14 @@ export default function JayulApplyForm() {
       <div className="mt-10">
         <FormSectionTitle title="대표 신청자 정보" />
 
-        <Field label="성함" required>
-          <input className={inputCls} value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="대표 신청자 성함" />
-        </Field>
-
-        <Field label="성별" required>
-          <div className="grid grid-cols-2 gap-2">
-            <OptionRow selected={form.gender === 'male'} onClick={() => set('gender', 'male')}>남자</OptionRow>
-            <OptionRow selected={form.gender === 'female'} onClick={() => set('gender', 'female')}>여자</OptionRow>
-          </div>
-        </Field>
-
-        <Field label="연락처" required hint="신청 관련 안내가 이 번호로 전달됩니다.">
-          <input
-            className={inputCls}
-            value={form.phone}
-            onChange={(e) => set('phone', e.target.value.replace(/\D/g, '').slice(0, 11))}
-            placeholder="01000000000 (- 없이 숫자만)"
-            inputMode="numeric"
-          />
-        </Field>
-
-        <Field label="생년월일" required hint="YYMMDD 6자리">
-          <input
-            className={inputCls}
-            value={form.birthFront}
-            onChange={(e) => set('birthFront', e.target.value.replace(/\D/g, '').slice(0, 6))}
-            placeholder="YYMMDD"
-            inputMode="numeric"
-          />
-        </Field>
-
-        <Field label="소속" required>
-          <div className="grid grid-cols-2 gap-2">
-            <input className={inputCls} value={form.schoolName} onChange={(e) => set('schoolName', e.target.value)} placeholder="소속 기입" />
-            <select className={selectCls} value={form.region} onChange={(e) => set('region', e.target.value)} style={{ background: form.region ? GREEN + '12' : '#ffffff' }}>
-              <option value="">지역 선택</option>
-              {REGIONS.map((r) => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-          </div>
-        </Field>
+        <ApplicantFields
+          value={form}
+          onChange={patch}
+          accent={GREEN}
+          namePlaceholder="대표 신청자 성함"
+          phoneHint="신청 관련 안내가 이 번호로 전달됩니다."
+          schoolPlaceholder="소속 기입"
+        />
       </div>
 
       <div className="mt-10">
@@ -484,55 +455,23 @@ export default function JayulApplyForm() {
         />
       </div>
 
-      {/* 합계·액션 */}
-      <div className="mt-8 rounded-[12px] border border-[#e5eaef] bg-[#f7f9fb] p-4">
-        {lines.length === 0 ? (
-          <Text variant="sub" className="text-[#9ca3af]">참가 일정과 인원을 선택하면 금액이 계산됩니다.</Text>
-        ) : (
-          <div className="space-y-2">
-            {lines.map((l, i) => (
-              <div key={i} className="flex items-center justify-between">
-                <Text variant="sub" className="text-[#4b5563]">{l.label}</Text>
-                <Text variant="num" color="#4b5563">{won(l.amount)}</Text>
-              </div>
-            ))}
-          </div>
-        )}
-        <div className="mt-3 flex items-center justify-between border-t border-[#e5eaef] pt-3">
-          <Text variant="card-title-sm">총 금액</Text>
-          <Text variant="num-lg">{won(total)}</Text>
-        </div>
-        <PayerConfirm
-          payerDiffers={form.payerDiffers}
-          payerName={form.payerName}
-          onToggle={togglePayerDiffers}
-          onNameChange={(v) => set('payerName', v)}
-          accent={GREEN}
-          selfLabel="대표 신청자"
-        />
-        {submitError && (
-          <p className="mt-3 rounded-[8px] bg-[#fbecea] px-3 py-2 text-center font-score text-[13px] text-[#b4483a]">{submitError}</p>
-        )}
-        <div className="mt-4 grid grid-cols-[130px_1fr] gap-2">
-          <button
-            type="button"
-            onClick={saveDraft}
-            disabled={submitting}
-            className={`rounded-[10px] border border-[#e5eaef] bg-white px-4 py-3 ${BTN} text-[#4b5563] transition-colors hover:bg-[#f2f5f9] disabled:opacity-40`}
-          >
-            {saved ? '저장됨 ✓' : '임시저장'}
-          </button>
-          <button
-            type="button"
-            onClick={submit}
-            disabled={submitting || !form.confirmChecked || !form.privacyConsent}
-            className={`rounded-[10px] py-3 ${BTN} text-white transition-colors disabled:cursor-not-allowed disabled:opacity-40`}
-            style={{ background: GREEN }}
-          >
-            {submitting ? '신청 중…' : '신청하기'}
-          </button>
-        </div>
-      </div>
+      <SummaryActions
+        lines={lines}
+        total={total}
+        emptyHint="참가 일정과 인원을 선택하면 금액이 계산됩니다."
+        accent={GREEN}
+        payerDiffers={form.payerDiffers}
+        payerName={form.payerName}
+        onTogglePayer={togglePayerDiffers}
+        onPayerName={(v) => set('payerName', v)}
+        payerSelfLabel="대표 신청자"
+        submitError={submitError}
+        saved={saved}
+        submitting={submitting}
+        canSubmit={form.confirmChecked && form.privacyConsent}
+        onSaveDraft={saveDraft}
+        onSubmit={submit}
+      />
     </div>
   )
 }

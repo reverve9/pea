@@ -1,6 +1,6 @@
 'use client'
 
-import Text from '@/components/common/Text'
+import Text, { BTN } from '@/components/common/Text'
 
 // 신청폼 공용 조각 — 직무(JikmuApplyForm)·자율(JayulApplyForm) 공유. accent(브랜드색)만 prop 으로 분기.
 // 도메인 섹션(종목/객실/렌탈수량 등)은 각 폼에 인라인. 여기엔 100% 동일한 프리미티브·고지문·입금자·경로만. [[jikmu-form-is-componentization-source]]
@@ -11,7 +11,10 @@ export const won = (n: number) => n.toLocaleString('ko-KR') + '원'
 export const inputCls =
   'w-full rounded-[10px] border border-[#e5eaef] bg-white px-3.5 py-2.5 font-score text-[16px] text-[#1f2937] placeholder:text-[#b6bcc4] transition-colors focus:bg-[#f7f9fb] focus:outline-none'
 export const selectCls =
-  'w-full appearance-none rounded-[10px] border border-[#e5eaef] px-3.5 py-2.5 font-score text-[16px] text-[#1f2937] transition-colors focus:outline-none'
+  'apply-select w-full appearance-none rounded-[10px] border border-[#e5eaef] px-3.5 py-2.5 font-score text-[16px] text-[#1f2937] transition-colors focus:outline-none'
+
+// select(드랍다운) 선택 상태 = 옵션 버튼과 동일 통일: bg 틴트 + accent 텍스트(테두리는 중립 고정). on = 값 선택됨.
+export const selectTint = (accent: string, on: boolean) => ({ background: on ? accent + '12' : '#ffffff', color: on ? accent : '#1f2937' })
 
 export const REGIONS = [
   '서울특별시', '부산광역시', '대구광역시', '인천광역시', '광주광역시', '대전광역시', '울산광역시',
@@ -57,6 +60,25 @@ export function CheckRow({ selected, onClick, label, accent }: { selected: boole
             <path d="M2.5 6.2l2.2 2.3L9.5 3.5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         )}
+      </span>
+      <span className="min-w-0 flex-1">{label}</span>
+    </button>
+  )
+}
+
+// 단일선택(라디오) — 원형 체크 + 라벨. accent = 브랜드색. 두 폼 gender 등 non-compact 라디오 공용.
+// 도메인 축약(compact/top) 변형은 각 폼 로컬 OptionRow 유지 — 여기엔 기본형만.
+export function RadioRow({ selected, onClick, label, accent }: { selected: boolean; onClick: () => void; label: string; accent: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className="flex w-full items-center gap-2.5 rounded-[10px] border border-[#e5eaef] px-3.5 py-2.5 text-left font-score text-[clamp(0.8125rem,3.4cqi,0.875rem)] transition-colors"
+      style={{ background: selected ? accent + '12' : '#ffffff', color: selected ? accent : '#4b5563' }}
+    >
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border" style={{ borderColor: selected ? accent : '#cbd2da' }}>
+        {selected && <span className="h-2 w-2 rounded-full" style={{ background: accent }} />}
       </span>
       <span className="min-w-0 flex-1">{label}</span>
     </button>
@@ -160,6 +182,156 @@ export function PayerConfirm({
         <input className={`${inputCls} mt-2`} value={payerName} onChange={(e) => onNameChange(e.target.value)} placeholder="입금자 성함" />
       )}
       <Text variant="caption" as="p" className="mt-1.5 text-[#9ca3af]">신청 성함과 입금자명이 다르면 접수 확정이 지연될 수 있습니다.</Text>
+    </div>
+  )
+}
+
+// 신청자 기본정보 공통 필드셋 — 직무(참가자)·자율(대표). 두 폼 구조 동일, 문구·접두어만 prop 분기.
+// name/gender/phone/birthFront/schoolName/region 6필드는 두 폼 구조 공유(아래 ApplicantCore).
+// 직무 전용 보험 토글·주민번호 뒷자리는 birthExtra 로 주입(도메인 로직은 각 폼 유지).
+export interface ApplicantCore {
+  name: string
+  gender: '' | 'male' | 'female'
+  phone: string
+  birthFront: string
+  schoolName: string
+  region: string
+}
+// patch 객체 방식 — 각 폼의 Partial<Form> 세터가 구조적으로 그대로 할당됨(캐스팅 불필요). setSaved 초기화도 폼 세터가 담당.
+export type ApplicantPatch = (patch: Partial<ApplicantCore>) => void
+
+export function ApplicantFields({
+  value, onChange, accent, personLabel = '', namePlaceholder, phoneHint, schoolPlaceholder, birthExtra,
+}: {
+  value: ApplicantCore
+  onChange: ApplicantPatch
+  accent: string
+  personLabel?: string // '참가자 '(직무) / ''(자율) — 성함·성별·연락처·생년월일 라벨 접두어
+  namePlaceholder: string
+  phoneHint?: React.ReactNode
+  schoolPlaceholder: string
+  birthExtra?: React.ReactNode // 생년월일 입력 아래 추가 노드(직무 보험 토글 등)
+}) {
+  return (
+    <>
+      <Field label={`${personLabel}성함`} required>
+        <input className={inputCls} value={value.name} onChange={(e) => onChange({ name: e.target.value })} placeholder={namePlaceholder} />
+      </Field>
+
+      <Field label={`${personLabel}성별`} required>
+        <div className="grid grid-cols-2 gap-2">
+          <RadioRow selected={value.gender === 'male'} onClick={() => onChange({ gender: 'male' })} label="남자" accent={accent} />
+          <RadioRow selected={value.gender === 'female'} onClick={() => onChange({ gender: 'female' })} label="여자" accent={accent} />
+        </div>
+      </Field>
+
+      <Field label={`${personLabel}연락처`} required hint={phoneHint}>
+        <input
+          className={inputCls}
+          value={value.phone}
+          onChange={(e) => onChange({ phone: e.target.value.replace(/\D/g, '').slice(0, 11) })}
+          placeholder="01000000000 (- 없이 숫자만)"
+          inputMode="numeric"
+        />
+      </Field>
+
+      <Field label={`${personLabel}생년월일`} required hint="YYMMDD 6자리">
+        <input
+          className={inputCls}
+          value={value.birthFront}
+          onChange={(e) => onChange({ birthFront: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+          placeholder="YYMMDD"
+          inputMode="numeric"
+        />
+        {birthExtra}
+      </Field>
+
+      <Field label="소속" required>
+        <div className="grid grid-cols-2 gap-2">
+          <input className={inputCls} value={value.schoolName} onChange={(e) => onChange({ schoolName: e.target.value })} placeholder={schoolPlaceholder} />
+          <select className={selectCls} value={value.region} onChange={(e) => onChange({ region: e.target.value })} style={selectTint(accent, !!value.region)}>
+            <option value="">지역 선택</option>
+            {REGIONS.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+        </div>
+      </Field>
+    </>
+  )
+}
+
+// 합계·액션 박스 — 라인아이템 + 총금액 + 입금자확인 + 제출에러 + 임시저장/신청 버튼. 두 폼 동일, emptyHint·accent·selfLabel만 분기.
+// 신청 버튼은 accent 인라인 bg + hover:brightness-95 로 통일(직무·자율 동일 hover 거동). 합계 계산(lines/total/canSubmit)은 각 폼 도메인.
+export function SummaryActions({
+  lines, total, emptyHint, accent,
+  payerDiffers, payerName, onTogglePayer, onPayerName, payerSelfLabel,
+  submitError, saved, submitting, canSubmit, onSaveDraft, onSubmit,
+}: {
+  lines: { label: string; amount: number }[]
+  total: number
+  emptyHint: string
+  accent: string
+  payerDiffers: boolean
+  payerName: string
+  onTogglePayer: (v: boolean) => void
+  onPayerName: (v: string) => void
+  payerSelfLabel: string
+  submitError: string | null
+  saved: boolean
+  submitting: boolean
+  canSubmit: boolean
+  onSaveDraft: () => void
+  onSubmit: () => void
+}) {
+  return (
+    <div className="mt-8 rounded-[12px] border border-[#e5eaef] bg-[#f7f9fb] p-4">
+      {lines.length === 0 ? (
+        <Text variant="sub" className="text-[#9ca3af]">{emptyHint}</Text>
+      ) : (
+        <div className="space-y-2">
+          {lines.map((l, i) => (
+            <div key={i} className="flex items-center justify-between">
+              <Text variant="sub" className="text-[#4b5563]">{l.label}</Text>
+              <Text variant="num" color="#4b5563">{won(l.amount)}</Text>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="mt-3 flex items-center justify-between border-t border-[#e5eaef] pt-3">
+        <Text variant="card-title-sm">총 금액</Text>
+        <Text variant="num-lg">{won(total)}</Text>
+      </div>
+      <PayerConfirm
+        payerDiffers={payerDiffers}
+        payerName={payerName}
+        onToggle={onTogglePayer}
+        onNameChange={onPayerName}
+        accent={accent}
+        selfLabel={payerSelfLabel}
+      />
+      {submitError && (
+        <p className="mt-3 rounded-[8px] bg-[#fbecea] px-3 py-2 text-center font-score text-[13px] text-[#b4483a]">{submitError}</p>
+      )}
+      <div className="mt-4 grid grid-cols-[130px_1fr] gap-2">
+        <button
+          type="button"
+          onClick={onSaveDraft}
+          disabled={submitting}
+          className={`rounded-[10px] border border-[#e5eaef] bg-white px-4 py-3 ${BTN} text-[#4b5563] transition-colors hover:bg-[#f2f5f9] disabled:opacity-40`}
+        >
+          {saved ? '저장됨 ✓' : '임시저장'}
+        </button>
+        <button
+          type="button"
+          onClick={onSubmit}
+          disabled={submitting || !canSubmit}
+          className={`rounded-[10px] py-3 ${BTN} text-white transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:brightness-100`}
+          style={{ background: accent }}
+        >
+          {submitting ? '신청 중…' : '신청하기'}
+        </button>
+      </div>
     </div>
   )
 }

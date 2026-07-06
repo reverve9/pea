@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import FormSectionTitle from '@/components/common/FormSectionTitle'
-import Text, { BTN } from '@/components/common/Text'
+import Text from '@/components/common/Text'
 import { LoadingState } from '@/components/common/StateView'
 import { useQuery } from '@/lib/useQuery'
 import { getSessions, getPriceItems } from '@/lib/queries'
@@ -12,7 +12,7 @@ import ApplyComplete from '@/components/features/ApplyComplete'
 import type { SessionWithCourse, PriceItem } from '@/lib/types'
 import type { JikmuPayload } from '@/lib/applicationTypes'
 import { LESSON_SPORTS, LESSON_CLASSES, type LessonSport } from '@/lib/lessonOptions'
-import { Field, RouteSelect, PrivacyConsentBox, ConsentChecks, PayerConfirm, won, inputCls, selectCls, REGIONS } from './apply/shared'
+import { Field, ApplicantFields, RouteSelect, PrivacyConsentBox, ConsentChecks, SummaryActions, won, inputCls, selectCls, selectTint } from './apply/shared'
 
 // 직무연수 신청 폼(상세) — /application 마스터-디테일의 우측 페인(데스크탑) / 모달(모바일)에서 렌더. [[application-form-spec]]
 // 이번 슬라이스: 기본정보 + 강습수준 + 옵션·비용(객실·렌탈) 실시간 합계 + 임시저장(localStorage).
@@ -209,6 +209,11 @@ export default function JikmuApplyForm() {
     setForm((f) => ({ ...f, [k]: v }))
     setSaved(false)
   }
+  // 기본정보 공통 필드셋(ApplicantFields)용 patch 세터.
+  const patch = (p: Partial<JikmuForm>) => {
+    setForm((f) => ({ ...f, ...p }))
+    setSaved(false)
+  }
   // 종목 변경 시 선택 반 초기화(반은 종목에 종속).
   const setSport = (v: LessonSport) => {
     setForm((f) => (f.lessonSport === v ? f : { ...f, lessonSport: v, lessonClass: '' }))
@@ -327,66 +332,36 @@ export default function JikmuApplyForm() {
         </Field>
       )}
 
-      <Field label="참가자 성함" required>
-        <input className={inputCls} value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="본인 성함" />
-      </Field>
-
-      <Field label="참가자 성별" required>
-        <div className="grid grid-cols-2 gap-2">
-          <OptionRow selected={form.gender === 'male'} onClick={() => set('gender', 'male')}>남자</OptionRow>
-          <OptionRow selected={form.gender === 'female'} onClick={() => set('gender', 'female')}>여자</OptionRow>
-        </div>
-      </Field>
-
-      <Field label="참가자 연락처" required>
-        <input
-          className={inputCls}
-          value={form.phone}
-          onChange={(e) => set('phone', e.target.value.replace(/\D/g, '').slice(0, 11))}
-          placeholder="01000000000 (- 없이 숫자만)"
-          inputMode="numeric"
-        />
-      </Field>
-
-      <Field label="참가자 생년월일" required hint="YYMMDD 6자리">
-        <input
-          className={inputCls}
-          value={form.birthFront}
-          onChange={(e) => set('birthFront', e.target.value.replace(/\D/g, '').slice(0, 6))}
-          placeholder="YYMMDD"
-          inputMode="numeric"
-        />
-        <label className="mt-2.5 flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={form.insurance}
-            onChange={(e) => set('insurance', e.target.checked)}
-            className="h-4 w-4 accent-[#1e3a5f]"
-          />
-          <Text variant="sub" className="text-[#4b5563]">여행자 보험 가입 희망 (주민등록번호 뒷자리 필요)</Text>
-        </label>
-        {form.insurance && (
-          <input
-            className={`${inputCls} mt-2`}
-            value={form.birthBack}
-            onChange={(e) => set('birthBack', e.target.value.replace(/\D/g, '').slice(0, 7))}
-            placeholder="뒷자리 7자리 (보험 가입용)"
-            inputMode="numeric"
-          />
-        )}
-      </Field>
-
-      <Field label="소속" required>
-        <div className="grid grid-cols-2 gap-2">
-          <input className={inputCls} value={form.schoolName} onChange={(e) => set('schoolName', e.target.value)} placeholder="소속교 기입" />
-          <select className={selectCls} value={form.region} onChange={(e) => set('region', e.target.value)} style={{ background: form.region ? NAVY + '12' : '#ffffff' }}>
-            <option value="">지역 선택</option>
-            {REGIONS.map((r) => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </select>
-        </div>
-      </Field>
+      <ApplicantFields
+        value={form}
+        onChange={patch}
+        accent={NAVY}
+        personLabel="참가자 "
+        namePlaceholder="본인 성함"
+        schoolPlaceholder="소속교 기입"
+        birthExtra={
+          <>
+            <label className="mt-2.5 flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={form.insurance}
+                onChange={(e) => set('insurance', e.target.checked)}
+                className="h-4 w-4 accent-[#1e3a5f]"
+              />
+              <Text variant="sub" className="text-[#4b5563]">여행자 보험 가입 희망 (주민등록번호 뒷자리 필요)</Text>
+            </label>
+            {form.insurance && (
+              <input
+                className={`${inputCls} mt-2`}
+                value={form.birthBack}
+                onChange={(e) => set('birthBack', e.target.value.replace(/\D/g, '').slice(0, 7))}
+                placeholder="뒷자리 7자리 (보험 가입용)"
+                inputMode="numeric"
+              />
+            )}
+          </>
+        }
+      />
 
       <div className="mt-10">
         <FormSectionTitle title="강습 수준" />
@@ -452,7 +427,7 @@ export default function JikmuApplyForm() {
               className={`${selectCls} mt-2`}
               value={form.roomSpec}
               onChange={(e) => set('roomSpec', e.target.value)}
-              style={{ background: form.roomSpec ? NAVY + '12' : '#ffffff' }}
+              style={selectTint(NAVY, !!form.roomSpec)}
             >
               <option value="">평형 · 인실 선택</option>
               {roomOptions.map((r) => (
@@ -475,7 +450,7 @@ export default function JikmuApplyForm() {
                       className={`${selectCls} mt-2`}
                       value={form[sizeField]}
                       onChange={(e) => set(sizeField, e.target.value)}
-                      style={{ background: form[sizeField] ? NAVY + '12' : '#ffffff' }}
+                      style={selectTint(NAVY, !!form[sizeField])}
                     >
                       <option value="">{item.label} 사이즈 선택</option>
                       {sizes.map((sz) => (
@@ -520,54 +495,23 @@ export default function JikmuApplyForm() {
         />
       </div>
 
-      {/* 합계·액션 */}
-      <div className="mt-8 rounded-[12px] border border-[#e5eaef] bg-[#f7f9fb] p-4">
-        {lines.length === 0 ? (
-          <Text variant="sub" className="text-[#9ca3af]">참가 일정을 선택하면 금액이 계산됩니다.</Text>
-        ) : (
-          <div className="space-y-2">
-            {lines.map((l, i) => (
-              <div key={i} className="flex items-center justify-between">
-                <Text variant="sub" className="text-[#4b5563]">{l.label}</Text>
-                <Text variant="num" color="#4b5563">{won(l.amount)}</Text>
-              </div>
-            ))}
-          </div>
-        )}
-        <div className="mt-3 flex items-center justify-between border-t border-[#e5eaef] pt-3">
-          <Text variant="card-title-sm">총 금액</Text>
-          <Text variant="num-lg">{won(total)}</Text>
-        </div>
-        <PayerConfirm
-          payerDiffers={form.payerDiffers}
-          payerName={form.payerName}
-          onToggle={togglePayerDiffers}
-          onNameChange={(v) => set('payerName', v)}
-          accent={NAVY}
-          selfLabel="참가자"
-        />
-        {submitError && (
-          <p className="mt-3 rounded-[8px] bg-[#fbecea] px-3 py-2 text-center font-score text-[13px] text-[#b4483a]">{submitError}</p>
-        )}
-        <div className="mt-4 grid grid-cols-[130px_1fr] gap-2">
-          <button
-            type="button"
-            onClick={saveDraft}
-            disabled={submitting}
-            className={`rounded-[10px] border border-[#e5eaef] bg-white px-4 py-3 ${BTN} text-[#4b5563] transition-colors hover:bg-[#f2f5f9] disabled:opacity-40`}
-          >
-            {saved ? '저장됨 ✓' : '임시저장'}
-          </button>
-          <button
-            type="button"
-            onClick={submit}
-            disabled={submitting || !form.confirmChecked || !form.privacyConsent}
-            className={`rounded-[10px] bg-[#1e3a5f] py-3 ${BTN} text-white transition-colors hover:bg-[#16304f] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#1e3a5f]`}
-          >
-            {submitting ? '신청 중…' : '신청하기'}
-          </button>
-        </div>
-      </div>
+      <SummaryActions
+        lines={lines}
+        total={total}
+        emptyHint="참가 일정을 선택하면 금액이 계산됩니다."
+        accent={NAVY}
+        payerDiffers={form.payerDiffers}
+        payerName={form.payerName}
+        onTogglePayer={togglePayerDiffers}
+        onPayerName={(v) => set('payerName', v)}
+        payerSelfLabel="참가자"
+        submitError={submitError}
+        saved={saved}
+        submitting={submitting}
+        canSubmit={form.confirmChecked && form.privacyConsent}
+        onSaveDraft={saveDraft}
+        onSubmit={submit}
+      />
     </div>
   )
 }
