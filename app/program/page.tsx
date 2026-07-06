@@ -8,6 +8,7 @@ import SectionTitle from '@/components/common/SectionTitle'
 import ExtendedHeader from '@/components/layout/ExtendedHeader'
 import Text, { BTN } from '@/components/common/Text'
 import { ProgramTabs, PendingPanel } from '@/components/features/ProgramTabs'
+import DuotoneHero from '@/components/features/DuotoneHero'
 import { PROGRAMS } from '@/lib/programs'
 
 // §프로그램 — 종목(층1) "소개" 페이지. 셸 = /courses 정본 미러링(좌 마스터 / 우 상세, 탭은 모바일+우 상단).
@@ -41,7 +42,7 @@ const PROGRAM_DETAIL: Record<
       </>
     ),
     heroEyebrow: 'SKI & SNOWBOARD',
-    heroTitle: '스키·스노보드 연수 과정',
+    heroTitle: '종목별 커리큘럼과 반 편성을 확인하세요',
     // 히어로 = 단일 합성(2:1). 홈 개념대로 스노보드=네이비 톤(좌)·스키=그린 톤(우)을 사선 블렌드로 베이크.
     // 없으면 네이비 그라디언트 폴백. 재베이크: _DEV/bake_hero.py (소스=_DEV/참고이미지/그라데이션 · 출력=public/program).
     heroImgs: ['/program/hero.jpg'],
@@ -112,46 +113,6 @@ function ProgramMaster({ active, onSelect }: { active: string; onSelect: (k: str
   )
 }
 
-// 히어로(실사 듀오톤) — 홈 HomeCourses.Bg 기법 이식: 그라디언트 폴백 + 실사 + 네이비 듀오톤 오버레이 + 스크림 위 텍스트.
-// 2장이면 스노보드(top)를 사선 마스크로 스키(base) 위에 자연 블렌드. 네이비 오버레이 하나로 두 컷을 한 세트로 통일.
-function ProgramHero({ eyebrow, title, imgs, tint = 0.34 }: { eyebrow: string; title: string; imgs?: string[]; tint?: number }) {
-  const base = imgs?.[0]
-  const top = imgs?.[1]
-  return (
-    <div className="relative mb-7 aspect-[7/2] overflow-hidden rounded-[12px]">
-      {/* 폴백 그라디언트 (이미지 없거나 404 시 그대로 노출) */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#2c3e57] to-[#16304f]" />
-      {/* 베이스 실사(스키) */}
-      {base && <div aria-hidden className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${base})` }} />}
-      {/* 블렌드 실사(스노보드) — 우측에서 사선 페이드 */}
-      {top && (
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage: `url(${top})`,
-            WebkitMaskImage: 'linear-gradient(115deg, transparent 38%, #000 62%)',
-            maskImage: 'linear-gradient(115deg, transparent 38%, #000 62%)',
-          }}
-        />
-      )}
-      {/* 네이비 듀오톤 오버레이 — 두 컷 위 단일(홈 "동일 매핑=한 세트"). 베이크 듀오톤이면 tint=0. */}
-      {(base || top) && tint > 0 && <div aria-hidden className="absolute inset-0" style={{ backgroundColor: NAVY, opacity: tint }} />}
-      {/* 텍스트 스크림 */}
-      <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-      {/* 텍스트 */}
-      <div className="absolute inset-x-0 bottom-0 p-[clamp(1.25rem,6cqi,1.75rem)]">
-        <p className="font-raleway text-[clamp(0.6875rem,2.6cqi,0.75rem)] font-[500] uppercase tracking-[3px] text-[#a9e0ea]">
-          {eyebrow}
-        </p>
-        <p className="mt-1.5 font-score text-[clamp(1.375rem,5.4cqi,1.75rem)] font-[300] tracking-[1px] text-white">
-          {title}
-        </p>
-      </div>
-    </div>
-  )
-}
-
 // 연수 핵심 목표 — 인포그래픽. 넘버(라이트 시안·Raleway) + 목표명(네이비) + 설명(뮤트), 패널 3블록.
 function ProgramGoals({ goals }: { goals: { title: string; desc: string }[] }) {
   return (
@@ -213,7 +174,7 @@ function ProgramDetail({ programKey }: { programKey: string }) {
     <div>
       {d && (
         <>
-          <ProgramHero eyebrow={d.heroEyebrow} title={d.heroTitle} imgs={d.heroImgs} tint={d.heroTint} />
+          <DuotoneHero eyebrow={d.heroEyebrow} title={d.heroTitle} imgs={d.heroImgs} tint={d.heroTint} />
           <p className="mb-10 font-score text-[clamp(0.875rem,3.3cqi,1rem)] font-[300] leading-[1.9] text-[#4b5563]">
             {d.intro}
           </p>

@@ -12,7 +12,8 @@ import Modal from '@/components/common/Modal'
 import ExtendedHeader from '@/components/layout/ExtendedHeader'
 import JikmuApplyForm from '@/components/features/JikmuApplyForm'
 import JayulApplyForm from '@/components/features/JayulApplyForm'
-import { ProgramTabs, PendingPanel } from '@/components/features/ProgramTabs'
+import { PendingPanel } from '@/components/features/ProgramTabs'
+import DuotoneHero from '@/components/features/DuotoneHero'
 import { PROGRAMS, type Program } from '@/lib/programs'
 
 // §3-5 연수신청 — 좌우 동일 층위(프로그램 → 유형). 좌(main)=마스터 인덱스, 우(extended)=상세.
@@ -113,15 +114,15 @@ function SelectedTypeBanner({ track, onSwitch }: { track: Track; onSwitch: (key:
         <Text variant="card-title" as="span" color={track.accent}>{track.title}</Text>
         <Text variant="card-sub" as="span" className="truncate">{track.spec}</Text>
       </div>
-      {/* 반대 유형 전환 — 컴팩트 아웃라인 필(반대 유형색) */}
+      {/* 반대 유형 전환 — 솔리드 필(반대 유형색 배경 + 화이트 텍스트)로 강조 */}
       {other && (
         <button
           type="button"
           onClick={() => onSwitch(other.key)}
-          className="flex shrink-0 items-center gap-1 rounded-[8px] border px-3 py-2 transition-opacity hover:opacity-70"
-          style={{ borderColor: other.accent + '40', color: other.accent }}
+          className="flex shrink-0 items-center gap-1 rounded-[8px] px-3.5 py-2 text-white transition-[filter] hover:brightness-95"
+          style={{ background: other.accent }}
         >
-          <Text variant="card-title-sm" as="span" color={other.accent}>{other.title} 신청하기</Text>
+          <Text variant="card-title-sm" as="span" color="#fff">{other.title} 신청하기</Text>
           <ArrowRight size={13} />
         </button>
       )}
@@ -144,23 +145,12 @@ function PendingCard({ selected, onSelect }: { selected: boolean; onSelect: () =
   )
 }
 
-// 최초 진입 안내 — 프로그램·유형 선택 전, 폼 자리에 노출.
-function GuideBox() {
-  return (
-    <div className="flex items-center justify-center rounded-[10px] border border-dashed border-[#d7dee6] py-12 px-6 text-center" style={{ background: '#f7f9fb' }}>
-      <Text variant="sub" className="text-[#8a94a0]">
-        신청할 프로그램과 유형을 선택하시면<br />해당 신청 폼이 이곳에 나타납니다.
-      </Text>
-    </div>
-  )
-}
-
 type Modal = { kind: 'form'; key: string } | { kind: 'pending'; title: string }
 
 export default function ApplyPage() {
   const [isMobile, setIsMobile] = useState(false)
   const [program, setProgram] = useState('ski') // 층1 (기본 스키)
-  const [type, setType] = useState('') // 층2 — 최초 진입 미선택(폼 대신 안내박스)
+  const [type, setType] = useState('jikmu') // 층2 — 기본 '직무' 노출(폼 처음부터). 자율 전환=배너 스위치/좌 마스터
   const [modal, setModal] = useState<Modal | null>(null)
 
   useEffect(() => {
@@ -218,19 +208,14 @@ export default function ApplyPage() {
   const right = (
     <div>
       <ExtendedHeader title="신청" eyebrow="APPLICATION" />
-      <ProgramTabs active={program} onSelect={setProgram} />
+      {/* 우측 상단 탭 제거(프로그램 페이지와 동일) — 히어로 도입 + 좌측 마스터가 종목 선택 담당(중복 제거). */}
       {activeProgram.ready ? (
         <div>
-          {type ? (
-            <SelectedTypeBanner track={TRACKS.find((t) => t.key === type)!} onSwitch={setType} />
-          ) : (
-            <div className="mb-5 grid grid-cols-2 gap-3">
-              {TRACKS.map((t) => (
-                <TrackCard key={t.key} track={t} compact selected={false} onSelect={() => setType(t.key)} />
-              ))}
-            </div>
-          )}
-          {type ? trackBody(type) : <GuideBox />}
+          <DuotoneHero eyebrow="SKI & SNOWBOARD" title="원하는 일정과 유형을 골라 신청하세요" imgs={['/application/hero.jpg']} tint={0} />
+          {/* 우 페인 = 연수유형(정식 섹션 타이틀) + 활성 유형 배너(스위치) + 폼(기본 직무 노출). 하단 2카드/안내박스 제거. */}
+          <SectionTitle title="연수유형" />
+          <SelectedTypeBanner track={TRACKS.find((t) => t.key === type)!} onSwitch={setType} />
+          {trackBody(type)}
         </div>
       ) : (
         <PendingPanel title={activeProgram.title} />
