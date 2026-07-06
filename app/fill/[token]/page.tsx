@@ -8,7 +8,7 @@ import ParticipantFillSlot from '@/components/features/ParticipantFillSlot'
 import { fetchFillRoster, submitFillParticipant } from '@/lib/applyClient'
 import type { MyRosterParticipant, RosterSummary } from '@/lib/applicationTypes'
 
-// 셀프필 공개페이지 — 대표가 단톡 공유한 링크로 동반인이 각자 본인 정보 입력.
+// 셀프필 공개페이지 — 대표가 단톡 공유한 링크로 참가자가 각자 본인 정보 입력.
 // 마이 세션 불필요(링크 토큰이 크리덴셜). 뒷자리 write-only. [[companion-detail-post-signup-fill]]
 export default function FillPage() {
   const params = useParams<{ token: string }>()
@@ -72,7 +72,7 @@ export default function FillPage() {
             </div>
           )}
           <Text variant="caption" as="p" className="mb-3 text-[#9ca3af]">
-            본인 성함을 찾아 성별 · 생년월일 · 기초강습 · 대여장비를 입력해 주세요. 보험 가입자는 주민번호 뒷자리도 필요하며, 서버에서 암호화되어 저장됩니다.
+            본인 정보(성별 · 생년월일 · 기초강습 · 대여장비)를 입력해 주세요. 보험 가입자는 주민번호 뒷자리도 필요하며, 서버에서 암호화되어 저장됩니다. 이 링크는 본인 정보 입력 전용입니다.
           </Text>
 
           {roster === null ? (
@@ -84,11 +84,10 @@ export default function FillPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {roster.map((p, i) => (
+              {roster.map((p) => (
                 <ParticipantFillSlot
                   key={p.id}
                   part={p}
-                  index={i}
                   open={openId === p.id}
                   onToggle={() => setOpenId((o) => (o === p.id ? null : p.id))}
                   onSave={(input) => submitFillParticipant(token, p.id, input)}

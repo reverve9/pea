@@ -167,7 +167,7 @@ export async function POST(req: Request) {
   return NextResponse.json({ application_no: appNo })
 }
 
-// 참가자 행 구성 — 직무=대표 1명, 자율=대표 + 동반(이름 있는 것만).
+// 참가자 행 구성 — 직무=대표 1명, 자율=대표 + 참가자 빈 슬롯(상세는 신청 후 채움).
 function buildParticipants(payload: JikmuPayload | JayulPayload, appId: string, total: number): Record<string, unknown>[] {
   const a = payload.applicant
   if (payload.kind === 'jikmu') {
@@ -204,11 +204,11 @@ function buildParticipants(payload: JikmuPayload | JayulPayload, appId: string, 
     sort_order: 0,
     line_amount: total,
   }
-  // 동반 참가자 = 인원수만큼 빈 슬롯(placeholder). 상세는 신청 후 마이페이지/셀프필로 채운다.
+  // 참가자(대표 외) = 인원수만큼 빈 슬롯(placeholder). 상세는 신청 후 마이페이지/셀프필로 채운다.
   const companionCount = Math.max(0, payload.headcount - 1)
   const companions = Array.from({ length: companionCount }, (_, i) => ({
     application_id: appId,
-    name: `동반 ${i + 2}`,
+    name: `참가자 ${i + 2}`,
     gender: null,
     phone: null,
     lesson_level: null,

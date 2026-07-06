@@ -84,6 +84,7 @@ export function verifyMyToken(token: string, now: number): MyToken | null {
 // PII·뒷자리는 담지 않는다(로스터는 서버가 aid 로 조회, 뒷자리는 write-only).
 export interface FillToken {
   aid: string // application id
+  pid: string // participant id — 이 링크로 수정 가능한 유일 참가자(본인만). 다른 참가자 조작 불가.
   iat: number // 발급 시각(ms)
 }
 
@@ -93,8 +94,10 @@ function signFill(payloadB64: string): string {
   return createHmac('sha256', tokenSecret()).update(`fill:${payloadB64}`).digest('base64url')
 }
 
-export function issueFillToken(applicationId: string, iat: number): string {
-  const payloadB64 = Buffer.from(JSON.stringify({ aid: applicationId, iat } satisfies FillToken)).toString('base64url')
+export function issueFillToken(applicationId: string, participantId: string, iat: number): string {
+  const payloadB64 = Buffer.from(
+    JSON.stringify({ aid: applicationId, pid: participantId, iat } satisfies FillToken),
+  ).toString('base64url')
   return `${payloadB64}.${signFill(payloadB64)}`
 }
 
@@ -107,7 +110,7 @@ export function verifyFillToken(token: string, now: number): FillToken | null {
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null
   try {
     const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8')) as FillToken
-    if (typeof payload.aid !== 'string' || typeof payload.iat !== 'number') return null
+    if (typeof payload.aid !== 'string' || typeof payload.pid !== 'string' || typeof payload.iat !== 'number') return null
     if (now - payload.iat > FILL_TTL_MS) return null
     return payload
   } catch {

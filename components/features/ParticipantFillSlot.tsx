@@ -5,7 +5,7 @@ import Text from '@/components/common/Text'
 import { lessonLevelLabel, equipmentLabel, JAYUL_LESSONS, EQUIPMENT_TYPES } from '@/lib/lessonOptions'
 import type { MyRosterParticipant, MyParticipantInput } from '@/lib/applicationTypes'
 
-// 참가자 후속입력 슬롯 — 마이페이지(대표 대신입력)·셀프필 공개페이지(동반인 각자입력) 공용.
+// 참가자 후속입력 슬롯 — 마이페이지(대표 대신입력)·셀프필 공개페이지(참가자 각자입력) 공용.
 // 접힘 시 요약(입력완료/미입력), 펼침 시 폼. birth_front 보유 = 입력완료로 간주. 뒷자리는 write-only.
 // onSave 는 네트워크 호출(실패 시 throw), 성공하면 뒷자리 클리어 후 onSaved(부모 새로고침).
 
@@ -14,18 +14,20 @@ const fieldCls =
 
 export default function ParticipantFillSlot({
   part,
-  index,
   open,
   onToggle,
   onSave,
   onSaved,
+  onCopyLink,
+  copyState = 'idle',
 }: {
   part: MyRosterParticipant
-  index: number
   open: boolean
   onToggle: () => void
   onSave: (input: MyParticipantInput) => Promise<void>
   onSaved: () => void
+  onCopyLink?: () => void // 있으면 우측에 '링크복사' 버튼 노출(대표 /my 전용)
+  copyState?: 'idle' | 'busy' | 'copied'
 }) {
   const [name, setName] = useState(part.name)
   const [phone, setPhone] = useState(part.phone ?? '')
@@ -39,7 +41,7 @@ export default function ParticipantFillSlot({
   const [err, setErr] = useState<string | null>(null)
 
   const filled = part.birth_front != null
-  const label = part.is_leader ? '대표' : `동반 ${index + 1}`
+  const label = part.is_leader ? '대표' : `참가자 ${part.sort_order + 1}`
   const summary = [
     part.birth_front,
     part.lesson_level ? lessonLevelLabel(part.lesson_level) : null,
@@ -64,8 +66,8 @@ export default function ParticipantFillSlot({
 
   return (
     <div className="rounded-[10px] border border-[#e5eaef] bg-white">
-      <button type="button" onClick={onToggle} className="flex w-full items-center justify-between gap-2 px-3.5 py-3 text-left">
-        <span className="flex min-w-0 flex-col gap-0.5">
+      <div className="flex w-full items-center justify-between gap-2 px-3.5 py-3">
+        <button type="button" onClick={onToggle} className="flex min-w-0 flex-1 flex-col gap-0.5 text-left">
           <span className="flex min-w-0 items-center gap-2">
             <Text variant="sub" className="shrink-0 text-[#8a94a0]">{label}</Text>
             <Text variant="label" className="truncate text-[#374151]">{part.name}</Text>
@@ -73,16 +75,21 @@ export default function ParticipantFillSlot({
           {!open && filled && summary && (
             <Text variant="caption" className="truncate tabular-nums text-[#9ca3af]">{summary}</Text>
           )}
-        </span>
-        <span className="flex shrink-0 items-center gap-2">
+        </button>
+        <div className="flex shrink-0 items-center gap-2">
           {filled ? (
             <span className="rounded-full bg-[#eaf4ec] px-2 py-0.5 font-score text-[11px] text-[#2f803a]">입력완료</span>
           ) : (
             <span className="rounded-full bg-[#fbf3e6] px-2 py-0.5 font-score text-[11px] text-[#a9772a]">미입력</span>
           )}
-          <span className="font-score text-[12px] text-[#9ca3af]">{open ? '접기' : filled ? '수정' : '입력'}</span>
-        </span>
-      </button>
+          {onCopyLink && (
+            <button type="button" onClick={onCopyLink} disabled={copyState === 'busy'} className="font-score text-[12px] text-[#3f6a99] hover:underline disabled:opacity-40">
+              {copyState === 'copied' ? '복사됨' : '링크복사'}
+            </button>
+          )}
+          <button type="button" onClick={onToggle} className="font-score text-[12px] text-[#9ca3af]">{open ? '접기' : filled ? '수정' : '입력'}</button>
+        </div>
+      </div>
 
       {open && (
         <div className="border-t border-[#eef1f4] px-3.5 pb-3.5 pt-3">

@@ -17,6 +17,7 @@ type RosterRow = {
   lesson_level: string | null
   rentals: Record<string, unknown> | null
   birth_back_enc: string | null
+  sort_order: number
 }
 
 export async function getRoster(applicationId: string): Promise<MyRosterParticipant[]> {
@@ -32,6 +33,7 @@ export async function getRoster(applicationId: string): Promise<MyRosterParticip
       id: p.id,
       name: p.name,
       is_leader: p.is_leader,
+      sort_order: p.sort_order,
       gender: p.gender,
       phone: p.phone,
       birth_front: p.birth_front,
@@ -41,6 +43,16 @@ export async function getRoster(applicationId: string): Promise<MyRosterParticip
       has_insurance: p.birth_back_enc != null,
     }
   })
+}
+
+// 개별 셀프필 로스터 — 링크 토큰의 참가자(pid) 한 명만. 다른 참가자 정보는 노출 안 함.
+//   pid 가 해당 신청(aid) 소속인지도 함께 검증(스코프 이탈 방지).
+export async function getRosterParticipant(
+  applicationId: string,
+  participantId: string,
+): Promise<MyRosterParticipant | null> {
+  const roster = await getRoster(applicationId)
+  return roster.find((p) => p.id === participantId) ?? null
 }
 
 // 셀프필 공개페이지 헤더용 요약 — 어떤 신청인지 최소 식별(연수유형·일정·대표명). 금액·연락처는 미노출.

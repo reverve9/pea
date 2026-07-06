@@ -56,12 +56,16 @@ export async function submitMyParticipant(
   if (!res.ok || !json.ok) throw new Error(json.error || '저장 중 오류가 발생했습니다.')
 }
 
-// 셀프필 링크 발급(마이) — 대표가 동반인에게 공유할 링크 토큰. 전체 URL 은 호출부가 origin 을 붙인다.
-export async function requestMyFillLink(token: string, applicationId: string): Promise<string> {
+// 셀프필 링크 발급(마이) — 대표가 참가자별로 각자에게 공유할 개별 링크 토큰. 전체 URL 은 호출부가 origin 을 붙인다.
+export async function requestMyFillLink(
+  token: string,
+  applicationId: string,
+  participantId: string,
+): Promise<string> {
   const res = await fetch('/api/my/fill-link', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token, applicationId }),
+    body: JSON.stringify({ token, applicationId, participantId }),
   })
   const json = (await res.json().catch(() => ({}))) as { fillToken?: string; error?: string }
   if (!res.ok || !json.fillToken) throw new Error(json.error || '링크 생성에 실패했습니다.')

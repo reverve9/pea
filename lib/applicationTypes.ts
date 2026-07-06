@@ -103,6 +103,7 @@ export interface MyRosterParticipant {
   id: string
   name: string
   is_leader: boolean
+  sort_order: number // 0=대표, 1·2…=참가자 순번(라벨 '참가자 N' 계산용)
   gender: Gender | null
   phone: string | null
   birth_front: string | null

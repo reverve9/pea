@@ -126,28 +126,30 @@ function ApplicationCard(app: MyApplicationRow, selected: boolean) {
 const fieldCls =
   'w-full rounded-[10px] border border-[#e5eaef] bg-white px-3.5 py-2.5 font-score text-[16px] text-[#1f2937] placeholder:text-[#b6bcc4] transition-colors focus:bg-[#f7f9fb] focus:outline-none'
 
-// 동반인 후속입력 — 자율패키지 신청 후 대표가 동반인 성함·생년월일·강습·장비·(보험시)뒷자리를 대신 입력.
+// 참가자 후속입력 — 자율패키지 신청 후 대표가 참가자 성함·생년월일·강습·장비·(보험시)뒷자리를 대신 입력.
 // 신청 단계를 단순 유지하기 위해 상세는 신청 후 채운다([[companion-detail-post-signup-fill]]).
-// 두 경로: 대표 대신입력(/api/my/participant) + 셀프필 링크 복사(동반인 각자입력, /fill/[token]).
+// 두 경로: 대표 대신입력(/api/my/participant) + 셀프필 링크 복사(참가자 각자입력, /fill/[token]).
 function CompanionFill({ applicationId, token }: { applicationId: string; token: string }) {
   const [roster, setRoster] = useState<MyRosterParticipant[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [openId, setOpenId] = useState<string | null>(null)
-  const [linkState, setLinkState] = useState<'idle' | 'loading' | 'copied' | 'error'>('idle')
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
   const [linkError, setLinkError] = useState<string | null>(null)
 
-  const copyFillLink = async () => {
+  // 참가자별 개별 링크 — 각 링크는 본인 슬롯만 수정 가능. 대표가 각자에게 전달(단톡 등).
+  const copyLink = async (participantId: string) => {
     setLinkError(null)
-    setLinkState('loading')
+    setBusyId(participantId)
     try {
-      const fillToken = await requestMyFillLink(token, applicationId)
-      const url = `${window.location.origin}/fill/${fillToken}`
-      await navigator.clipboard.writeText(url)
-      setLinkState('copied')
-      setTimeout(() => setLinkState('idle'), 2500)
+      const fillToken = await requestMyFillLink(token, applicationId, participantId)
+      await navigator.clipboard.writeText(`${window.location.origin}/fill/${fillToken}`)
+      setCopiedId(participantId)
+      setTimeout(() => setCopiedId((c) => (c === participantId ? null : c)), 2500)
     } catch (e) {
       setLinkError(e instanceof Error ? e.message : '링크 복사에 실패했습니다.')
-      setLinkState('error')
+    } finally {
+      setBusyId((b) => (b === participantId ? null : b))
     }
   }
 
@@ -183,13 +185,8 @@ function CompanionFill({ applicationId, token }: { applicationId: string; token:
     <div className="mt-4 rounded-[10px] border border-[#e5eaef] bg-[#f7f9fb] p-4">
       <Text variant="label" className="text-[#374151]">참가자 정보</Text>
       <Text variant="caption" as="p" className="mt-1 text-[#9ca3af]">
-        동반인 성함 · 생년월일 · 강습 · 대여장비를 대표가 대신 입력하거나, 아래 링크를 복사해 동반인에게 공유하면 각자 입력할 수 있습니다. 보험 가입자는 주민번호 뒷자리도 필요합니다.
+        참가자 성함 · 생년월일 · 강습 · 대여장비를 대표가 대신 입력하거나, 참가자별 입력 링크를 복사해 각자에게 전달하면 본인이 직접 입력할 수 있습니다. 각 링크는 본인 정보만 수정 가능합니다. 보험 가입자는 주민번호 뒷자리도 필요합니다.
       </Text>
-
-      {/* 셀프필 링크 복사 — 대표가 단톡 등에 공유(시스템 발송 없음). 동반인이 /fill 에서 각자 입력. */}
-      <Button variant="primary" size="md" onClick={copyFillLink} disabled={linkState === 'loading'} className="mt-3 w-full">
-        {linkState === 'loading' ? '링크 생성 중…' : linkState === 'copied' ? '✓ 링크가 복사되었습니다' : '동반인 입력 링크 복사'}
-      </Button>
       {linkError && <p className="mt-2 rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{linkError}</p>}
 
       {roster === null ? (
@@ -198,11 +195,10 @@ function CompanionFill({ applicationId, token }: { applicationId: string; token:
         <p className="mt-3 rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{error}</p>
       ) : (
         <div className="mt-3 space-y-2">
-          {roster.map((p, i) => (
+          {roster.map((p) => (
             <ParticipantFillSlot
               key={p.id}
               part={p}
-              index={i}
               open={openId === p.id}
               onToggle={() => setOpenId((o) => (o === p.id ? null : p.id))}
               onSave={(input) => submitMyParticipant(token, applicationId, p.id, input)}
@@ -210,6 +206,8 @@ function CompanionFill({ applicationId, token }: { applicationId: string; token:
                 setOpenId(null)
                 load()
               }}
+              onCopyLink={p.is_leader ? undefined : () => copyLink(p.id)}
+              copyState={busyId === p.id ? 'busy' : copiedId === p.id ? 'copied' : 'idle'}
             />
           ))}
         </div>
@@ -336,7 +334,7 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
         )
       )}
 
-      {/* 참가자 정보 — 자율패키지는 동반인 후속입력(대표 대신입력). 직무연수는 단독 신청이라 생략. */}
+      {/* 참가자 정보 — 자율패키지는 참가자 후속입력(대표 대신입력). 직무연수는 단독 신청이라 생략. */}
       {app.kind === 'jayul' && <CompanionFill applicationId={app.id} token={token} />}
 
       <div className="mt-4 grid grid-cols-3 gap-2">
@@ -353,7 +351,7 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
       {open === 'modification' && (
         <div className="mt-3 rounded-[10px] border border-[#e5eaef] bg-white p-4">
           <Text variant="label" className="text-[#374151]">수정 요청</Text>
-          <Text variant="caption" as="p" className="mt-1 text-[#9ca3af]">변경이 필요한 내용을 적어주세요. (예: 렌탈 사이즈 M→L, 동반인 연락처 변경 등) 담당자 확인 후 반영됩니다.</Text>
+          <Text variant="caption" as="p" className="mt-1 text-[#9ca3af]">변경이 필요한 내용을 적어주세요. (예: 렌탈 사이즈 M→L, 참가자 연락처 변경 등) 담당자 확인 후 반영됩니다.</Text>
           <textarea className={`${fieldCls} mt-2 min-h-[90px] resize-y`} value={content} onChange={(e) => setContent(e.target.value)} placeholder="기존 내용 → 변경할 내용" />
           {error && <p className="mt-2 rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{error}</p>}
           <Button variant="primary" size="md" onClick={() => submit('modification')} disabled={submitting} className="mt-2 w-full">

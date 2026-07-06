@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useState, useTransition } from 'react'
+import React, { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, ChevronRight, Eye, Link2, Search } from 'lucide-react'
+import { AlertTriangle, ChevronRight, Link2, Search } from 'lucide-react'
 import { Badge } from '@/components/common/Badge'
 import AdminModal from '@/components/admin/AdminModal'
 import AdminList, { type AdminListColumn } from '@/components/admin/AdminList'
@@ -250,26 +250,27 @@ function DetailModal({
   const [pending, startTransition] = useTransition()
   const [memo, setMemo] = useState(app.admin_memo ?? '')
   const [roster, setRoster] = useState<InsuranceRosterEntry[] | null>(null)
-  const [rosterPending, startRoster] = useTransition()
   const [editingPart, setEditingPart] = useState<ParticipantAdmin | null>(null)
-  const [fillLink, setFillLink] = useState<'idle' | 'loading' | 'copied'>('idle')
+  const [copiedFillId, setCopiedFillId] = useState<string | null>(null)
+  const [fillBusyId, setFillBusyId] = useState<string | null>(null)
 
-  // 셀프필 링크 발급·복사 — 관리자가 대표에게 안내/공유용. 동반인이 /fill 에서 각자 입력.
-  const copyFillLink = async () => {
-    setFillLink('loading')
-    const res = await issueFillLink(app.id)
+  // 셀프필 링크 발급·복사(참가자별 개별) — 각 링크는 본인 슬롯만 수정 가능. 관리자가 해당 참가자에게 전달.
+  const copyFillLink = async (participantId: string) => {
+    setFillBusyId(participantId)
+    const res = await issueFillLink(app.id, participantId)
     if (!res.ok) {
       alert(res.error)
-      setFillLink('idle')
+      setFillBusyId(null)
       return
     }
     try {
       await navigator.clipboard.writeText(`${window.location.origin}/fill/${res.fillToken}`)
-      setFillLink('copied')
-      setTimeout(() => setFillLink('idle'), 2500)
+      setCopiedFillId(participantId)
+      setTimeout(() => setCopiedFillId((c) => (c === participantId ? null : c)), 2500)
     } catch {
-      setFillLink('idle')
       alert('클립보드 복사에 실패했습니다.')
+    } finally {
+      setFillBusyId((b) => (b === participantId ? null : b))
     }
   }
 
@@ -286,6 +287,19 @@ function DetailModal({
   }
 
   const insuranceCount = app.participants.filter((p) => p.has_insurance).length
+
+  // 어드민은 보험 뒷자리를 항상 표시 — 모달 열릴 때 자동 복호(별도 표시 버튼 없음).
+  useEffect(() => {
+    if (insuranceCount === 0) return
+    let cancelled = false
+    ;(async () => {
+      const res = await revealInsuranceRoster(app.id)
+      if (!cancelled && res.ok) setRoster(res.roster)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [app.id, insuranceCount])
 
   return (
     <>
@@ -417,34 +431,6 @@ function DetailModal({
             참가자 {app.participants.length}명
             {insuranceCount > 0 && <span className="ml-1 font-[300] text-[#9ca3af]">· 보험 {insuranceCount}명</span>}
           </p>
-          <div className="flex items-center gap-3">
-            {app.kind === 'jayul' && (
-              <button
-                type="button"
-                disabled={fillLink === 'loading'}
-                onClick={copyFillLink}
-                className="inline-flex items-center gap-1 text-[12px] font-[400] text-[#3f6a99] hover:underline disabled:opacity-40"
-              >
-                <Link2 size={13} /> {fillLink === 'copied' ? '복사됨' : '셀프필 링크 복사'}
-              </button>
-            )}
-            {insuranceCount > 0 && !roster && (
-              <button
-                type="button"
-                disabled={rosterPending}
-                onClick={() =>
-                  startRoster(async () => {
-                    const res = await revealInsuranceRoster(app.id)
-                    if (res.ok) setRoster(res.roster)
-                    else alert(res.error)
-                  })
-                }
-                className="inline-flex items-center gap-1 text-[12px] font-[400] text-[#3f6a99] hover:underline disabled:opacity-40"
-              >
-                <Eye size={13} /> 보험 뒷자리 표시
-              </button>
-            )}
-          </div>
         </div>
         <div className="overflow-hidden rounded-[9px] border border-[#eceef1]">
           <table className="w-full text-left">
@@ -475,13 +461,25 @@ function DetailModal({
                   <td className="px-2 py-2 text-[11.5px] font-[300] text-[#6b7280]">{rentalLabel(p)}</td>
                   <td className="px-2 py-2 text-[11.5px] font-[300]">{insuranceCell(p)}</td>
                   <td className="px-3 py-2 text-right">
-                    <button
-                      type="button"
-                      onClick={() => setEditingPart(p)}
-                      className="text-[12px] font-[400] text-[#3f6a99] hover:underline"
-                    >
-                      {p.birth_front ? '수정' : '입력'}
-                    </button>
+                    <div className="inline-flex items-center gap-2">
+                      {app.kind === 'jayul' && !p.is_leader && (
+                        <button
+                          type="button"
+                          disabled={fillBusyId === p.id}
+                          onClick={() => copyFillLink(p.id)}
+                          className="inline-flex items-center gap-1 text-[12px] font-[400] text-[#3f6a99] hover:underline disabled:opacity-40"
+                        >
+                          <Link2 size={12} /> {copiedFillId === p.id ? '복사됨' : '링크'}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setEditingPart(p)}
+                        className="text-[12px] font-[400] text-[#3f6a99] hover:underline"
+                      >
+                        {p.birth_front ? '수정' : '입력'}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -31,17 +31,22 @@ export async function POST(req: Request) {
   const claims = verifyFillToken(b.token, Date.now())
   if (!claims) return NextResponse.json({ error: '유효하지 않거나 만료된 링크입니다.' }, { status: 401 })
 
-  // 참가자가 링크의 신청(aid) 소속인지 확인(다른 신청 참가자 조작 방지).
+  // 개별 링크는 토큰이 지정한 본인(pid)만 수정 가능 — 타인 슬롯 조작 차단.
+  if (b.participantId !== claims.pid) {
+    return NextResponse.json({ error: '본인 정보만 입력할 수 있습니다.' }, { status: 403 })
+  }
+
+  // 그 참가자가 링크의 신청(aid) 소속인지 확인(스코프 이탈 방지).
   const { data: part, error: pErr } = await supabaseAdmin
     .from('participants')
     .select('id')
-    .eq('id', b.participantId)
+    .eq('id', claims.pid)
     .eq('application_id', claims.aid)
     .maybeSingle()
   if (pErr) return NextResponse.json({ error: '처리 중 오류가 발생했습니다.' }, { status: 500 })
   if (!part) return NextResponse.json({ error: '대상 참가자를 찾을 수 없습니다.' }, { status: 404 })
 
-  const res = await updateParticipantDetail(b.participantId, {
+  const res = await updateParticipantDetail(claims.pid, {
     name: b.name,
     phone: b.phone,
     birthFront: b.birthFront,

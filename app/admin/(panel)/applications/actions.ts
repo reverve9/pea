@@ -66,12 +66,12 @@ export async function updateParticipantDetail(
   }
 }
 
-// 셀프필 링크 발급(어드민) — 동반인 후속입력용 링크 토큰. 관리자가 대표에게 안내/공유.
+// 셀프필 링크 발급(어드민) — 참가자별 개별 링크. 각 링크는 본인 슬롯만 수정 가능(타인 정보 조작 불가).
 export type FillLinkResult = { ok: true; fillToken: string } | { ok: false; error: string }
-export async function issueFillLink(applicationId: string): Promise<FillLinkResult> {
+export async function issueFillLink(applicationId: string, participantId: string): Promise<FillLinkResult> {
   try {
     await requireAdmin()
-    return { ok: true, fillToken: issueFillToken(applicationId, Date.now()) }
+    return { ok: true, fillToken: issueFillToken(applicationId, participantId, Date.now()) }
   } catch (e) {
     console.error('[applications] issueFillLink:', e)
     return { ok: false, error: '링크 발급에 실패했습니다.' }
