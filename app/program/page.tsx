@@ -64,23 +64,25 @@ const PROGRAM_DETAIL: Record<
   },
 }
 
-// 프로그램 세부 커리큘럼 — 종목별(스키/스노보드) 반 편성. 반명·대상·교육목표는 클라이언트 확정 카피.
-const CURRICULUM: Record<string, { sport: string; classes: { level: string; target: string; goal: string }[] }[]> = {
+// 프로그램 세부 커리큘럼 — 종목별(스키/스노보드) 반 편성.
+// 반명·대상·목표(기술 예시)는 클라이언트 확정 카피 — 표기만 통일(턴 명칭 단일 토큰, "교육 목표" 꼬리 제거).
+// ⚠ detail(기술 상세 설명)은 UI 구조 확인용 샘플 문구 — 클라이언트 확정 커리큘럼 자료로 교체 예정(창작값).
+const CURRICULUM: Record<string, { sport: string; classes: { level: string; target: string; goal: string; detail: string }[] }[]> = {
   ski: [
     {
       sport: '스키',
       classes: [
-        { level: '입문반', target: '첫 입문자', goal: '스키 착용법, 지상 강습, 스노우플라우턴 교육 목표' },
-        { level: '초급반', target: '1회~3회 경험자', goal: '스노우 플라우턴, 슈템턴 교육 목표' },
-        { level: '중상급반', target: '중급 이상 슬로프에서 자유로운 턴이 가능', goal: '베이직롱턴(패러렐)과 숏턴 교육 목표' },
+        { level: '입문반', target: '첫 입문자', goal: '스키 착용법, 지상 강습, 스노우플라우턴', detail: '장비 착용과 넘어지고 일어서는 법부터 시작해, 평지·완경사에서 스노우플라우(A자) 자세로 속도를 조절하고 멈추는 감각을 익힙니다.' },
+        { level: '초급반', target: '1회~3회 경험자', goal: '스노우플라우턴, 슈템턴', detail: '스노우플라우턴으로 방향 전환을 안정화하고, 슈템 동작을 더해 양발 체중 이동과 스키 스티어링의 기초를 다집니다.' },
+        { level: '중상급반', target: '중급 이상 슬로프에서 자유로운 턴이 가능', goal: '베이직롱턴(패러렐)과 숏턴', detail: '양 스키를 평행하게 맞춘 베이직 롱턴(패러렐)과 리듬감 있는 숏턴으로 중·급경사에서 속도와 라인을 스스로 컨트롤합니다.' },
       ],
     },
     {
       sport: '스노보드',
       classes: [
-        { level: '입문반', target: '첫 입문자', goal: '스노보드 착용법, 지상 강습, 사이드슬리핑, 펜줄럼(낙엽) 교육 목표' },
-        { level: '초급반', target: '1회~3회 경험자', goal: '펜줄럼(낙엽), 비기너턴 교육 목표' },
-        { level: '중상급반', target: '중급 이상 슬로프에서 자유로운 턴이 가능', goal: '너비스턴, 보드 컨트롤 교육 목표' },
+        { level: '입문반', target: '첫 입문자', goal: '스노보드 착용법, 지상 강습, 사이드슬리핑, 펜줄럼(낙엽)', detail: '보드 착용과 균형 잡기, 사이드슬리핑으로 슬로프를 안전하게 내려오며 펜줄럼(낙엽) 동작으로 힐·토 엣지 감각을 익힙니다.' },
+        { level: '초급반', target: '1회~3회 경험자', goal: '펜줄럼(낙엽), 비기너턴', detail: '펜줄럼을 좌우로 연결해 비기너턴으로 발전시키고, 엣지 전환 타이밍과 시선 처리로 연속 턴의 기초를 만듭니다.' },
+        { level: '중상급반', target: '중급 이상 슬로프에서 자유로운 턴이 가능', goal: '너비스턴, 보드 컨트롤', detail: '너비스턴을 바탕으로 보드 컨트롤 범위를 넓혀, 중·급경사에서 스피드 조절과 라인 선택을 자유롭게 구사합니다.' },
       ],
     },
   ],
@@ -140,28 +142,69 @@ function ProgramGoals({ goals }: { goals: { title: string; desc: string }[] }) {
   )
 }
 
-// 세부 커리큘럼 — 종목별(스키/스노보드) 반 편성.
+// 반 레벨 배지 — 스키 슬로프 난이도색을 차용(입문=완경사 그린 / 초급=중경사 블루 / 중상급=급경사 블랙).
+// 세부 지표 전용 팔레트 — 브랜드 네이비·시안 단조로움을 깨는 도메인 컬러(다른 페이지엔 미적용).
+const LEVEL_STYLE: Record<string, { short: string; color: string }> = {
+  '입문반': { short: '입문', color: '#2f9e5f' },
+  '초급반': { short: '초급', color: '#2f6fb0' },
+  '중상급반': { short: '중상급', color: '#2d323a' },
+}
+
+// 세부 커리큘럼 — 종목별(스키/스노보드) 반 편성. 레벨 카드 = 배지 + 대상 + 성취율 바 + 기술 예시 칩.
+// 신청자가 "레벨별로 어떤 기술을 어디까지" 파악하도록 구조화. 성취율·기술 칩은 샘플(클라이언트 갱신 전제).
 function ProgramCurriculum({ programKey }: { programKey: string }) {
   const groups = CURRICULUM[programKey]
   return (
     <div>
       <SectionTitle title="세부 커리큘럼" />
       {groups?.length ? (
-        <div className="space-y-6">
+        <div className="space-y-7">
+          {/* 샘플 고지 — 클라이언트 확정 자료 수령 전 구조 검토용 */}
+          <div className="-mt-1 flex items-start gap-2 rounded-[8px] bg-[#f7f9fb] px-3.5 py-2.5">
+            <Text as="p" variant="caption" className="text-[#8a94a0]">
+              ※ 아래 레벨별 기술 구성과 상세 설명은 <span className="text-[#6b7280]">예시</span>입니다 — 확정 커리큘럼 자료로 갱신 예정.
+            </Text>
+          </div>
           {groups.map((g) => (
             <div key={g.sport}>
               {/* 종목 소그룹 헤더 — 시안 액센트로 반 항목(네이비)과 위계 구분. */}
-              <Text as="p" variant="card-title-sm" color={CYAN} className="mb-1">{g.sport}</Text>
-              <ul>
-                {g.classes.map((c) => (
-                  <li key={c.level} className="border-b border-[#eaeef3] py-3 last:border-0">
-                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                      <Text variant="card-title-sm" as="span">{c.level}</Text>
-                      <Text variant="caption" as="span" className="text-[#9ca3af]">({c.target})</Text>
-                    </div>
-                    <Text as="p" variant="sub" className="mt-1">{c.goal}</Text>
-                  </li>
-                ))}
+              <Text as="p" variant="card-title-sm" color={CYAN} className="mb-2.5">{g.sport}</Text>
+              <ul className="space-y-2.5">
+                {g.classes.map((c) => {
+                  const lv = LEVEL_STYLE[c.level] ?? { short: c.level, color: '#6b7280' }
+                  const skills = c.goal.split(',').map((s) => s.trim()).filter(Boolean)
+                  return (
+                    <li
+                      key={c.level}
+                      className="rounded-[12px] bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06),0_10px_24px_-14px_rgba(0,0,0,0.20)]"
+                    >
+                      {/* 헤더 — 레벨 배지 + 대상(슬로프 난이도색) */}
+                      <div className="flex items-center gap-3">
+                        <span
+                          className="flex h-[26px] w-[54px] shrink-0 items-center justify-center rounded-[7px] font-score text-[12px] font-[600] text-white"
+                          style={{ background: lv.color }}
+                        >
+                          {lv.short}
+                        </span>
+                        <Text variant="card-title-sm" as="span" className="min-w-0 flex-1">{c.target}</Text>
+                      </div>
+                      {/* 기술 예시 칩 — 목표를 기술 단위로 분해, 레벨색 라이트 틴트 */}
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {skills.map((s) => (
+                          <span
+                            key={s}
+                            className="rounded-[6px] px-2.5 py-1 font-score text-[12px] font-[400]"
+                            style={{ background: lv.color + '14', color: lv.color }}
+                          >
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                      {/* 기술 상세 설명 — 레벨별 기술 진행을 서술(샘플, 클라이언트 갱신) */}
+                      <Text as="p" variant="sub" className="mt-3 leading-relaxed text-[#4b5563]">{c.detail}</Text>
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           ))}
