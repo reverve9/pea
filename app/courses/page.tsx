@@ -60,15 +60,13 @@ export default function CoursesPage() {
             <ProgramTabs active={program} onSelect={setProgram} />
           </div>
 
-          {/* 데스크탑 좌측 단일 마스터 — 프로그램 아코디언 → 유형 카드(일정+유형 통합). 전 프로그램 항상 렌더. */}
+          {/* 데스크탑 좌측 단일 마스터 — 종목 섹션 + 유형 카드 평면 스택(신청 좌측과 통일). 개설 종목만 렌더. */}
           <section className="px-4 hidden md:block">
             {sessions.loading ? (
               <LoadingState />
             ) : (
               <CourseProgramMaster
                 sessions={sessions.data}
-                program={program}
-                onProgram={setProgram}
                 selectedType={selectedType}
                 onSelectType={setSelectedType}
               />

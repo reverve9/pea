@@ -1,17 +1,18 @@
 'use client'
 
 import Text from '@/components/common/Text'
-import { PROGRAMS } from '@/lib/programs'
+import { OPEN_PROGRAMS } from '@/lib/programs'
 
-// 프로그램(종목) 층 공용 — 신청·연수안내 동일. 4종 탭(스키 개설 + 준비중 3), 4종 모두 클릭 가능.
-// 준비중 프로그램 선택 시 각 페이지가 PendingPanel 렌더. [[pea-taxonomy-program-vs-course]]
+// 프로그램(종목) 층 공용 — 신청·연수안내 동일. 개설 종목(OPEN_PROGRAMS)만 노출.
+// 개설 종목이 1개면 고를 게 없어 탭 자체를 숨긴다(종목 늘면 자동 노출). [[pea-taxonomy-program-vs-course]]
 const NAVY = '#1e3a5f'
 
-// 프로그램 탭 — 4열 그리드, 선택 시 네이비 솔리드.
+// 프로그램 탭 — 개설 종목 수만큼 균등 그리드, 선택 시 네이비 솔리드.
 export function ProgramTabs({ active, onSelect }: { active: string; onSelect: (k: string) => void }) {
+  if (OPEN_PROGRAMS.length <= 1) return null
   return (
-    <div className="mb-5 grid grid-cols-4 gap-2">
-      {PROGRAMS.map((p) => {
+    <div className="mb-5 grid gap-2" style={{ gridTemplateColumns: `repeat(${OPEN_PROGRAMS.length}, minmax(0,1fr))` }}>
+      {OPEN_PROGRAMS.map((p) => {
         const on = p.key === active
         return (
           <button

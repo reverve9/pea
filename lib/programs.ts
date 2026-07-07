@@ -18,6 +18,11 @@ export const PROGRAMS: Program[] = [
   { key: 'rehab', title: '운동처방', en: 'Exercise Rx', sport: '운동처방', code: 'E', ready: false },
 ]
 
+// 화면에 노출할 개설 종목만(ready:true). 준비중 종목은 PROGRAMS엔 남겨두고 렌더에서만 제외 —
+// 개설 시 해당 종목 ready:true 로만 바꾸면 탭/카드/유형이 자동 복구된다. 렌더 순회는 이 배열을 쓸 것.
+// (find/매칭류 — programBySport·applicationPrefix·activeProgram — 은 전체 PROGRAMS 유지.)
+export const OPEN_PROGRAMS: Program[] = PROGRAMS.filter((p) => p.ready)
+
 export function programBySport(sport: string | null | undefined): Program | undefined {
   return PROGRAMS.find((p) => p.sport === sport)
 }

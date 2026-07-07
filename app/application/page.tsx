@@ -15,7 +15,7 @@ import JikmuApplyForm from '@/components/features/JikmuApplyForm'
 import JayulApplyForm from '@/components/features/JayulApplyForm'
 import { PendingPanel } from '@/components/features/ProgramTabs'
 import DuotoneHero from '@/components/features/DuotoneHero'
-import { PROGRAMS, type Program } from '@/lib/programs'
+import { PROGRAMS, OPEN_PROGRAMS, type Program } from '@/lib/programs'
 
 // §3-5 연수신청 — 좌우 동일 층위(프로그램 → 유형). 좌(main)=마스터 인덱스, 우(extended)=상세.
 // 층1 = 프로그램(종목) : 스키·스노보드 + 준비중 3종. 우 페인에서 탭으로 전환.
@@ -177,9 +177,12 @@ export default function ApplyPage() {
         <DuotoneHero eyebrow="SKI & SNOWBOARD" title="원하는 일정과 유형을 골라 신청하세요" imgs={['/application/hero.jpg']} tint={0} />
       </div>
       <section className="px-4">
-        {PROGRAMS.map((p) => (
+        {OPEN_PROGRAMS.map((p) => (
           <div key={p.key} className="mb-8">
-            <SectionTitle title={p.title} en={p.en} rail />
+            {/* 프로그램명 = 데스크탑 좌측 레일 라벨 전용. 모바일은 히어로가 정체성 담당(연수안내와 통일). */}
+            <div className="hidden md:block">
+              <SectionTitle title={p.title} en={p.en} rail />
+            </div>
             {p.ready ? (
               <div className="space-y-6">
                 {TRACKS.map((t) => (

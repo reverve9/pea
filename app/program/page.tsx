@@ -11,7 +11,7 @@ import Text, { BTN } from '@/components/common/Text'
 import { Activity, Users, ShieldCheck } from 'lucide-react'
 import { ProgramTabs, PendingPanel } from '@/components/features/ProgramTabs'
 import DuotoneHero from '@/components/features/DuotoneHero'
-import { PROGRAMS } from '@/lib/programs'
+import { PROGRAMS, OPEN_PROGRAMS } from '@/lib/programs'
 
 // §프로그램 — 종목(층1) "소개" 페이지. 셸 = /courses 정본 미러링(좌 마스터 / 우 상세, 탭은 모바일+우 상단).
 // 역할: 좌측 마스터 카드 = 제목 + 요약 desc(card-sub) / 우측 페인 = 히어로 + 과정소개 + 핵심목표(인포그래픽) + 세부 커리큘럼.
@@ -44,7 +44,7 @@ const PROGRAM_DETAIL: Record<
       </>
     ),
     heroEyebrow: 'SKI & SNOWBOARD',
-    heroTitle: '종목별 커리큘럼과 반 편성을 확인하세요',
+    heroTitle: '커리큘럼과 반 편성을 확인하세요',
     // 히어로 = 단일 합성(2:1). 홈 개념대로 스노보드=네이비 톤(좌)·스키=그린 톤(우)을 사선 블렌드로 베이크.
     // 없으면 네이비 그라디언트 폴백. 재베이크: _DEV/bake_hero.py (소스=_DEV/참고이미지/그라데이션 · 출력=public/program).
     heroImgs: ['/program/hero.jpg'],
@@ -91,7 +91,7 @@ const CURRICULUM: Record<string, { sport: string; classes: { level: string; targ
 function ProgramMaster({ active, onSelect }: { active: string; onSelect: (k: string) => void }) {
   return (
     <div className="space-y-6">
-      {PROGRAMS.map((p) => {
+      {OPEN_PROGRAMS.map((p) => {
         const on = p.key === active
         const d = PROGRAM_DETAIL[p.key]
         return (
