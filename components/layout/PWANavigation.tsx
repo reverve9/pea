@@ -7,6 +7,7 @@ import PWASubHeader from './PWASubHeader'
 import PWANavBar from './PWANavBar'
 import PWATopNav from './PWATopNav'
 import SlimFooter from './SlimFooter'
+import PwaInstallBanner from './PwaInstallBanner'
 import { NAV_ITEMS, isNavActive } from './navItems'
 
 // 주 네비에 없는 라우트(서브/유틸 페이지) → 모바일에서 하단 탭 대신 뒤로가기 앱바. 타이틀 맵(국문+영문).
@@ -37,6 +38,7 @@ export default function PWANavigation({ children }: { children: React.ReactNode 
         <div className="relative flex flex-col min-h-screen">
           <PWASubHeader title={subMeta?.title ?? ''} en={subMeta?.en} />
           <main className="flex-1 min-h-0 overflow-y-auto pb-10">
+            <PwaInstallBanner />
             {children}
             {showSlimFooter && <SlimFooter />}
           </main>
@@ -47,6 +49,7 @@ export default function PWANavigation({ children }: { children: React.ReactNode 
       <div className="relative flex flex-col min-h-screen">
         <PWAHeader variant="mobile" />
         <main className="flex-1 min-h-0 overflow-y-auto pb-28">
+          <PwaInstallBanner />
           {children}
           {showSlimFooter && <SlimFooter />}
         </main>
