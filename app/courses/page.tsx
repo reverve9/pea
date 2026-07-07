@@ -75,10 +75,14 @@ export default function CoursesPage() {
             )}
           </section>
 
-          {/* 모바일 콘텐츠 — 개요·캘린더·유형. 준비중 프로그램이면 안내 패널. */}
+          {/* 모바일 콘텐츠 — 히어로·개요·캘린더·유형. 준비중 프로그램이면 안내 패널. */}
           <div className="md:hidden">
             {activeProgram.ready ? (
               <>
+                {/* 모바일 히어로 — 데스크탑 우 페인과 동일(프로그램·신청과 통일) */}
+                <div className="px-4">
+                  <DuotoneHero eyebrow="SKI & SNOWBOARD" title="연수 일정과 유형을 확인하세요" imgs={['/courses/hero.jpg']} tint={0} />
+                </div>
                 <section className="px-4 mb-10">
                   <CourseOverview />
                 </section>

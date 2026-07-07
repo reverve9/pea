@@ -9,6 +9,7 @@ import Pagination from '@/components/common/Pagination'
 import { LoadingState } from '@/components/common/StateView'
 import CommunityNewsList, { type Selection } from '@/components/features/CommunityNewsList'
 import CommunityDetailPanel from '@/components/features/CommunityDetailPanel'
+import DuotoneHero from '@/components/features/DuotoneHero'
 import NoticeDetail from '@/components/features/NoticeDetail'
 import FaqAccordion from '@/components/features/FaqAccordion'
 import InquiryBoardShell from '@/components/features/InquiryBoardShell'
@@ -98,6 +99,10 @@ export default function CommunityPage() {
         <span className="font-[500] text-[#1e3a5f]">자주 묻는 질문</span>을 확인하세요.<br />
         궁금한 점은 1:1 문의로 남겨주실 수 있습니다.
       </p>
+      {/* 모바일 히어로 — 데스크탑 우 페인과 동일(전 페이지 통일). 데스크탑은 우 페인이 담당 → md:hidden */}
+      <div className="md:hidden px-4">
+        <DuotoneHero eyebrow="SKI & SNOWBOARD" title="공지와 자주 묻는 질문을 확인하세요" imgs={['/community/hero.jpg']} tint={0} />
+      </div>
       {notices.loading ? (
         <LoadingState />
       ) : (
@@ -115,6 +120,8 @@ export default function CommunityPage() {
   const right = (
     <div>
       <ExtendedHeader title="커뮤니티" eyebrow="COMMUNITY" />
+      {/* 커뮤니티 히어로 — 능선 스노보더(파노라마), 네이비→그린 듀오톤. 재베이크=_DEV/bake_hero_community.py */}
+      <DuotoneHero eyebrow="SKI & SNOWBOARD" title="공지와 자주 묻는 질문을 확인하세요" imgs={['/community/hero.jpg']} tint={0} />
       <CommunityDetailPanel
         notices={pagedNotices}
         faqs={pagedFaqs}
