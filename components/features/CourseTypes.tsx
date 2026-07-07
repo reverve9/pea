@@ -452,15 +452,19 @@ export function CourseTypeAccordion({
   onSelect: (k: string | null) => void
 }) {
   const refs = useRef<Record<string, HTMLDivElement | null>>({})
-  const mounted = useRef(false)
+  const prevSelected = useRef<string | null | undefined>(undefined)
 
   useEffect(() => {
-    // 최초 렌더(기본 선택)에는 스크롤하지 않음 — 사용자 선택 변경 시에만.
-    if (!mounted.current) {
-      mounted.current = true
+    // 최초 렌더(기본 선택)엔 스크롤 안 함 — 값이 '바뀔' 때만.
+    // ⚠ 불리언 mounted 가드는 StrictMode 이중 마운트에 뚫림(2번째 실행에서 통과) → 이전값 비교로 안전하게.
+    if (prevSelected.current === undefined) {
+      prevSelected.current = selected
       return
     }
-    if (selected) refs.current[selected]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    if (prevSelected.current !== selected && selected) {
+      refs.current[selected]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+    prevSelected.current = selected
   }, [selected])
 
   return (

@@ -15,6 +15,7 @@ import {
   DEFAULT_TYPE_KEY,
 } from '@/components/features/CourseTypes'
 import { ProgramTabs, PendingPanel } from '@/components/features/ProgramTabs'
+import DuotoneHero from '@/components/features/DuotoneHero'
 import { PROGRAMS } from '@/lib/programs'
 import { useQuery } from '@/lib/useQuery'
 import { getSessions } from '@/lib/queries'
@@ -101,10 +102,11 @@ export default function CoursesPage() {
       extended={
         <div className="pb-[60px]">
           <ExtendedHeader title="연수안내" eyebrow="COURSES" />
-          {/* 프로그램(종목) 탭 — 신청 페이지 우측 상단과 동일. 좌측 마스터와 program 상태 공유(양방향 동기화). */}
-          <ProgramTabs active={program} onSelect={setProgram} />
+          {/* 우측 상단 탭 제거(프로그램·신청과 통일) — 히어로 도입 + 좌측 마스터가 프로그램 선택 담당. */}
           {activeProgram.ready ? (
             <>
+              {/* 연수안내 히어로 — 강습 컷(연수1 상반신), 네이비→그린 듀오톤. 재베이크=_DEV/bake_hero_courses.py */}
+              <DuotoneHero eyebrow="SKI & SNOWBOARD" title="연수 일정과 유형을 확인하세요" imgs={['/courses/hero.jpg']} tint={0} />
               {/* 연수 개요 — 데스크탑 우측 페인(모바일은 좌측 main에 표시) */}
               <div className="mb-10">
                 <CourseOverview />
