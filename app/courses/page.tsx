@@ -64,7 +64,8 @@ export default function CoursesPage() {
           </div>
 
           {/* 데스크탑 좌측 단일 마스터 — 종목 섹션 + 유형 카드 평면 스택(신청 좌측과 통일). 개설 종목만 렌더. */}
-          <section className="px-4 hidden md:block">
+          {/* 좌우 여백 px-8 — 커뮤니티 리스트(정본)와 정렬. 좌측 페인 마스터 표준. */}
+          <section className="px-8 hidden md:block">
             {sessions.loading ? (
               <LoadingState />
             ) : (

@@ -179,7 +179,8 @@ export default function ApplyPage() {
       <div className="md:hidden px-4 pt-6">
         <DuotoneHero eyebrow="SKI & SNOWBOARD" title="원하는 일정과 유형을 골라 신청하세요" imgs={['/application/hero.jpg']} tint={0} ratioClass="aspect-[5/2]" />
       </div>
-      <section className="px-4">
+      {/* 좌우 여백 데스크탑 px-8 — 커뮤니티 리스트(정본)와 정렬. 모바일은 px-4 유지. */}
+      <section className="px-4 md:px-8">
         {OPEN_PROGRAMS.map((p) => (
           <div key={p.key} className="mb-8">
             {/* 프로그램명 = 데스크탑 좌측 레일 라벨 전용. 모바일은 히어로가 정체성 담당(연수안내와 통일). */}
