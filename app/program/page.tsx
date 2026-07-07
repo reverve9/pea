@@ -7,6 +7,7 @@ import PageTitle from '@/components/common/PageTitle'
 import SectionTitle from '@/components/common/SectionTitle'
 import ExtendedHeader from '@/components/layout/ExtendedHeader'
 import Text, { BTN } from '@/components/common/Text'
+import { Activity, Users, ShieldCheck } from 'lucide-react'
 import { ProgramTabs, PendingPanel } from '@/components/features/ProgramTabs'
 import DuotoneHero from '@/components/features/DuotoneHero'
 import { PROGRAMS } from '@/lib/programs'
@@ -30,7 +31,7 @@ const PROGRAM_DETAIL: Record<
     heroImgs?: string[] // 히어로 실사(1~2장). 2장이면 사선 블렌드. 없으면 그라디언트 폴백.
     heroTint?: number // 네이비 듀오톤 오버레이 오퍼시티(자연 풀컬러 0.3~0.4 / 베이크 듀오톤 0)
     intro: React.ReactNode // 과정 소개 단락
-    goals: { title: string; desc: string }[] // 연수 핵심 목표(인포그래픽)
+    goals: { title: string; desc: string }[] // 연수 핵심 목표(데스크탑 원형 카드 / 모바일 가로 박스)
   }
 > = {
   ski: {
@@ -55,9 +56,9 @@ const PROGRAM_DETAIL: Record<
       </>
     ),
     goals: [
-      { title: '현장 중심 실습 교육', desc: '종목별 기초 기능 및 실기 능력의 단계적 향상' },
-      { title: '지도 역량 강화', desc: '학생 체험학습 및 학교 스포츠활동 운영을 위한 전문 지도법 습득' },
-      { title: '안전관리 능력 함양', desc: '안전사고 예방 및 위기 대처 능력을 갖춘 안전한 체육 환경 조성' },
+      { title: '현장 중심 실습 교육', desc: '기초 기능·실기 능력 단계별 향상' },
+      { title: '지도 역량 강화', desc: '학교 스포츠활동 전문 지도법 습득' },
+      { title: '안전관리 능력 함양', desc: '안전사고 예방·위기 대처 능력 확보' },
     ],
   },
 }
@@ -113,21 +114,34 @@ function ProgramMaster({ active, onSelect }: { active: string; onSelect: (k: str
   )
 }
 
-// 연수 핵심 목표 — 인포그래픽. 넘버(라이트 시안·Raleway) + 목표명(네이비) + 설명(뮤트), 패널 3블록.
+// 연수 핵심 목표 — 아이콘 카드 3열 그리드(순서 무관 동등 3축). 참고: _DEV/참고이미지/스크린샷 2026-07-07 오전 9.20.14.png.
+// 연수 핵심 목표(동등 3축) — 데스크탑=원형 카드 3열(중앙 스택) / 모바일=가로 긴 박스 3행(아이콘 좌 + 텍스트).
+// 흰 바탕·진한 그림자로 돋보이게. 참고: _DEV/참고이미지/스크린샷 2026-07-07 오전 9.20.14.png.
+const GOAL_ICONS = [Activity, Users, ShieldCheck] // 실습교육 / 지도역량 / 안전관리 — 순서 무관(동등 3축)
+
 function ProgramGoals({ goals }: { goals: { title: string; desc: string }[] }) {
   return (
-    <div className="space-y-2.5">
-      {goals.map((g, i) => (
-        <div key={i} className="flex items-start gap-4 rounded-[10px] border border-[#e5eaef] bg-[#f2f5f9] p-4">
-          <span className="pt-[0.05em] font-raleway text-[clamp(1.375rem,6cqi,1.75rem)] font-[600] leading-none tabular-nums tracking-[0.02em] text-[#4fb3c4]">
-            {String(i + 1).padStart(2, '0')}
-          </span>
-          <div className="min-w-0">
-            <Text variant="card-title" className="block">{g.title}</Text>
-            <Text as="p" variant="sub" className="mt-1">{g.desc}</Text>
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-7">
+      {goals.map((g, i) => {
+        const Icon = GOAL_ICONS[i] ?? Activity
+        return (
+          <div
+            key={i}
+            // 모바일=가로 긴 박스(아이콘 좌 + 텍스트) / 데스크탑=원형 카드(중앙 세로 스택)
+            className="flex items-center gap-4 rounded-[14px] bg-white p-5 shadow-[0_2px_4px_rgba(16,42,67,0.06),0_18px_38px_-12px_rgba(16,42,67,0.34)] md:mx-auto md:aspect-square md:w-full md:max-w-[210px] md:flex-col md:justify-center md:gap-3 md:rounded-full md:px-6 md:text-center"
+          >
+            {/* 의미 아이콘 (원형 칩) */}
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#eaf3f6]">
+              <Icon size={18} strokeWidth={1.75} className="text-[#2f8ba0]" />
+            </span>
+            {/* 목표명 + 설명 (모바일 우측 컬럼 / 데스크탑 아이콘 아래) */}
+            <div className="min-w-0">
+              <Text variant="card-title" as="p">{g.title}</Text>
+              <Text as="p" variant="sub" className="mt-1 break-keep text-balance md:mt-1.5">{g.desc}</Text>
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
@@ -175,10 +189,10 @@ function ProgramDetail({ programKey }: { programKey: string }) {
       {d && (
         <>
           <DuotoneHero eyebrow={d.heroEyebrow} title={d.heroTitle} imgs={d.heroImgs} tint={d.heroTint} />
-          <p className="mb-14 font-score text-[clamp(0.875rem,3.3cqi,1rem)] font-[300] leading-[1.9] text-[#4b5563]">
+          <p className="mb-20 font-score text-[clamp(0.875rem,3.3cqi,1rem)] font-[300] leading-[1.9] text-[#4b5563]">
             {d.intro}
           </p>
-          <section className="mb-14">
+          <section className="mb-20">
             <SectionTitle title="연수 핵심 목표" />
             <ProgramGoals goals={d.goals} />
           </section>

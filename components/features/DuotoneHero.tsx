@@ -45,7 +45,7 @@ export default function DuotoneHero({
         <p className="font-raleway text-[clamp(0.6875rem,2.6cqi,0.75rem)] font-[400] uppercase tracking-[3px] text-[#a9e0ea]">
           {eyebrow}
         </p>
-        <p className="mt-1 font-score text-[clamp(1rem,3.6cqi,1.125rem)] font-[300] tracking-[1px] text-white">
+        <p className="mt-1 font-score text-[clamp(0.75rem,3.6cqi,1.125rem)] font-[300] tracking-[1px] text-white">
           {title}
         </p>
       </div>

@@ -17,7 +17,7 @@ export default function SectionTitle({
 }) {
   // 영문(en)은 의도적으로 렌더 안 함 — 영문/시안 아이브로우는 페이지 헤더(정체성) 전용, 섹션 라벨은 국문만.
   const full = (
-    <div className="flex items-end justify-between gap-2 px-1 mb-3">
+    <div className="flex items-end justify-between gap-2 px-1 mb-5">
       <div>
         {/* 포인트 바 — 시그니처 시안 액센트 */}
         <span className="block w-6 h-[2px] rounded-full bg-[#2f8ba0] mb-2" />
@@ -33,7 +33,7 @@ export default function SectionTitle({
   return (
     <>
       <div className="md:hidden">{full}</div>
-      <div className="mb-3 hidden items-center justify-between gap-2 px-1 md:flex">
+      <div className="mb-5 hidden items-center justify-between gap-2 px-1 md:flex">
         <span className="font-score text-[12px] font-[500] uppercase tracking-[1.5px] text-[#6b7280]">
           {title}
         </span>
