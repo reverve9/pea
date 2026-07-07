@@ -8,6 +8,7 @@ import PageTitle from '@/components/common/PageTitle'
 import SectionTitle from '@/components/common/SectionTitle'
 import WhiteBox from '@/components/common/WhiteBox'
 import Text from '@/components/common/Text'
+import MasterCard from '@/components/common/MasterCard'
 import Modal from '@/components/common/Modal'
 import ExtendedHeader from '@/components/layout/ExtendedHeader'
 import JikmuApplyForm from '@/components/features/JikmuApplyForm'
@@ -68,13 +69,7 @@ function trackBody(key: string) {
 function TrackCard({ track, selected, compact, onSelect }: { track: Track; selected: boolean; compact?: boolean; onSelect: () => void }) {
   const Icon = track.icon
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-pressed={selected}
-      className="block w-full rounded-[10px] border border-[#e5eaef] text-left transition-colors"
-      style={{ background: selected ? track.accent + '14' : '#f2f5f9' }}
-    >
+    <MasterCard selected={selected} onClick={onSelect}>
       <div className={`flex items-center gap-3 px-4 pt-4 ${compact ? 'pb-4' : ''}`}>
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ background: track.accent + '14' }}>
           <Icon size={18} strokeWidth={1.75} style={{ color: track.accent }} />
@@ -89,7 +84,7 @@ function TrackCard({ track, selected, compact, onSelect }: { track: Track; selec
           {track.desc}
         </Text>
       )}
-    </button>
+    </MasterCard>
   )
 }
 
@@ -133,15 +128,11 @@ function SelectedTypeBanner({ track, onSwitch }: { track: Track; onSwitch: (key:
 // 준비중 프로그램 좌측 카드(마스터) — 클릭 시 우 페인/모달에 준비중 패널.
 function PendingCard({ selected, onSelect }: { selected: boolean; onSelect: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-pressed={selected}
-      className="flex w-full items-center justify-center rounded-[10px] border border-[#e5eaef] py-6 transition-colors"
-      style={{ background: selected ? '#eef2f6' : '#f2f5f9' }}
-    >
-      <Text variant="sub" color="#9ca3af">준비중</Text>
-    </button>
+    <MasterCard selected={selected} onClick={onSelect} className="py-6">
+      <div className="flex items-center justify-center">
+        <Text variant="sub" color="#9ca3af">준비중</Text>
+      </div>
+    </MasterCard>
   )
 }
 
@@ -190,7 +181,7 @@ export default function ApplyPage() {
           <div key={p.key} className="mb-8">
             <SectionTitle title={p.title} en={p.en} rail />
             {p.ready ? (
-              <div className="space-y-3">
+              <div className="space-y-6">
                 {TRACKS.map((t) => (
                   <TrackCard
                     key={t.key}

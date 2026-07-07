@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Check, GraduationCap, Boxes, X, ArrowRight, ChevronDown } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import Text, { BTN } from '@/components/common/Text'
+import MasterCard from '@/components/common/MasterCard'
 import type { ScheduleType, SessionWithCourse } from '@/lib/types'
 
 // /courses 연수 유형 — 계획안(연수비용 및 포함사항) 4개 유형을 공개용으로 큐레이션.
@@ -386,23 +387,15 @@ function MetaCell({ label, value, accent }: { label: string; value: string; acce
 // 유형 카드(정본) — 해설 1줄 + 기간·학점·일정·비용 메타 그리드. 데스크탑 좌측 마스터·모바일 공용.
 // 데스크탑: 클릭 → 우측 유형 상세 선택(selected 하이라이트) / 모바일: 클릭 → 중앙 팝업 모달.
 export function CourseTypeMetaCard({
-  meta, scheduleText, selected, square, onClick,
+  meta, scheduleText, selected, onClick,
 }: {
   meta: CourseTypeMeta
   scheduleText: string
   selected?: boolean
-  // square: 겉 박스(좌 마스터 흰 패널)가 이미 라운드라 안쪽 카드는 각(rounded-0). 모바일 단독 카드는 rounded 유지.
-  square?: boolean
   onClick: () => void
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={selected}
-      className={`block w-full border border-[#e5eaef] p-4 text-left transition-colors ${square ? '' : 'rounded-[10px]'}`}
-      style={{ background: selected ? meta.accent + '14' : '#f2f5f9' }}
-    >
+    <MasterCard selected={selected} onClick={onClick} className="p-4">
       <div className="flex items-start gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ background: meta.accent + '14' }}>
           <meta.icon size={18} strokeWidth={1.75} style={{ color: meta.accent }} />
@@ -418,7 +411,7 @@ export function CourseTypeMetaCard({
         <MetaCell label="일정" value={scheduleText} />
         <MetaCell label="비용" value={`${meta.from}~`} accent={selected ? meta.accent : undefined} />
       </div>
-    </button>
+    </MasterCard>
   )
 }
 

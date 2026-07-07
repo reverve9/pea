@@ -5,6 +5,7 @@ import Link from 'next/link'
 import AppShell from '@/components/layout/AppShell'
 import PageTitle from '@/components/common/PageTitle'
 import SectionTitle from '@/components/common/SectionTitle'
+import MasterCard from '@/components/common/MasterCard'
 import ExtendedHeader from '@/components/layout/ExtendedHeader'
 import Text, { BTN } from '@/components/common/Text'
 import { Activity, Users, ShieldCheck } from 'lucide-react'
@@ -89,25 +90,18 @@ const CURRICULUM: Record<string, { sport: string; classes: { level: string; targ
 // CourseProgramMaster 헤더 스타일 계승(배경 하이라이트만). 준비중은 캡션.
 function ProgramMaster({ active, onSelect }: { active: string; onSelect: (k: string) => void }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-6">
       {PROGRAMS.map((p) => {
         const on = p.key === active
         const d = PROGRAM_DETAIL[p.key]
         return (
-          <button
-            key={p.key}
-            type="button"
-            onClick={() => onSelect(p.key)}
-            aria-pressed={on}
-            className="block w-full rounded-[10px] border border-[#e5eaef] p-4 text-left transition-colors"
-            style={{ background: on ? '#eef2f6' : '#f2f5f9' }}
-          >
+          <MasterCard key={p.key} selected={on} onClick={() => onSelect(p.key)} className="p-4">
             <div className="flex items-center gap-3">
               <Text variant="card-title" as="span" className="min-w-0 flex-1">{p.title}</Text>
               {!p.ready && <Text variant="caption" as="span" className="shrink-0 text-[#9ca3af]">준비중</Text>}
             </div>
             {p.ready && d && <p className={`mt-1.5 ${DESC_CLS}`}>{d.cardDesc}</p>}
-          </button>
+          </MasterCard>
         )
       })}
     </div>
@@ -128,7 +122,7 @@ function ProgramGoals({ goals }: { goals: { title: string; desc: string }[] }) {
           <div
             key={i}
             // 모바일=가로 긴 박스(아이콘 좌 + 텍스트) / 데스크탑=원형 카드(중앙 세로 스택)
-            className="flex items-center gap-4 rounded-[14px] bg-white p-5 shadow-[0_2px_4px_rgba(16,42,67,0.06),0_18px_38px_-12px_rgba(16,42,67,0.34)] md:mx-auto md:aspect-square md:w-full md:max-w-[210px] md:flex-col md:justify-center md:gap-3 md:rounded-full md:px-6 md:text-center"
+            className="flex items-center gap-4 rounded-[14px] bg-white p-5 shadow-[0_2px_6px_rgba(0,0,0,0.07),0_16px_36px_-12px_rgba(0,0,0,0.30)] md:mx-auto md:aspect-square md:w-full md:max-w-[210px] md:flex-col md:justify-center md:gap-3 md:rounded-full md:px-6 md:text-center"
           >
             {/* 의미 아이콘 (원형 칩) */}
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#eaf3f6]">

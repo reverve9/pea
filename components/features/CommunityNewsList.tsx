@@ -1,9 +1,9 @@
 'use client'
 
 import React from 'react'
-import Link from 'next/link'
 import { Pin, HelpCircle, MessageSquare, UserCheck, Lock, ChevronRight } from 'lucide-react'
 import SectionTitle from '@/components/common/SectionTitle'
+import MasterCard from '@/components/common/MasterCard'
 import Text from '@/components/common/Text'
 import { Badge } from '@/components/common/Badge'
 import { NOTICE_CATEGORY, formatDate } from '@/lib/display'
@@ -80,7 +80,7 @@ export default function CommunityNewsList({ notices, faqCount, onSelect, selecte
       {/* 도움말 · 문의 — 섹션타이틀 + 동위 카드(FAQ / 1:1문의 / 마이페이지) */}
       <section className="mt-8 px-8">
         <SectionTitle title="도움말 · 문의" rail />
-        <div className="space-y-2.5">
+        <div className="space-y-4">
           <BundleCard
             icon={<HelpCircle size={18} />}
             title="자주 묻는 질문"
@@ -128,9 +128,6 @@ function BundleCard({
   // solid: 마이페이지 등 강조 진입 — 아이콘 칩을 솔리드 네이비로.
   solid?: boolean
 }) {
-  const cls =
-    'flex w-full items-center gap-3 rounded-[10px] border border-[#e5eaef] bg-[#f2f5f9] p-4 text-left transition-colors hover:bg-[#eaeff5]'
-
   const inner = (
     <>
       <span
@@ -153,16 +150,9 @@ function BundleCard({
     </>
   )
 
-  if (href) {
-    return (
-      <Link href={href} className={cls}>
-        {inner}
-      </Link>
-    )
-  }
   return (
-    <button onClick={onClick} className={cls}>
-      {inner}
-    </button>
+    <MasterCard href={href} onClick={onClick} className="p-4">
+      <div className="flex items-center gap-3">{inner}</div>
+    </MasterCard>
   )
 }
