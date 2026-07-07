@@ -8,7 +8,7 @@ import SectionTitle from '@/components/common/SectionTitle'
 import MasterCard from '@/components/common/MasterCard'
 import ExtendedHeader from '@/components/layout/ExtendedHeader'
 import Text, { BTN } from '@/components/common/Text'
-import { Activity, Users, ShieldCheck } from 'lucide-react'
+import { Activity, Users, ShieldCheck, ChevronDown } from 'lucide-react'
 import { ProgramTabs, PendingPanel } from '@/components/features/ProgramTabs'
 import DuotoneHero from '@/components/features/DuotoneHero'
 import { PROGRAMS, OPEN_PROGRAMS } from '@/lib/programs'
@@ -154,6 +154,8 @@ const LEVEL_STYLE: Record<string, { short: string; color: string }> = {
 // 신청자가 "레벨별로 어떤 기술을 어디까지" 파악하도록 구조화. 성취율·기술 칩은 샘플(클라이언트 갱신 전제).
 function ProgramCurriculum({ programKey }: { programKey: string }) {
   const groups = CURRICULUM[programKey]
+  // 모바일 종목 아코디언(스키/스노보드 각각 토글, 기본 첫 종목 열림). 데스크탑은 md:block로 항상 펼침.
+  const [openSport, setOpenSport] = useState<string | null>(groups?.[0]?.sport ?? null)
   return (
     <div>
       <SectionTitle title="세부 커리큘럼" />
@@ -165,11 +167,20 @@ function ProgramCurriculum({ programKey }: { programKey: string }) {
               ※ 아래 레벨별 기술 구성과 상세 설명은 <span className="text-[#6b7280]">예시</span>입니다 — 확정 커리큘럼 자료로 갱신 예정.
             </Text>
           </div>
-          {groups.map((g) => (
+          {groups.map((g) => {
+            const open = openSport === g.sport
+            return (
             <div key={g.sport}>
-              {/* 종목 소그룹 헤더 — 시안 액센트로 반 항목(네이비)과 위계 구분. */}
-              <Text as="p" variant="card-title-sm" color={CYAN} className="mb-2.5">{g.sport}</Text>
-              <ul className="space-y-2.5">
+              {/* 종목 헤더 — 모바일=아코디언 토글(셰브론) / 데스크탑=라벨(레벨 카드 항상 펼침) */}
+              <button
+                type="button"
+                onClick={() => setOpenSport(open ? null : g.sport)}
+                className="mb-2.5 flex w-full items-center gap-2 text-left md:cursor-default"
+              >
+                <Text as="span" variant="card-title-sm" color={CYAN}>{g.sport}</Text>
+                <ChevronDown size={17} className={`shrink-0 text-[#9ca3af] transition-transform md:hidden ${open ? 'rotate-180' : ''}`} />
+              </button>
+              <ul className={`space-y-2.5 md:block ${open ? '' : 'hidden'}`}>
                 {g.classes.map((c) => {
                   const lv = LEVEL_STYLE[c.level] ?? { short: c.level, color: '#6b7280' }
                   const skills = c.goal.split(',').map((s) => s.trim()).filter(Boolean)
@@ -207,7 +218,8 @@ function ProgramCurriculum({ programKey }: { programKey: string }) {
                 })}
               </ul>
             </div>
-          ))}
+            )
+          })}
         </div>
       ) : (
         <div className="flex items-center justify-center rounded-[10px] border border-dashed border-[#d7dee6] px-6 py-12 text-center" style={{ background: '#f7f9fb' }}>
@@ -269,7 +281,8 @@ export default function ProgramPage() {
           </div>
 
           {/* 데스크탑 좌측 단일 마스터 — 종목 카드(요약 desc), 우측 상세 제어. 탭 아님. */}
-          <section className="hidden px-4 md:block">
+          {/* 좌우 여백 px-8 — 커뮤니티 리스트(정본)와 정렬. 좌측 페인 마스터 표준. */}
+          <section className="hidden px-8 md:block">
             <SectionTitle title="종목" rail />
             <ProgramMaster active={program} onSelect={setProgram} />
           </section>
