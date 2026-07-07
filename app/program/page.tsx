@@ -175,10 +175,10 @@ function ProgramDetail({ programKey }: { programKey: string }) {
       {d && (
         <>
           <DuotoneHero eyebrow={d.heroEyebrow} title={d.heroTitle} imgs={d.heroImgs} tint={d.heroTint} />
-          <p className="mb-10 font-score text-[clamp(0.875rem,3.3cqi,1rem)] font-[300] leading-[1.9] text-[#4b5563]">
+          <p className="mb-14 font-score text-[clamp(0.875rem,3.3cqi,1rem)] font-[300] leading-[1.9] text-[#4b5563]">
             {d.intro}
           </p>
-          <section className="mb-10">
+          <section className="mb-14">
             <SectionTitle title="연수 핵심 목표" />
             <ProgramGoals goals={d.goals} />
           </section>
@@ -189,7 +189,7 @@ function ProgramDetail({ programKey }: { programKey: string }) {
       {/* 소개(프로그램) → 액션(연수안내: 일정·유형·신청) */}
       <Link
         href="/courses"
-        className={`${BTN} mt-8 flex items-center justify-center rounded-[8px] py-3 text-white transition-[filter] hover:brightness-95`}
+        className={`${BTN} mt-12 flex items-center justify-center rounded-[8px] py-3 text-white transition-[filter] hover:brightness-95`}
         style={{ background: NAVY }}
       >
         연수 일정·유형 보기

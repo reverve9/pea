@@ -19,7 +19,7 @@ export default function DuotoneHero({
   const base = imgs?.[0]
   const top = imgs?.[1]
   return (
-    <div className="relative mb-7 aspect-[7/2] overflow-hidden rounded-[12px]">
+    <div className="relative mb-10 aspect-[7/2] overflow-hidden rounded-[12px]">
       {/* 폴백 그라디언트 (이미지 없거나 404 시 그대로 노출) */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#2c3e57] to-[#16304f]" />
       {/* 베이스 실사 */}

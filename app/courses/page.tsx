@@ -83,10 +83,10 @@ export default function CoursesPage() {
                 <div className="px-4">
                   <DuotoneHero eyebrow="SKI & SNOWBOARD" title="연수 일정과 유형을 확인하세요" imgs={['/courses/hero.jpg']} tint={0} />
                 </div>
-                <section className="px-4 mb-10">
+                <section className="px-4 mb-14">
                   <CourseOverview />
                 </section>
-                <section className="px-4 mb-8">
+                <section className="px-4 mb-14">
                   <SectionTitle title="일정" en="Schedule" rail />
                   {sessions.loading ? <LoadingState /> : <ScheduleCalendar sessions={sessions.data} />}
                 </section>
@@ -112,11 +112,11 @@ export default function CoursesPage() {
               {/* 연수안내 히어로 — 강습 컷(연수1 상반신), 네이비→그린 듀오톤. 재베이크=_DEV/bake_hero_courses.py */}
               <DuotoneHero eyebrow="SKI & SNOWBOARD" title="연수 일정과 유형을 확인하세요" imgs={['/courses/hero.jpg']} tint={0} />
               {/* 연수 개요 — 데스크탑 우측 페인(모바일은 좌측 main에 표시) */}
-              <div className="mb-10">
+              <div className="mb-14">
                 <CourseOverview />
               </div>
               {/* 연수일정 캘린더 — 데스크탑 우측. 좌 마스터의 차수 클릭으로 월 점프 + 자체 월탭으로도 브라우징. */}
-              <div className="mb-10">
+              <div className="mb-14">
                 <SectionTitle title="일정" en="Schedule" />
                 {sessions.loading ? (
                   <LoadingState />
