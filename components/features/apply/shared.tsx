@@ -48,7 +48,7 @@ export function CheckRow({ selected, onClick, label, accent }: { selected: boole
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className="flex w-full items-center gap-2.5 rounded-[10px] border border-[#e5eaef] px-3.5 py-2.5 text-left font-score text-[clamp(0.8125rem,3.4cqi,0.875rem)] transition-colors"
+      className="flex items-center gap-2.5 rounded-[10px] border border-[#e5eaef] px-3.5 py-2.5 text-left font-score text-[clamp(0.75rem,2.8cqi,0.875rem)] transition-colors"
       style={{ background: selected ? accent + '12' : '#ffffff', color: selected ? accent : '#4b5563' }}
     >
       <span
@@ -61,7 +61,7 @@ export function CheckRow({ selected, onClick, label, accent }: { selected: boole
           </svg>
         )}
       </span>
-      <span className="min-w-0 flex-1">{label}</span>
+      <span className="min-w-0 break-keep">{label}</span>
     </button>
   )
 }
@@ -101,7 +101,8 @@ export function ConsentRow({
 export function RouteSelect({ routes, onToggle, accent }: { routes: string[]; onToggle: (r: string) => void; accent: string }) {
   return (
     <Field label="알게 된 경로" hint="중복 선택 가능 (선택)">
-      <div className="grid grid-cols-2 gap-2">
+      {/* 콘텐츠 폭 유연 그리드(flex-wrap) — 라벨 길이만큼만 차지해 데스크탑 최대 4열·모바일 유동 배치, 반토막 강제 없음. */}
+      <div className="flex flex-wrap gap-2">
         {ROUTE_OPTIONS.map((r) => (
           <CheckRow key={r} selected={routes.includes(r)} onClick={() => onToggle(r)} label={r} accent={accent} />
         ))}

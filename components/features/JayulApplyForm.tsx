@@ -98,7 +98,7 @@ function OptionRow({
           {selected && <span className="h-2 w-2 rounded-full" style={{ background: GREEN }} />}
         </span>
       )}
-      <span className="min-w-0 flex-1">{children}</span>
+      <span className={compact ? 'min-w-0' : 'min-w-0 flex-1'}>{children}</span>
     </button>
   )
 }
@@ -110,13 +110,16 @@ function QtyRow({
   const on = qty > 0
   return (
     <div
-      className="flex items-center gap-2.5 rounded-[10px] border border-[#e5eaef] px-3.5 py-2 font-score text-[clamp(0.8125rem,3.4cqi,0.875rem)] transition-colors"
+      className="flex items-center gap-2.5 rounded-[10px] border border-[#e5eaef] px-3.5 py-2 font-score text-[clamp(0.75rem,2.8cqi,0.875rem)] transition-colors"
       style={{ background: on ? GREEN + '12' : '#ffffff', color: on ? GREEN : '#4b5563' }}
     >
-      <span className="min-w-0 flex-1">{label}</span>
-      <span className="shrink-0 font-score text-[clamp(0.71875rem,3.08cqi,0.8125rem)] tabular-nums" style={{ color: on ? GREEN : '#8a94a0' }}>
-        개당 {won(unit)}
-      </span>
+      {/* 라벨+개당가를 한 블록으로 묶어 flex-wrap — 좁으면 개당가가 라벨 아래로, 라벨은 어절 단위(break-keep)로 줄바꿈(글자 단위 고아 방지). */}
+      <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        <span className="break-keep">{label}</span>
+        <span className="shrink-0 font-score text-[clamp(0.71875rem,3.08cqi,0.8125rem)] tabular-nums" style={{ color: on ? GREEN : '#8a94a0' }}>
+          개당 {won(unit)}
+        </span>
+      </div>
       <div className="flex shrink-0 items-center gap-1">
         <button
           type="button"
