@@ -167,14 +167,17 @@ export default function ApplyPage() {
 
   const main = (
     <div className="pb-8">
-      <PageTitle title="신청" en="APPLICATION" />
-      <p className="px-4 pt-1 pb-8 font-score text-center text-[clamp(0.9375rem,3.4cqi,1.0625rem)] font-[300] leading-[1.85] text-[#4b5563]">
-        신청할 <span className="font-[500] text-[#1e3a5f]">프로그램</span>과 연수과정별 유형을 선택하세요.<br />
-        유형에 따라 회차와 인원을 지정해 신청하실 수 있습니다.
-      </p>
+      {/* 텍스트 타이틀 영역 — 모바일은 이미지 히어로가 타이틀 역할이라 데스크탑 전용. */}
+      <div className="hidden md:block">
+        <PageTitle title="신청" en="APPLICATION" />
+        <p className="px-4 pt-1 pb-8 font-score text-center text-[clamp(0.9375rem,3.4cqi,1.0625rem)] font-[300] leading-[1.85] text-[#4b5563]">
+          신청할 <span className="font-[500] text-[#1e3a5f]">프로그램</span>과 연수과정별 유형을 선택하세요.<br />
+          유형에 따라 회차와 인원을 지정해 신청하실 수 있습니다.
+        </p>
+      </div>
       {/* 모바일 히어로 — 데스크탑 우 페인과 동일(프로그램·연수안내와 통일). 데스크탑은 우 페인이 담당 → md:hidden */}
-      <div className="md:hidden px-4">
-        <DuotoneHero eyebrow="SKI & SNOWBOARD" title="원하는 일정과 유형을 골라 신청하세요" imgs={['/application/hero.jpg']} tint={0} />
+      <div className="md:hidden px-4 pt-6">
+        <DuotoneHero eyebrow="SKI & SNOWBOARD" title="원하는 일정과 유형을 골라 신청하세요" imgs={['/application/hero.jpg']} tint={0} ratioClass="aspect-[5/2]" />
       </div>
       <section className="px-4">
         {OPEN_PROGRAMS.map((p) => (

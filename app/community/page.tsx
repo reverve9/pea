@@ -92,16 +92,19 @@ export default function CommunityPage() {
 
   const left = (
     <div className="pb-8">
-      <PageTitle title="커뮤니티" en="COMMUNITY" />
-      {/* 도입 리드 — 연수안내·신청과 동일 레지스터(font-score 300 · 중앙 · 행간 1.85 · 키워드만 네이비 강조) */}
-      <p className="px-4 pt-1 pb-8 font-score text-center text-[clamp(0.9375rem,3.4cqi,1.0625rem)] font-[300] leading-[1.85] text-[#4b5563]">
-        <span className="font-[500] text-[#1e3a5f]">공지사항</span>과{' '}
-        <span className="font-[500] text-[#1e3a5f]">자주 묻는 질문</span>을 확인하세요.<br />
-        궁금한 점은 1:1 문의로 남겨주실 수 있습니다.
-      </p>
+      {/* 텍스트 타이틀 영역 — 모바일은 이미지 히어로가 타이틀 역할이라 데스크탑 전용. */}
+      <div className="hidden md:block">
+        <PageTitle title="커뮤니티" en="COMMUNITY" />
+        {/* 도입 리드 — 연수안내·신청과 동일 레지스터(font-score 300 · 중앙 · 행간 1.85 · 키워드만 네이비 강조) */}
+        <p className="px-4 pt-1 pb-8 font-score text-center text-[clamp(0.9375rem,3.4cqi,1.0625rem)] font-[300] leading-[1.85] text-[#4b5563]">
+          <span className="font-[500] text-[#1e3a5f]">공지사항</span>과{' '}
+          <span className="font-[500] text-[#1e3a5f]">자주 묻는 질문</span>을 확인하세요.<br />
+          궁금한 점은 1:1 문의로 남겨주실 수 있습니다.
+        </p>
+      </div>
       {/* 모바일 히어로 — 데스크탑 우 페인과 동일(전 페이지 통일). 데스크탑은 우 페인이 담당 → md:hidden */}
-      <div className="md:hidden px-4">
-        <DuotoneHero eyebrow="SKI & SNOWBOARD" title="공지와 자주 묻는 질문을 확인하세요" imgs={['/community/hero.jpg']} tint={0} />
+      <div className="md:hidden px-4 pt-6">
+        <DuotoneHero eyebrow="SKI & SNOWBOARD" title="공지와 자주 묻는 질문을 확인하세요" imgs={['/community/hero.jpg']} tint={0} ratioClass="aspect-[5/2]" />
       </div>
       {notices.loading ? (
         <LoadingState />

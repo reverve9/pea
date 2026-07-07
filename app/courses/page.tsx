@@ -48,12 +48,15 @@ export default function CoursesPage() {
     <AppShell
       main={
         <div className="pb-[60px]">
-          <PageTitle title="연수안내" en="COURSES" />
-          {/* 도입 리드 — 홈 슬로건/소개 레지스터(경량 font-300 + 넉넉한 행간 + 키워드만 강조). "볼드≠강조". */}
-          <p className="px-4 pt-1 pb-8 font-score text-center text-[clamp(0.9375rem,3.4cqi,1.0625rem)] font-[300] leading-[1.85] text-[#4b5563]">
-            개설된 연수의 <span className="font-[500] text-[#1e3a5f]">일정과 유형</span>을 한눈에 안내합니다.<br />
-            신청 전 회차와 유형을 확인하세요.
-          </p>
+          {/* 텍스트 타이틀 영역 — 모바일은 이미지 히어로가 타이틀 역할이라 데스크탑 전용. */}
+          <div className="hidden md:block">
+            <PageTitle title="연수안내" en="COURSES" />
+            {/* 도입 리드 — 홈 슬로건/소개 레지스터(경량 font-300 + 넉넉한 행간 + 키워드만 강조). "볼드≠강조". */}
+            <p className="px-4 pt-1 pb-8 font-score text-center text-[clamp(0.9375rem,3.4cqi,1.0625rem)] font-[300] leading-[1.85] text-[#4b5563]">
+              개설된 연수의 <span className="font-[500] text-[#1e3a5f]">일정과 유형</span>을 한눈에 안내합니다.<br />
+              신청 전 회차와 유형을 확인하세요.
+            </p>
+          </div>
 
           {/* 프로그램 탭 — 모바일 전용(데스크탑은 아래 좌측 프로그램 마스터가 선택 담당). */}
           <div className="px-4 md:hidden">
@@ -78,8 +81,8 @@ export default function CoursesPage() {
             {activeProgram.ready ? (
               <>
                 {/* 모바일 히어로 — 데스크탑 우 페인과 동일(프로그램·신청과 통일) */}
-                <div className="px-4">
-                  <DuotoneHero eyebrow="SKI & SNOWBOARD" title="연수 일정과 유형을 확인하세요" imgs={['/courses/hero.jpg']} tint={0} />
+                <div className="px-4 pt-6">
+                  <DuotoneHero eyebrow="SKI & SNOWBOARD" title="연수 일정과 유형을 확인하세요" imgs={['/courses/hero.jpg']} tint={0} ratioClass="aspect-[5/2]" />
                 </div>
                 <section className="px-4 mb-20">
                   <CourseOverview />

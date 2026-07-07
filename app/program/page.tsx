@@ -219,13 +219,14 @@ function ProgramCurriculum({ programKey }: { programKey: string }) {
 }
 
 // 우측 페인 / 모바일 공용 상세 — 히어로 + 과정소개 + 핵심목표(인포그래픽) + 세부 커리큘럼 + CTA.
-function ProgramDetail({ programKey }: { programKey: string }) {
+function ProgramDetail({ programKey, mobileHero }: { programKey: string; mobileHero?: boolean }) {
   const d = PROGRAM_DETAIL[programKey]
   return (
     <div>
       {d && (
         <>
-          <DuotoneHero eyebrow={d.heroEyebrow} title={d.heroTitle} imgs={d.heroImgs} tint={d.heroTint} />
+          {/* 모바일(mobileHero)=2.5:1 / 데스크탑=현행 7:2. 오버레이 국영문은 양쪽 유지(타이틀 역할). */}
+          <DuotoneHero eyebrow={d.heroEyebrow} title={d.heroTitle} imgs={d.heroImgs} tint={d.heroTint} ratioClass={mobileHero ? 'aspect-[5/2]' : undefined} />
           <p className="mb-20 font-score text-[clamp(0.875rem,3.3cqi,1rem)] font-[300] leading-[1.9] text-[#4b5563]">
             {d.intro}
           </p>
@@ -257,13 +258,15 @@ export default function ProgramPage() {
     <AppShell
       main={
         <div className="pb-[60px]">
-          <PageTitle title="프로그램" en="PROGRAM" />
-
-          {/* 페이지 도입 — 종목(층1) 선택 안내. */}
-          <p className="px-4 pt-1 pb-8 text-center font-score text-[clamp(0.9375rem,3.4cqi,1.0625rem)] font-[300] leading-[1.85] text-[#4b5563]">
-            체육교육회가 운영하는 <span className="font-[500] text-[#1e3a5f]">연수 프로그램</span>을 소개합니다.<br />
-            종목을 선택해 세부 커리큘럼을 확인하세요.
-          </p>
+          {/* 텍스트 타이틀 영역 — 모바일은 이미지 히어로가 타이틀 역할이라 데스크탑 전용. */}
+          <div className="hidden md:block">
+            <PageTitle title="프로그램" en="PROGRAM" />
+            {/* 페이지 도입 — 종목(층1) 선택 안내. */}
+            <p className="px-4 pt-1 pb-8 text-center font-score text-[clamp(0.9375rem,3.4cqi,1.0625rem)] font-[300] leading-[1.85] text-[#4b5563]">
+              체육교육회가 운영하는 <span className="font-[500] text-[#1e3a5f]">연수 프로그램</span>을 소개합니다.<br />
+              종목을 선택해 세부 커리큘럼을 확인하세요.
+            </p>
+          </div>
 
           {/* 데스크탑 좌측 단일 마스터 — 종목 카드(요약 desc), 우측 상세 제어. 탭 아님. */}
           <section className="hidden px-4 md:block">
@@ -272,10 +275,10 @@ export default function ProgramPage() {
           </section>
 
           {/* 모바일 — 종목 탭(층1) + 상세(우 확장 페인 대체: 히어로+소개+핵심목표+커리큘럼). */}
-          <div className="px-4 md:hidden">
+          <div className="px-4 pt-6 md:hidden">
             <ProgramTabs active={program} onSelect={setProgram} />
             {activeProgram.ready ? (
-              <ProgramDetail programKey={activeProgram.key} />
+              <ProgramDetail programKey={activeProgram.key} mobileHero />
             ) : (
               <PendingPanel title={activeProgram.title} />
             )}
