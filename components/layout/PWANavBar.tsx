@@ -25,7 +25,8 @@ export default function PWANavBar() {
   }, [])
 
   return (
-    <nav className="fixed bottom-[40px] z-50" style={navStyle}>
+    // 안전영역(홈 인디케이터 등) 위 16px 띄움 — 안전영역을 offset에 한 번만 포함(하단 스페이서 이중 적용 제거).
+    <nav className="fixed bottom-[calc(16px_+_env(safe-area-inset-bottom))] z-50" style={navStyle}>
       <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-[0_4px_16px_rgba(15,27,46,0.08)] border border-[#e2e8f0]">
         <div className="flex items-center justify-around py-2.5 px-2">
           {NAV_ITEMS.map((item) => {
@@ -48,8 +49,6 @@ export default function PWANavBar() {
           })}
         </div>
       </div>
-      {/* Safe area for iOS */}
-      <div className="pb-[env(safe-area-inset-bottom)]" />
     </nav>
   )
 }
