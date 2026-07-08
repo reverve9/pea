@@ -416,10 +416,10 @@ function ApplicationsPanel({
           <button
             type="button"
             onClick={() => setReviewOnly((v) => !v)}
-            className={`ml-4 shrink-0 rounded-[8px] px-4 py-2 text-[12.5px] font-[500] transition-colors ${
+            className={`ml-4 shrink-0 rounded-[7px] px-2.5 py-1 text-[11.5px] font-[500] transition-colors ${
               reviewOnly
-                ? 'bg-[#8a4b00]/[0.14] text-[#8a4b00] hover:bg-[#8a4b00]/[0.22]'
-                : 'bg-[#8a4b00] text-white hover:bg-[#743f00]'
+                ? 'bg-[#8a4b00] text-white hover:bg-[#743f00]'
+                : 'bg-white text-[#8a4b00] hover:bg-[#fff8ee]'
             }`}
           >
             {reviewOnly ? '전체 보기' : '확인요청건 보기'}
