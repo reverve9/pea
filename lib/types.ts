@@ -142,6 +142,31 @@ export interface ApplicationAdmin {
   payer_mismatch: boolean
 }
 
+// ── 연수 차수(어드민) — sessions CRUD + 정원/신청현황 ──
+export interface SessionAdmin {
+  id: string
+  course_id: string
+  course_name: string
+  label: string
+  schedule_type: ScheduleType
+  starts_on: string
+  ends_on: string
+  nights: number
+  capacity: number
+  is_active: boolean
+  sort_order: number
+  occupied: number // 현재 배정 인원(정원 점유 = pending+paid+completed, 예비 제외)
+  waitlisted: number // 예비(정원 초과) 인원
+}
+
+// 차수 폼의 프로그램(과정) 선택지
+export interface CourseOption {
+  id: string
+  name: string
+  course_type: 'jikmu' | 'jayul'
+  sport: string | null
+}
+
 // 뒷자리 복호 결과(온디맨드 reveal) — 보험명단용
 export interface InsuranceRosterEntry {
   id: string

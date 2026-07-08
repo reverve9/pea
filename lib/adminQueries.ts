@@ -1,5 +1,6 @@
 import 'server-only'
 import { supabaseAdmin } from './supabaseAdmin'
+import { getSessionOccupancy } from './capacity'
 import { formatPeriod, SCHEDULE_TYPE } from './display'
 import type {
   NoticeAdmin,
@@ -9,6 +10,8 @@ import type {
   ParticipantAdmin,
   ApplicationStatus,
   ScheduleType,
+  SessionAdmin,
+  CourseOption,
   RefundRequestAdmin,
   RefundStatus,
   ModificationRequestAdmin,
@@ -295,4 +298,66 @@ export async function getCertificateRoster(): Promise<CertificateRosterRow[]> {
     }
   }
   return rows
+}
+
+// 연수 차수 전체 — 프로그램(course.name) 조인 + 회차별 신청현황(점유/예비) 집계. 시작일 오름차순.
+export async function getAllSessions(): Promise<SessionAdmin[]> {
+  const { data, error } = await supabaseAdmin
+    .from('sessions')
+    .select(
+      'id, course_id, label, schedule_type, starts_on, ends_on, nights, capacity, is_active, sort_order, course:courses(name)',
+    )
+    .order('starts_on', { ascending: true })
+  if (error) {
+    console.warn('[adminQueries] getAllSessions:', error)
+    return []
+  }
+  type Row = {
+    id: string
+    course_id: string
+    label: string
+    schedule_type: ScheduleType
+    starts_on: string
+    ends_on: string
+    nights: number
+    capacity: number
+    is_active: boolean
+    sort_order: number
+    course: { name: string } | { name: string }[] | null
+  }
+  const rows = (data as unknown as Row[]) ?? []
+  const occ = await getSessionOccupancy(rows.map((r) => r.id))
+  return rows.map((r) => {
+    const c = Array.isArray(r.course) ? r.course[0] : r.course
+    const o = occ.get(r.id)
+    return {
+      id: r.id,
+      course_id: r.course_id,
+      course_name: c?.name ?? '—',
+      label: r.label,
+      schedule_type: r.schedule_type,
+      starts_on: r.starts_on,
+      ends_on: r.ends_on,
+      nights: r.nights,
+      capacity: r.capacity,
+      is_active: r.is_active,
+      sort_order: r.sort_order,
+      occupied: o?.occupied ?? 0,
+      waitlisted: o?.waitlisted ?? 0,
+    }
+  })
+}
+
+// 차수 폼 프로그램(과정) 선택지 — 활성 코스만.
+export async function getSelectableCourses(): Promise<CourseOption[]> {
+  const { data, error } = await supabaseAdmin
+    .from('courses')
+    .select('id, name, course_type, sport')
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true })
+  if (error) {
+    console.warn('[adminQueries] getSelectableCourses:', error)
+    return []
+  }
+  return (data as CourseOption[]) ?? []
 }
