@@ -10,7 +10,7 @@ import AdminTabs from '@/components/admin/AdminTabs'
 import { formatDate, formatKRW, APPLICATION_STATUS } from '@/lib/display'
 import { lessonLevelLabel, equipmentLabel, JAYUL_LESSONS, EQUIPMENT_TYPES } from '@/lib/lessonOptions'
 import { APPAREL_SIZES, GEAR_SIZES } from '@/lib/rentalOptions'
-import { PROGRAMS } from '@/lib/programs'
+import { PROGRAMS, OPEN_PROGRAMS } from '@/lib/programs'
 import type { ParticipantDetailInput } from '@/lib/participantDetail'
 import type { ApplicationAdmin, ApplicationStatus, InsuranceRosterEntry, ParticipantAdmin } from '@/lib/types'
 import {
@@ -28,7 +28,8 @@ const LIFECYCLE: ApplicationStatus[] = ['pending', 'paid', 'completed']
 const EXCEPTIONS: ApplicationStatus[] = ['cancelled', 'refunded']
 
 // 프로그램 필터 = 전체 + 신청페이지와 동일 프로그램(종목). 유형/상태는 셀렉트.
-const PROGRAM_OPTIONS = [{ key: 'all', label: '전체' }, ...PROGRAMS.map((p) => ({ key: p.key, label: p.title }))]
+// 탭은 개설 종목(OPEN_PROGRAMS)만 — 준비중 종목은 숨김. 매칭류(activeProgram)는 전체 PROGRAMS 유지. [[pea-taxonomy-program-vs-course]]
+const PROGRAM_OPTIONS = [{ key: 'all', label: '전체' }, ...OPEN_PROGRAMS.map((p) => ({ key: p.key, label: p.title }))]
 const KIND_OPTIONS: { key: 'all' | 'jikmu' | 'jayul'; label: string }[] = [
   { key: 'all', label: '유형 전체' },
   { key: 'jikmu', label: '직무연수' },
@@ -199,9 +200,11 @@ export default function ApplicationsClient({ applications }: { applications: App
     'rounded-[7px] bg-white px-2.5 py-1.5 text-[12.5px] font-[400] text-[#374151] outline-none focus:bg-[#e7eef7]'
 
   // 프로그램(종목) 탭 — 박스 밖(위). 여백 없이 붙은 라운드 없는 사각 탭. 활성=네이비 채움/비활성=흰 채움.
-  const programTabs = (
-    <AdminTabs tabs={PROGRAM_OPTIONS} value={program} onChange={setProgram} className="mb-3" />
-  )
+  // 개설 종목이 1개 이하면 종목 구분이 무의미 → 탭 바 자체 숨김(ProgramTabs 정본 방식과 동일).
+  const programTabs =
+    OPEN_PROGRAMS.length <= 1 ? null : (
+      <AdminTabs tabs={PROGRAM_OPTIONS} value={program} onChange={setProgram} className="mb-3" />
+    )
 
   const toolbar = (
     <div className="flex flex-wrap items-center gap-2">

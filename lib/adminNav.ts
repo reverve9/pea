@@ -18,7 +18,6 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     title: '운영',
     items: [
       { href: '/admin', label: '대시보드', icon: 'LayoutDashboard' },
-      { href: '/admin/board', label: '공지·FAQ', icon: 'Megaphone' },
       { href: '/admin/applications', label: '신청 관리', icon: 'ClipboardList' },
       { href: '/admin/requests', label: '요청 관리', icon: 'Inbox' },
       { href: '/admin/inquiries', label: '문의 관리', icon: 'MessageSquare' },
@@ -28,6 +27,9 @@ export const ADMIN_NAV: AdminNavGroup[] = [
   },
   {
     title: '설정',
-    items: [{ href: '/admin/sessions', label: '일정 관리', icon: 'CalendarDays' }],
+    items: [
+      { href: '/admin/sessions', label: '연수 관리', icon: 'CalendarDays' },
+      { href: '/admin/board', label: '공지·FAQ', icon: 'Megaphone' },
+    ],
   },
 ]

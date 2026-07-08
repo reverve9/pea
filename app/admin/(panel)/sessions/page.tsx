@@ -21,7 +21,7 @@ export default async function AdminSessionsPage() {
   const activeItems = priceItems.filter((p) => p.is_active)
   return (
     <>
-      <AdminHeader title="일정 관리" desc="차수 개설·일정·정원 · 기본/차수별 요금 (신청 현황은 신청 관리)" />
+      <AdminHeader title="연수 관리" desc="차수 개설·일정·정원 · 기본/차수별 요금 (신청 현황은 신청 관리)" />
       <SessionsClient
         sessions={sessions}
         courses={courses}
