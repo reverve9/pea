@@ -6,12 +6,12 @@ import FormSectionTitle from '@/components/common/FormSectionTitle'
 import Text from '@/components/common/Text'
 import { LoadingState } from '@/components/common/StateView'
 import { useQuery } from '@/lib/useQuery'
-import { getSessions, getPriceItems } from '@/lib/queries'
+import { getSessions, getPriceItems, getSessionAvailability, type SessionAvailability } from '@/lib/queries'
 import { formatPeriod } from '@/lib/display'
 import { submitApplication } from '@/lib/applyClient'
 import ApplyComplete from '@/components/features/ApplyComplete'
 import { JAYUL_LESSONS, EQUIPMENT_TYPES } from '@/lib/lessonOptions'
-import { Field, ApplicantFields, RouteSelect, PrivacyConsentBox, ConsentChecks, SummaryActions, won, inputCls } from './apply/shared'
+import { Field, ApplicantFields, RouteSelect, PrivacyConsentBox, ConsentChecks, SummaryActions, SeatsLeft, WaitlistNotice, won, inputCls } from './apply/shared'
 import type { SessionWithCourse, PriceItem, ScheduleType } from '@/lib/types'
 import type { JayulPayload } from '@/lib/applicationTypes'
 
@@ -147,12 +147,24 @@ function QtyRow({
 
 export default function JayulApplyForm() {
   const sessions = useQuery<SessionWithCourse[]>(getSessions, [])
+  const availability = useQuery<SessionAvailability[]>(getSessionAvailability, [])
+  const availById = useMemo(() => {
+    const m: Record<string, SessionAvailability> = {}
+    for (const a of availability.data ?? []) m[a.session_id] = a
+    return m
+  }, [availability.data])
   const prices = useQuery<PriceItem[]>(getPriceItems, [])
   const [form, setForm] = useState<JayulForm>(EMPTY)
   const [saved, setSaved] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [resultNo, setResultNo] = useState<string | null>(null)
+  const [resultWaitlisted, setResultWaitlisted] = useState(false)
+  const [waitlistAck, setWaitlistAck] = useState(false)
+
+  // 선택 차수가 정원 마감인지(잔여≤0) — 집계 확정된 경우에만. 마감이면 예비 고지·동의 요구.
+  const selectedAvail = form.sessionId ? availById[form.sessionId] : undefined
+  const selectedFull = selectedAvail != null && selectedAvail.remaining <= 0
 
   useEffect(() => {
     const raw = typeof window !== 'undefined' ? window.localStorage.getItem(DRAFT_KEY) : null
@@ -251,6 +263,7 @@ export default function JayulApplyForm() {
       : !a.lessonClass ? '기초 단체 강습을 선택해 주세요.'
       : !a.equipment ? '대여 장비를 선택해 주세요.'
       : !a.privacyConsent || !a.confirmChecked ? '필수 동의 항목을 확인해 주세요.'
+      : selectedFull && !waitlistAck ? '정원이 마감된 차수입니다. 예비(대기) 신청 확인에 동의해 주세요.'
       : null
     if (err) {
       setSubmitError(err)
@@ -276,8 +289,9 @@ export default function JayulApplyForm() {
     }
     setSubmitting(true)
     try {
-      const { application_no } = await submitApplication(payload)
+      const { application_no, waitlisted } = await submitApplication(payload)
       window.localStorage.removeItem(DRAFT_KEY)
+      setResultWaitlisted(waitlisted)
       setResultNo(application_no)
       window.scrollTo({ top: 0 })
     } catch (e) {
@@ -287,7 +301,7 @@ export default function JayulApplyForm() {
     }
   }
 
-  if (resultNo) return <ApplyComplete applicationNo={resultNo} accent={GREEN} />
+  if (resultNo) return <ApplyComplete applicationNo={resultNo} accent={GREEN} waitlisted={resultWaitlisted} />
 
   return (
     <div>
@@ -325,12 +339,18 @@ export default function JayulApplyForm() {
               ) : (
                 variantSessions.map((s) => (
                   <OptionRow key={s.id} selected={form.sessionId === s.id} onClick={() => set('sessionId', s.id)}>
-                    <span className="block tabular-nums font-[500] md:inline">{formatPeriod(s.starts_on, s.ends_on, s.nights)}</span>
-                    <span className="mt-0.5 block text-[clamp(0.71875rem,3.08cqi,0.75rem)] text-[#8a94a0] md:mt-0 md:ml-1.5 md:inline">{s.label}</span>
+                    <span className="flex w-full items-start justify-between gap-2">
+                      <span className="min-w-0">
+                        <span className="block tabular-nums font-[500] md:inline">{formatPeriod(s.starts_on, s.ends_on, s.nights)}</span>
+                        <span className="mt-0.5 block text-[clamp(0.71875rem,3.08cqi,0.75rem)] text-[#8a94a0] md:mt-0 md:ml-1.5 md:inline">{s.label}</span>
+                      </span>
+                      <SeatsLeft avail={availById[s.id]} />
+                    </span>
                   </OptionRow>
                 ))
               )}
             </div>
+            {selectedFull && <WaitlistNotice checked={waitlistAck} onChange={setWaitlistAck} />}
           </Field>
         )
       )}

@@ -109,6 +109,7 @@ export default function ScheduleCalendar({
   selectedId: selectedIdProp,
   onSelect,
   showMonthTabs = true,
+  remainingById,
 }: {
   sessions: SessionWithCourse[]
   monthIdx?: number
@@ -116,6 +117,7 @@ export default function ScheduleCalendar({
   selectedId?: string | null
   onSelect?: (id: string | null) => void
   showMonthTabs?: boolean
+  remainingById?: Record<string, number> // 회차별 잔여(공개 집계). 없으면 표시 보류.
 }) {
   const [monthIdxState, setMonthIdxState] = useState(0)
   const controlled = monthIdxProp !== undefined
@@ -200,11 +202,9 @@ export default function ScheduleCalendar({
   }, [selectedId])
 
   const selected = sessions.find((s) => s.id === selectedId) ?? null
-  // ⚠ 신청 인원은 후속 어드민 연동 전 placeholder(applied_count 없으면 0).
-  const applied = selected
-    ? ((selected as unknown as { applied_count?: number }).applied_count ?? 0)
-    : 0
-  const remaining = selected ? Math.max(selected.capacity - applied, 0) : 0
+  // 잔여 인원 = 공개 집계(remainingById). 미제공(로딩 등)이면 null → 표시 보류.
+  const remaining = selected && remainingById ? (remainingById[selected.id] ?? Math.max(selected.capacity, 0)) : null
+  const applied = selected && remaining != null ? Math.max(selected.capacity - remaining, 0) : null
 
   if (sessions.length === 0 || !activeMonth) {
     return <EmptyState label="등록된 연수 일정이 없습니다." />
@@ -346,12 +346,28 @@ export default function ScheduleCalendar({
             <p>{formatPeriod(selected.starts_on, selected.ends_on, selected.nights)}</p>
             <p className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
               <Users size={14} className="text-[#9ca3af]" />
-              <span className="tabular-nums">
-                현재 신청인원 {applied}/{selected.capacity}
-              </span>
-              <span className="text-[clamp(0.6875rem,0.66rem+0.12cqi,0.75rem)] text-[#8a94a0] tabular-nums">
-                (신청가능인원 {remaining})
-              </span>
+              {applied != null && remaining != null ? (
+                <>
+                  <span className="tabular-nums">
+                    현재 신청인원 {applied}/{selected.capacity}
+                  </span>
+                  <span
+                    className="text-[clamp(0.6875rem,0.66rem+0.12cqi,0.75rem)] tabular-nums"
+                    style={{
+                      color:
+                        remaining > 0
+                          ? remaining <= selected.capacity * 0.2
+                            ? '#d97116'
+                            : '#8a94a0'
+                          : '#9198a3',
+                    }}
+                  >
+                    ({remaining > 0 ? `신청가능인원 ${remaining}` : '정원 마감 · 예비접수'})
+                  </span>
+                </>
+              ) : (
+                <span className="tabular-nums">정원 {selected.capacity}명</span>
+              )}
             </p>
           </div>
           <Link

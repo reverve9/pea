@@ -68,9 +68,10 @@ export interface JayulPayload {
 
 export type ApplyPayload = JikmuPayload | JayulPayload
 
-// 제출 응답 — 완료 화면에서 신청번호를 크게 노출.
+// 제출 응답 — 완료 화면에서 신청번호를 크게 노출. waitlisted=정원 초과 예비(대기) 접수.
 export interface ApplyResult {
   application_no: string
+  waitlisted: boolean
 }
 
 // ── 마이페이지 본인확인 ──

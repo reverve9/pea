@@ -43,6 +43,19 @@ export async function getSessions(): Promise<SessionWithCourse[]> {
   return (data as unknown as SessionWithCourse[]) ?? []
 }
 
+// 회차 잔여 인원 — 공개 집계 RPC(session_availability, SECURITY DEFINER). 카운트만 반환(PII 없음).
+export interface SessionAvailability {
+  session_id: string
+  capacity: number
+  occupied: number
+  remaining: number
+}
+export async function getSessionAvailability(): Promise<SessionAvailability[]> {
+  const { data, error } = await supabase.rpc('session_availability')
+  warn('getSessionAvailability', error)
+  return (data as SessionAvailability[]) ?? []
+}
+
 // 단가 (RLS 가 is_active=true 만 노출). category+sort_order 순
 export async function getPriceItems(): Promise<PriceItem[]> {
   const { data, error } = await supabase

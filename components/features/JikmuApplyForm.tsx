@@ -5,14 +5,14 @@ import FormSectionTitle from '@/components/common/FormSectionTitle'
 import Text from '@/components/common/Text'
 import { LoadingState } from '@/components/common/StateView'
 import { useQuery } from '@/lib/useQuery'
-import { getSessions, getPriceItems } from '@/lib/queries'
+import { getSessions, getPriceItems, getSessionAvailability, type SessionAvailability } from '@/lib/queries'
 import { formatPeriod } from '@/lib/display'
 import { submitApplication } from '@/lib/applyClient'
 import ApplyComplete from '@/components/features/ApplyComplete'
 import type { SessionWithCourse, PriceItem } from '@/lib/types'
 import type { JikmuPayload } from '@/lib/applicationTypes'
 import { LESSON_SPORTS, LESSON_CLASSES, type LessonSport } from '@/lib/lessonOptions'
-import { Field, ApplicantFields, RouteSelect, PrivacyConsentBox, ConsentChecks, SummaryActions, won, inputCls, selectCls, selectTint } from './apply/shared'
+import { Field, ApplicantFields, RouteSelect, PrivacyConsentBox, ConsentChecks, SummaryActions, SeatsLeft, WaitlistNotice, won, inputCls, selectCls, selectTint } from './apply/shared'
 
 // 직무연수 신청 폼(상세) — /application 마스터-디테일의 우측 페인(데스크탑) / 모달(모바일)에서 렌더. [[application-form-spec]]
 // 이번 슬라이스: 기본정보 + 강습수준 + 옵션·비용(객실·렌탈) 실시간 합계 + 임시저장(localStorage).
@@ -156,6 +156,8 @@ export default function JikmuApplyForm() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [resultNo, setResultNo] = useState<string | null>(null)
+  const [resultWaitlisted, setResultWaitlisted] = useState(false)
+  const [waitlistAck, setWaitlistAck] = useState(false)
 
   useEffect(() => {
     const raw = typeof window !== 'undefined' ? window.localStorage.getItem(DRAFT_KEY) : null
@@ -173,6 +175,15 @@ export default function JikmuApplyForm() {
     () => (sessions.data ?? []).filter((s) => s.schedule_type === 'jikmu'),
     [sessions.data],
   )
+  const availability = useQuery<SessionAvailability[]>(getSessionAvailability, [])
+  const availById = useMemo(() => {
+    const m: Record<string, SessionAvailability> = {}
+    for (const a of availability.data ?? []) m[a.session_id] = a
+    return m
+  }, [availability.data])
+  // 선택 차수가 정원 마감인지(잔여≤0) — 집계 확정된 경우에만. 마감이면 예비 고지·동의 요구.
+  const selectedAvail = form.sessionId ? availById[form.sessionId] : undefined
+  const selectedFull = selectedAvail != null && selectedAvail.remaining <= 0
 
   // price_items 를 item_key 로 인덱싱 + 카테고리별 목록
   const itemBy = useMemo(() => {
@@ -259,6 +270,7 @@ export default function JikmuApplyForm() {
       : a.roomType === 'private' && !a.roomSpec ? '개별객실 평형·인실을 선택해 주세요.'
       : a.insurance && a.birthBack.length !== 7 ? '보험 가입용 주민번호 뒷자리 7자리를 입력해 주세요.'
       : !a.privacyConsent || !a.confirmChecked ? '필수 동의 항목을 확인해 주세요.'
+      : selectedFull && !waitlistAck ? '정원이 마감된 차수입니다. 예비(대기) 신청 확인에 동의해 주세요.'
       : null
     if (err) {
       setSubmitError(err)
@@ -291,8 +303,9 @@ export default function JikmuApplyForm() {
     }
     setSubmitting(true)
     try {
-      const { application_no } = await submitApplication(payload)
+      const { application_no, waitlisted } = await submitApplication(payload)
       window.localStorage.removeItem(DRAFT_KEY)
+      setResultWaitlisted(waitlisted)
       setResultNo(application_no)
       window.scrollTo({ top: 0 })
     } catch (e) {
@@ -302,7 +315,7 @@ export default function JikmuApplyForm() {
     }
   }
 
-  if (resultNo) return <ApplyComplete applicationNo={resultNo} accent={NAVY} />
+  if (resultNo) return <ApplyComplete applicationNo={resultNo} accent={NAVY} waitlisted={resultWaitlisted} />
 
   return (
     <div>
@@ -318,17 +331,23 @@ export default function JikmuApplyForm() {
             ) : (
               jikmuSessions.map((s) => (
                 <OptionRow key={s.id} selected={form.sessionId === s.id} onClick={() => set('sessionId', s.id)}>
-                  <span className="block tabular-nums font-[500] md:inline">{formatPeriod(s.starts_on, s.ends_on, s.nights)}</span>
-                  {s.course?.name && (
-                    <>
-                      <span className="hidden text-[#8a94a0] md:inline"> · {s.course.name}</span>
-                      <span className="mt-0.5 block text-[clamp(0.71875rem,3.08cqi,0.75rem)] text-[#8a94a0] md:hidden">{s.course.name}</span>
-                    </>
-                  )}
+                  <span className="flex w-full items-start justify-between gap-2">
+                    <span className="min-w-0">
+                      <span className="block tabular-nums font-[500] md:inline">{formatPeriod(s.starts_on, s.ends_on, s.nights)}</span>
+                      {s.course?.name && (
+                        <>
+                          <span className="hidden text-[#8a94a0] md:inline"> · {s.course.name}</span>
+                          <span className="mt-0.5 block text-[clamp(0.71875rem,3.08cqi,0.75rem)] text-[#8a94a0] md:hidden">{s.course.name}</span>
+                        </>
+                      )}
+                    </span>
+                    <SeatsLeft avail={availById[s.id]} />
+                  </span>
                 </OptionRow>
               ))
             )}
           </div>
+          {selectedFull && <WaitlistNotice checked={waitlistAck} onChange={setWaitlistAck} />}
         </Field>
       )}
 

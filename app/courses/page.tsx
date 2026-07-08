@@ -18,7 +18,7 @@ import { ProgramTabs, PendingPanel } from '@/components/features/ProgramTabs'
 import DuotoneHero from '@/components/features/DuotoneHero'
 import { PROGRAMS } from '@/lib/programs'
 import { useQuery } from '@/lib/useQuery'
-import { getSessions } from '@/lib/queries'
+import { getSessions, getSessionAvailability, type SessionAvailability } from '@/lib/queries'
 import type { SessionWithCourse } from '@/lib/types'
 
 // §3-2 연수안내 — 데스크탑 셸: 좌 500 = 사이드바(도입·일정·유형 요약 마스터) / 우 780 = 메인(개요·일정·유형 상세).
@@ -26,6 +26,12 @@ import type { SessionWithCourse } from '@/lib/types'
 // 선택 상태(월·유형)는 페이지에서 공유. 모바일은 좌 main 단일컬럼(캘린더=자체 월탭, 마스터 없음).
 export default function CoursesPage() {
   const sessions = useQuery<SessionWithCourse[]>(getSessions, [])
+  const availability = useQuery<SessionAvailability[]>(getSessionAvailability, [])
+  const remainingById = useMemo(() => {
+    const m: Record<string, number> = {}
+    for (const a of availability.data ?? []) m[a.session_id] = a.remaining
+    return m
+  }, [availability.data])
   const [program, setProgram] = useState('ski') // 프로그램 층(기본 스키). 준비중 3종은 안내 없음.
   const [selectedType, setSelectedType] = useState<string | null>(DEFAULT_TYPE_KEY)
   const [monthIdx, setMonthIdx] = useState(0)
@@ -90,7 +96,7 @@ export default function CoursesPage() {
                 </section>
                 <section className="px-4 mb-20">
                   <SectionTitle title="일정" en="Schedule" rail />
-                  {sessions.loading ? <LoadingState /> : <ScheduleCalendar sessions={sessions.data} />}
+                  {sessions.loading ? <LoadingState /> : <ScheduleCalendar sessions={sessions.data} remainingById={remainingById} />}
                 </section>
                 <section className="px-4">
                   <SectionTitle title="유형" en="Types" />
@@ -129,6 +135,7 @@ export default function CoursesPage() {
                     onMonthChange={setMonthIdx}
                     selectedId={selSession}
                     onSelect={selectSession}
+                    remainingById={remainingById}
                   />
                 )}
               </div>

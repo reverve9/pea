@@ -9,7 +9,7 @@ export async function submitApplication(payload: ApplyPayload): Promise<ApplyRes
   })
   const json = (await res.json().catch(() => ({}))) as Partial<ApplyResult> & { error?: string }
   if (!res.ok || !json.application_no) throw new Error(json.error || '신청 처리 중 오류가 발생했습니다.')
-  return { application_no: json.application_no }
+  return { application_no: json.application_no, waitlisted: !!json.waitlisted }
 }
 
 // 마이페이지 액션 — 환불신청 / 수정요청. 토큰으로 소유권 검증 후 접수(/api/my/requests).

@@ -97,6 +97,53 @@ export function ConsentRow({
   )
 }
 
+// 차수 잔여 인원 배지 — 신청폼 차수 선택 여석 안내. avail 미확정(undefined)=표시 안 함.
+// 3단계: 여유(그린) / 마감 임박(주황, 정원의 20% 이하) / 마감(앰버 — 소프트 정책상 '예비'로 접수).
+export function SeatsLeft({ avail }: { avail: { remaining: number; capacity: number } | undefined }) {
+  if (avail == null) return null
+  const { remaining, capacity } = avail
+  if (remaining <= 0) {
+    return (
+      <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-[4px] bg-[#eceff3] px-1.5 py-0.5 text-[10.5px] font-[600] leading-none text-[#9198a3]">
+        마감 · 예비접수
+      </span>
+    )
+  }
+  // 마감 임박 = 정원의 20% 이하가 남았을 때.
+  const low = remaining <= capacity * 0.2
+  return (
+    <span
+      className="inline-flex shrink-0 items-center whitespace-nowrap text-[11px] font-[600] tabular-nums"
+      style={{ color: low ? '#d97116' : '#2f803a' }}
+    >
+      잔여 {remaining}명{low && ' · 마감임박'}
+    </span>
+  )
+}
+
+// 정원 마감 차수 예비(대기) 신청 고지 + 필수 동의 — 선택한 차수가 마감일 때만 노출.
+// 클레임 방지: '지금 신청 = 예비(대기)'임과 '입금은 편입 후'임을 제출 전에 명시적으로 확인받는다.
+export function WaitlistNotice({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div className="mt-3 rounded-[10px] border border-[#f0d9a8] bg-[#fffaf0] p-3.5">
+      <p className="text-[13px] font-[600] text-[#8a4b00]">선택하신 차수는 정원이 마감되었습니다</p>
+      <p className="mt-1 text-[12.5px] font-[300] leading-relaxed text-[#6b5230]">
+        지금 신청하시면 <b>예비(대기)</b>로 접수됩니다. 취소 발생 시 접수 순서대로 편입을 안내드리며,
+        참가가 보장되지는 않습니다. <b>입금은 정원 편입(확정) 안내를 받으신 후</b> 진행해 주세요.
+      </p>
+      <label className="mt-2.5 flex cursor-pointer items-start gap-2">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="mt-0.5 h-4 w-4 shrink-0 accent-[#c2751a]"
+        />
+        <span className="text-[12.5px] font-[500] text-[#8a4b00]">예비(대기) 신청임을 확인했습니다.</span>
+      </label>
+    </div>
+  )
+}
+
 // 알게 된 경로 그리드(다중선택).
 export function RouteSelect({ routes, onToggle, accent }: { routes: string[]; onToggle: (r: string) => void; accent: string }) {
   return (
