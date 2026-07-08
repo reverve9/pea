@@ -37,6 +37,18 @@ function indexByKey(items: PriceItem[]): Record<string, PriceItem> {
   return m
 }
 
+// 기본가(price_items) 위에 차수 오버라이드를 얹어 '유효가'를 만든다(sparse — 있는 항목만 금액 교체).
+// 폼(클라 실시간 합계)·제출(서버 권위 계산)이 같은 결과를 내도록 공용으로 쓴다.
+export function applyOverrides(
+  items: PriceItem[],
+  overrides: { item_key: string; amount: number }[],
+): PriceItem[] {
+  if (!overrides.length) return items
+  const by: Record<string, number> = {}
+  for (const o of overrides) by[o.item_key] = o.amount
+  return items.map((it) => (it.item_key in by ? { ...it, amount: by[it.item_key] } : it))
+}
+
 // 직무: 기본가 + (개별객실 추가금) + 렌탈(항목별 1개 정액).
 export function computeJikmu(p: JikmuPayload, items: PriceItem[]): PriceBreakdown {
   const by = indexByKey(items)

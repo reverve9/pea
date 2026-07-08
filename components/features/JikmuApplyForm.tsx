@@ -5,11 +5,12 @@ import FormSectionTitle from '@/components/common/FormSectionTitle'
 import Text from '@/components/common/Text'
 import { LoadingState } from '@/components/common/StateView'
 import { useQuery } from '@/lib/useQuery'
-import { getSessions, getPriceItems, getSessionAvailability, type SessionAvailability } from '@/lib/queries'
+import { getSessions, getPriceItems, getSessionPriceOverrides, getSessionAvailability, type SessionAvailability } from '@/lib/queries'
+import { applyOverrides } from '@/lib/pricing'
 import { formatPeriod } from '@/lib/display'
 import { submitApplication } from '@/lib/applyClient'
 import ApplyComplete from '@/components/features/ApplyComplete'
-import type { SessionWithCourse, PriceItem } from '@/lib/types'
+import type { SessionWithCourse, PriceItem, SessionPriceOverride } from '@/lib/types'
 import type { JikmuPayload } from '@/lib/applicationTypes'
 import { LESSON_SPORTS, LESSON_CLASSES, type LessonSport } from '@/lib/lessonOptions'
 import { Field, ApplicantFields, RouteSelect, PrivacyConsentBox, ConsentChecks, SummaryActions, SeatsLeft, WaitlistNotice, won, inputCls, selectCls, selectTint } from './apply/shared'
@@ -151,6 +152,7 @@ function ToggleRow({
 export default function JikmuApplyForm() {
   const sessions = useQuery<SessionWithCourse[]>(getSessions, [])
   const prices = useQuery<PriceItem[]>(getPriceItems, [])
+  const overrides = useQuery<SessionPriceOverride[]>(getSessionPriceOverrides, [])
   const [form, setForm] = useState<JikmuForm>(EMPTY)
   const [saved, setSaved] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -185,15 +187,21 @@ export default function JikmuApplyForm() {
   const selectedAvail = form.sessionId ? availById[form.sessionId] : undefined
   const selectedFull = selectedAvail != null && selectedAvail.remaining <= 0
 
-  // price_items 를 item_key 로 인덱싱 + 카테고리별 목록
+  // 선택 차수의 오버라이드를 얹은 '유효가'(기본가 ▸ 차수별 금액). 차수 미선택 시 기본가 그대로.
+  const effectivePrices = useMemo(() => {
+    if (!form.sessionId) return prices.data
+    return applyOverrides(prices.data, overrides.data.filter((o) => o.session_id === form.sessionId))
+  }, [prices.data, overrides.data, form.sessionId])
+
+  // 유효가를 item_key 로 인덱싱 + 카테고리별 목록
   const itemBy = useMemo(() => {
     const m: Record<string, PriceItem> = {}
-    for (const p of prices.data) m[p.item_key] = p
+    for (const p of effectivePrices) m[p.item_key] = p
     return m
-  }, [prices.data])
+  }, [effectivePrices])
   const roomOptions = useMemo(
-    () => prices.data.filter((p) => p.category === 'room_surcharge'),
-    [prices.data],
+    () => effectivePrices.filter((p) => p.category === 'room_surcharge'),
+    [effectivePrices],
   )
 
   const base = itemBy['jikmu_base']?.amount ?? JIKMU_BASE_FALLBACK

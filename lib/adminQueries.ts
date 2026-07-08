@@ -17,6 +17,8 @@ import type {
   ModificationRequestAdmin,
   ModificationStatus,
   CertificateRosterRow,
+  PriceItemAdmin,
+  SessionPriceOverride,
 } from './types'
 
 // 요청 join 공통 — application 은 SET NULL 이라 null 가능. 배열/객체 어느 형태든 정규화.
@@ -346,6 +348,32 @@ export async function getAllSessions(): Promise<SessionAdmin[]> {
       waitlisted: o?.waitlisted ?? 0,
     }
   })
+}
+
+// 요금 전체(비활성 포함). 카테고리·sort_order 순. 공개 getPriceItems 와 달리 is_active 포함.
+export async function getAllPriceItems(): Promise<PriceItemAdmin[]> {
+  const { data, error } = await supabaseAdmin
+    .from('price_items')
+    .select('id, category, item_key, label, amount, is_active, sort_order')
+    .order('category', { ascending: true })
+    .order('sort_order', { ascending: true })
+  if (error) {
+    console.warn('[adminQueries] getAllPriceItems:', error)
+    return []
+  }
+  return (data as PriceItemAdmin[]) ?? []
+}
+
+// 차수별 요금 오버라이드 전체 — 차수 편집(요금 조정) 모달에서 세션별로 인덱싱해 사용.
+export async function getAllSessionOverrides(): Promise<SessionPriceOverride[]> {
+  const { data, error } = await supabaseAdmin
+    .from('session_price_overrides')
+    .select('session_id, item_key, amount')
+  if (error) {
+    console.warn('[adminQueries] getAllSessionOverrides:', error)
+    return []
+  }
+  return (data as SessionPriceOverride[]) ?? []
 }
 
 // 차수 폼 프로그램(과정) 선택지 — 활성 코스만.

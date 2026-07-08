@@ -7,6 +7,7 @@ import type {
   Course,
   SessionWithCourse,
   PriceItem,
+  SessionPriceOverride,
   Notice,
   Faq,
   SiteContent,
@@ -64,6 +65,15 @@ export async function getPriceItems(): Promise<PriceItem[]> {
     .order('sort_order', { ascending: true })
   warn('getPriceItems', error)
   return (data as PriceItem[]) ?? []
+}
+
+// 차수별 요금 오버라이드 전체(anon). 폼에서 선택 차수 기준으로 머지(applyOverrides). 소량이라 일괄 로드.
+export async function getSessionPriceOverrides(): Promise<SessionPriceOverride[]> {
+  const { data, error } = await supabase
+    .from('session_price_overrides')
+    .select('session_id, item_key, amount')
+  warn('getSessionPriceOverrides', error)
+  return (data as SessionPriceOverride[]) ?? []
 }
 
 // 공지 (RLS 가 is_published=true 만 노출). 고정 먼저, 그다음 최신순

@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { encryptSecret } from '@/lib/serverCrypto'
-import { computeJikmu, computeJayul } from '@/lib/pricing'
+import { computeJikmu, computeJayul, applyOverrides } from '@/lib/pricing'
 import { getSessionOccupancy } from '@/lib/capacity'
 import { applicationPrefix } from '@/lib/programs'
 import type { PriceItem } from '@/lib/types'
@@ -100,7 +100,13 @@ export async function POST(req: Request) {
     .select('id, category, item_key, label, amount, sort_order')
     .eq('is_active', true)
   if (pErr) return fail('가격 조회 중 오류가 발생했습니다.', 500)
-  const items = (priceRows as PriceItem[]) ?? []
+  const baseItems = (priceRows as PriceItem[]) ?? []
+  // 차수 오버라이드(있으면) 반영 — 기본가 ▸ 차수별 금액 머지. 클라 폼과 동일 로직(applyOverrides).
+  const { data: ovRows } = await supabaseAdmin
+    .from('session_price_overrides')
+    .select('item_key, amount')
+    .eq('session_id', payload.sessionId)
+  const items = applyOverrides(baseItems, (ovRows as { item_key: string; amount: number }[]) ?? [])
   const breakdown = payload.kind === 'jikmu'
     ? computeJikmu(payload as JikmuPayload, items)
     : computeJayul(payload as JayulPayload, items)

@@ -6,13 +6,14 @@ import FormSectionTitle from '@/components/common/FormSectionTitle'
 import Text from '@/components/common/Text'
 import { LoadingState } from '@/components/common/StateView'
 import { useQuery } from '@/lib/useQuery'
-import { getSessions, getPriceItems, getSessionAvailability, type SessionAvailability } from '@/lib/queries'
+import { getSessions, getPriceItems, getSessionPriceOverrides, getSessionAvailability, type SessionAvailability } from '@/lib/queries'
+import { applyOverrides } from '@/lib/pricing'
 import { formatPeriod } from '@/lib/display'
 import { submitApplication } from '@/lib/applyClient'
 import ApplyComplete from '@/components/features/ApplyComplete'
 import { JAYUL_LESSONS, EQUIPMENT_TYPES } from '@/lib/lessonOptions'
 import { Field, ApplicantFields, RouteSelect, PrivacyConsentBox, ConsentChecks, SummaryActions, SeatsLeft, WaitlistNotice, won, inputCls } from './apply/shared'
-import type { SessionWithCourse, PriceItem, ScheduleType } from '@/lib/types'
+import type { SessionWithCourse, PriceItem, SessionPriceOverride, ScheduleType } from '@/lib/types'
 import type { JayulPayload } from '@/lib/applicationTypes'
 
 // 자율패키지 신청 폼(상세) — /application 자율 트랙(데스크탑 우 페인 / 모바일 모달). [[jayul-apply-form-spec]]
@@ -154,6 +155,7 @@ export default function JayulApplyForm() {
     return m
   }, [availability.data])
   const prices = useQuery<PriceItem[]>(getPriceItems, [])
+  const overrides = useQuery<SessionPriceOverride[]>(getSessionPriceOverrides, [])
   const [form, setForm] = useState<JayulForm>(EMPTY)
   const [saved, setSaved] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -184,11 +186,17 @@ export default function JayulApplyForm() {
     [sessions.data, form.variant],
   )
 
+  // 선택 차수의 오버라이드를 얹은 '유효가'(기본가 ▸ 차수별 금액). 차수 미선택 시 기본가 그대로.
+  const effectivePrices = useMemo(() => {
+    if (!form.sessionId) return prices.data
+    return applyOverrides(prices.data, overrides.data.filter((o) => o.session_id === form.sessionId))
+  }, [prices.data, overrides.data, form.sessionId])
+
   const itemBy = useMemo(() => {
     const m: Record<string, PriceItem> = {}
-    for (const p of prices.data) m[p.item_key] = p
+    for (const p of effectivePrices) m[p.item_key] = p
     return m
-  }, [prices.data])
+  }, [effectivePrices])
 
   // pkg 묶음가 — pkg_{변형}_{인원}. 유형 미선택이면 0.
   const pkgAmount = form.variant ? itemBy[`pkg_${form.variant}_${form.headcount}`]?.amount ?? 0 : 0

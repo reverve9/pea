@@ -46,6 +46,18 @@ export interface PriceItem {
   sort_order: number
 }
 
+// 어드민 요금 편집용 — 공개 PriceItem에 없는 활성여부 포함(비활성 행도 노출).
+export interface PriceItemAdmin extends PriceItem {
+  is_active: boolean
+}
+
+// 차수별 요금 오버라이드 — 기본가(price_items.amount)를 특정 차수에서만 다른 금액으로 덮어씀(sparse).
+export interface SessionPriceOverride {
+  session_id: string
+  item_key: string
+  amount: number
+}
+
 export type NoticeCategory = 'general' | 'program' | 'result'
 
 export interface Notice {
