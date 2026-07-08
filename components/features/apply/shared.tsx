@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Copy, Check } from 'lucide-react'
 import Text, { BTN } from '@/components/common/Text'
 import { PLACEHOLDER_ORG as ORG } from '@/lib/siteMeta'
+import type { CashReceiptType } from '@/lib/types'
 
 // 신청폼 공용 조각 — 직무(JikmuApplyForm)·자율(JayulApplyForm) 공유. accent(브랜드색)만 prop 으로 분기.
 // 도메인 섹션(종목/객실/렌탈수량 등)은 각 폼에 인라인. 여기엔 100% 동일한 프리미티브·고지문·입금자·경로만. [[jikmu-form-is-componentization-source]]
@@ -12,7 +13,7 @@ import { PLACEHOLDER_ORG as ORG } from '@/lib/siteMeta'
 export const won = (n: number) => n.toLocaleString('ko-KR') + '원'
 
 export const inputCls =
-  'w-full rounded-[10px] border border-[#e5eaef] bg-white px-3.5 py-2.5 font-score text-[16px] text-[#1f2937] placeholder:text-[#b6bcc4] transition-colors focus:bg-[#f7f9fb] focus:outline-none'
+  'apply-field w-full rounded-[10px] border border-[#e5eaef] bg-white px-3.5 py-2.5 font-score text-[16px] text-[#1f2937] placeholder:text-[#b6bcc4] transition-colors focus:bg-[#f7f9fb] focus:outline-none'
 export const selectCls =
   'apply-select w-full appearance-none rounded-[10px] border border-[#e5eaef] px-3.5 py-2.5 font-score text-[16px] text-[#1f2937] transition-colors focus:outline-none'
 
@@ -237,6 +238,65 @@ export function PayerConfirm({
   )
 }
 
+// 현금영수증 발급유형 — 합계 박스 안(입금자 확인 아래). 네이버쇼핑식 3분기.
+//   소득공제(개인) = 신청자 휴대폰 재사용(추가입력 없음) / 지출증빙(사업자) = 사업자번호 / 발급 안 함.
+//   ⚠ '발급 안 함'이어도 의무발행이면 서버가 자진발급(010-000-1234)으로 처리 — 실제 미발급 아님. [[cash-receipt-spec]]
+const CASH_RECEIPT_OPTIONS: { k: CashReceiptType; label: string }[] = [
+  { k: 'personal', label: '소득공제' },
+  { k: 'business', label: '지출증빙' },
+  { k: 'none', label: '발급 안 함' },
+]
+export function CashReceiptSelect({
+  value, bizno, onType, onBizno, accent, phone,
+}: {
+  value: CashReceiptType
+  bizno: string
+  onType: (v: CashReceiptType) => void
+  onBizno: (v: string) => void
+  accent: string
+  phone: string
+}) {
+  return (
+    <div className="mt-3 border-t border-[#e5eaef] pt-3">
+      <Text variant="sub" as="p" className="mb-2 text-[#4b5563]">현금영수증</Text>
+      <div className="grid grid-cols-3 gap-2">
+        {CASH_RECEIPT_OPTIONS.map((o) => {
+          const on = value === o.k
+          return (
+            <button
+              key={o.k}
+              type="button"
+              onClick={() => onType(o.k)}
+              aria-pressed={on}
+              className="rounded-[10px] border border-[#e5eaef] px-2 py-2.5 text-center font-score text-[clamp(0.75rem,3cqi,0.8125rem)] font-[500] transition-colors"
+              style={{ background: on ? accent + '12' : '#ffffff', color: on ? accent : '#4b5563' }}
+            >
+              {o.label}
+            </button>
+          )
+        })}
+      </div>
+      {value === 'personal' && (
+        <Text variant="caption" as="p" className="mt-2 text-[#9ca3af]">
+          신청자 휴대폰{phone ? ` (${phone})` : ''}으로 소득공제용 현금영수증이 발급됩니다.
+        </Text>
+      )}
+      {value === 'business' && (
+        <input
+          className={`${inputCls} mt-2`}
+          value={bizno}
+          onChange={(e) => onBizno(e.target.value.replace(/\D/g, '').slice(0, 10))}
+          placeholder="사업자등록번호 10자리 (- 없이 숫자만)"
+          inputMode="numeric"
+        />
+      )}
+      {value === 'none' && (
+        <Text variant="caption" as="p" className="mt-2 text-[#9ca3af]">발급을 원하지 않으시면 선택하지 않으셔도 됩니다.</Text>
+      )}
+    </div>
+  )
+}
+
 // 신청자 기본정보 공통 필드셋 — 직무(참가자)·자율(대표). 두 폼 구조 동일, 문구·접두어만 prop 분기.
 // name/gender/phone/birthFront/schoolName/region 6필드는 두 폼 구조 공유(아래 ApplicantCore).
 // 직무 전용 보험 토글·주민번호 뒷자리는 birthExtra 로 주입(도메인 로직은 각 폼 유지).
@@ -359,6 +419,7 @@ export function DepositAccount({ amount, accent = '#1e3a5f' }: { amount?: number
 export function SummaryActions({
   lines, total, emptyHint, accent,
   payerDiffers, payerName, onTogglePayer, onPayerName, payerSelfLabel,
+  cashReceiptType, cashReceiptBizno, onCashReceiptType, onCashReceiptBizno, applicantPhone,
   submitError, saved, submitting, canSubmit, onSaveDraft, onSubmit,
 }: {
   lines: { label: string; amount: number }[]
@@ -370,6 +431,11 @@ export function SummaryActions({
   onTogglePayer: (v: boolean) => void
   onPayerName: (v: string) => void
   payerSelfLabel: string
+  cashReceiptType: CashReceiptType
+  cashReceiptBizno: string
+  onCashReceiptType: (v: CashReceiptType) => void
+  onCashReceiptBizno: (v: string) => void
+  applicantPhone: string
   submitError: string | null
   saved: boolean
   submitting: boolean
@@ -407,6 +473,14 @@ export function SummaryActions({
         onNameChange={onPayerName}
         accent={accent}
         selfLabel={payerSelfLabel}
+      />
+      <CashReceiptSelect
+        value={cashReceiptType}
+        bizno={cashReceiptBizno}
+        onType={onCashReceiptType}
+        onBizno={onCashReceiptBizno}
+        accent={accent}
+        phone={applicantPhone}
       />
       {submitError && (
         <p className="mt-3 rounded-[8px] bg-[#fbecea] px-3 py-2 text-center font-score text-[13px] text-[#b4483a]">{submitError}</p>

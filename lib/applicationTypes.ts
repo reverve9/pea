@@ -36,6 +36,8 @@ export interface JikmuPayload {
   notes: string
   payerDiffers: boolean
   payerName: string
+  cashReceiptType: 'personal' | 'business' | 'none' // 현금영수증 발급유형(소득공제/지출증빙/발급안함)
+  cashReceiptBizno: string // 지출증빙 시 사업자번호(숫자). 그 외 ''
   routes: string[]
   privacyConsent: boolean
   marketingOptIn: boolean
@@ -61,6 +63,8 @@ export interface JayulPayload {
   note: string
   payerDiffers: boolean
   payerName: string
+  cashReceiptType: 'personal' | 'business' | 'none' // 현금영수증 발급유형(소득공제/지출증빙/발급안함)
+  cashReceiptBizno: string // 지출증빙 시 사업자번호(숫자). 그 외 ''
   routes: string[]
   privacyConsent: boolean
   marketingOptIn: boolean

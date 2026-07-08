@@ -5,6 +5,7 @@ import { requireAdmin } from '@/lib/adminGuard'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { decryptSecret, issueFillToken } from '@/lib/serverCrypto'
 import { updateParticipantDetail as applyParticipantDetail, type ParticipantDetailInput } from '@/lib/participantDetail'
+import { issueCashReceipt, cancelCashReceipt } from '@/lib/cashReceipt'
 import { applyOverrides } from '@/lib/pricing'
 import type {
   ApplicationStatus,
@@ -33,6 +34,15 @@ export async function setApplicationStatus(id: string, status: ApplicationStatus
     // completed/cancelled/refunded: deposit_confirmed_at 유지
     const { error } = await supabaseAdmin.from('applications').update(patch).eq('id', id)
     if (error) throw error
+    // 현금영수증 — 입금확인(→paid)=즉시 발급 / 입금확인 되돌림(→pending)=취소발급. [[cash-receipt-spec]]
+    // best-effort: 발급 실패해도 상태변경은 유지(원장 status=failed 로 남아 재처리 가능).
+    if (status === 'paid' || status === 'pending') {
+      const { data: amt } = await supabaseAdmin
+        .from('applications').select('total_amount, refunded_amount').eq('id', id).maybeSingle()
+      const net = (amt?.total_amount ?? 0) - (amt?.refunded_amount ?? 0)
+      if (status === 'paid') await issueCashReceipt(id, net)
+      else await cancelCashReceipt(id, net)
+    }
     revalidatePath('/admin/applications')
     return { ok: true }
   } catch (e) {
@@ -73,6 +83,8 @@ export async function registerAdminRefund(
     if (markRefunded) appPatch.status = 'refunded'
     const { error: upErr } = await supabaseAdmin.from('applications').update(appPatch).eq('id', appId)
     if (upErr) throw upErr
+    // 환불 = 현금영수증 취소발급(부분환불이면 부분취소, amount 만큼). [[cash-receipt-spec]]
+    await cancelCashReceipt(appId, amount)
     revalidatePath('/admin/applications')
     revalidatePath('/admin/settlements')
     return { ok: true }
@@ -153,6 +165,8 @@ export async function confirmDuePayment(id: string): Promise<ActionResult> {
       .update({ due_amount: 0, due_settled_amount: app.due_amount, due_claimed_at: null, updated_at: new Date().toISOString() })
       .eq('id', id)
     if (error) throw error
+    // 추가입금분 현금영수증 추가 발급(면세 총액=추가확정액). [[cash-receipt-spec]]
+    await issueCashReceipt(id, app.due_amount)
     revalidatePath('/admin/applications')
     revalidatePath('/admin/settlements')
     return { ok: true }
@@ -348,6 +362,8 @@ export async function confirmRefundFromRequest(
       .update(reqPatch)
       .eq('id', reqId)
     if (rErr) throw rErr
+    // 환불 = 현금영수증 취소발급(부분환불이면 부분취소, amount 만큼). [[cash-receipt-spec]]
+    await cancelCashReceipt(appId, amount)
     revalidatePath('/admin/applications')
     revalidatePath('/admin/settlements')
     return { ok: true }

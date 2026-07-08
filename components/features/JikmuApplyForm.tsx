@@ -10,7 +10,7 @@ import { applyOverrides } from '@/lib/pricing'
 import { formatPeriod } from '@/lib/display'
 import { submitApplication } from '@/lib/applyClient'
 import ApplyComplete from '@/components/features/ApplyComplete'
-import type { SessionWithCourse, PriceItem, SessionPriceOverride } from '@/lib/types'
+import type { SessionWithCourse, PriceItem, SessionPriceOverride, CashReceiptType } from '@/lib/types'
 import type { JikmuPayload } from '@/lib/applicationTypes'
 import { LESSON_SPORTS, LESSON_CLASSES, type LessonSport } from '@/lib/lessonOptions'
 import { Field, ApplicantFields, RouteSelect, PrivacyConsentBox, ConsentChecks, SummaryActions, SeatsLeft, WaitlistNotice, won, inputCls, selectCls, selectTint } from './apply/shared'
@@ -67,6 +67,8 @@ interface JikmuForm {
   notes: string // 12 특이사항
   payerDiffers: boolean // 13 입금자≠참가자(기본정보 섹션에서 토글)
   payerName: string // 13 입금자명(참가자와 다를 경우)
+  cashReceiptType: CashReceiptType // 현금영수증 발급유형(소득공제/지출증빙/발급안함)
+  cashReceiptBizno: string // 지출증빙 시 사업자번호
   routes: string[] // 14 알게 된 경로(다중)
   confirmChecked: boolean // 15 신청내용·입금자명 일치 확인(필수)
   privacyConsent: boolean // 17 개인정보/촬영 활용 동의(필수)
@@ -79,7 +81,8 @@ const EMPTY: JikmuForm = {
   lessonSport: '', lessonClass: '', roomType: 'group', roomSpec: '',
   rentals: { apparel: false, goggle: false, protector: false, glove: false },
   apparelSize: '', protectorSize: '', gloveSize: '',
-  hasCompanion: false, companion: '', companionPhone: '', notes: '', payerDiffers: false, payerName: '', routes: [],
+  hasCompanion: false, companion: '', companionPhone: '', notes: '', payerDiffers: false, payerName: '',
+  cashReceiptType: 'personal', cashReceiptBizno: '', routes: [],
   confirmChecked: false, privacyConsent: false, marketingOptIn: false,
 }
 
@@ -277,6 +280,7 @@ export default function JikmuApplyForm() {
       : !a.lessonClass ? '희망 강습 수준을 선택해 주세요.'
       : a.roomType === 'private' && !a.roomSpec ? '개별객실 평형·인실을 선택해 주세요.'
       : a.insurance && a.birthBack.length !== 7 ? '보험 가입용 주민번호 뒷자리 7자리를 입력해 주세요.'
+      : a.cashReceiptType === 'business' && a.cashReceiptBizno.length !== 10 ? '현금영수증 지출증빙용 사업자등록번호 10자리를 입력해 주세요.'
       : !a.privacyConsent || !a.confirmChecked ? '필수 동의 항목을 확인해 주세요.'
       : selectedFull && !waitlistAck ? '정원이 마감된 차수입니다. 예비(대기) 신청 확인에 동의해 주세요.'
       : null
@@ -305,6 +309,8 @@ export default function JikmuApplyForm() {
       notes: a.notes,
       payerDiffers: a.payerDiffers,
       payerName: a.payerName,
+      cashReceiptType: a.cashReceiptType,
+      cashReceiptBizno: a.cashReceiptType === 'business' ? a.cashReceiptBizno : '',
       routes: a.routes,
       privacyConsent: a.privacyConsent,
       marketingOptIn: a.marketingOptIn,
@@ -532,6 +538,11 @@ export default function JikmuApplyForm() {
         onTogglePayer={togglePayerDiffers}
         onPayerName={(v) => set('payerName', v)}
         payerSelfLabel="참가자"
+        cashReceiptType={form.cashReceiptType}
+        cashReceiptBizno={form.cashReceiptBizno}
+        onCashReceiptType={(v) => set('cashReceiptType', v)}
+        onCashReceiptBizno={(v) => set('cashReceiptBizno', v)}
+        applicantPhone={form.phone}
         submitError={submitError}
         saved={saved}
         submitting={submitting}

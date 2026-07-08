@@ -13,7 +13,7 @@ import { submitApplication } from '@/lib/applyClient'
 import ApplyComplete from '@/components/features/ApplyComplete'
 import { JAYUL_LESSONS, EQUIPMENT_TYPES } from '@/lib/lessonOptions'
 import { Field, ApplicantFields, RouteSelect, PrivacyConsentBox, ConsentChecks, SummaryActions, SeatsLeft, WaitlistNotice, won, inputCls } from './apply/shared'
-import type { SessionWithCourse, PriceItem, SessionPriceOverride, ScheduleType } from '@/lib/types'
+import type { SessionWithCourse, PriceItem, SessionPriceOverride, ScheduleType, CashReceiptType } from '@/lib/types'
 import type { JayulPayload } from '@/lib/applicationTypes'
 
 // 자율패키지 신청 폼(상세) — /application 자율 트랙(데스크탑 우 페인 / 모바일 모달). [[jayul-apply-form-spec]]
@@ -64,6 +64,8 @@ interface JayulForm {
   // 추가 정보·확인·동의(직무폼과 공통 — 내일 컴포넌트화)
   payerDiffers: boolean // 입금자≠대표
   payerName: string // 입금자명
+  cashReceiptType: CashReceiptType // 현금영수증 발급유형(소득공제/지출증빙/발급안함)
+  cashReceiptBizno: string // 지출증빙 시 사업자번호
   routes: string[] // 알게 된 경로(다중)
   confirmChecked: boolean // 신청·입금자명 일치 확인(필수)
   privacyConsent: boolean // 개인정보·촬영 동의(필수)
@@ -76,7 +78,8 @@ const EMPTY: JayulForm = {
   rentals: { apparel: 0, goggle: 0, protector: 0, glove: 0 },
   repInsurance: false,
   note: '',
-  payerDiffers: false, payerName: '', routes: [],
+  payerDiffers: false, payerName: '',
+  cashReceiptType: 'personal', cashReceiptBizno: '', routes: [],
   confirmChecked: false, privacyConsent: false, marketingOptIn: false,
 }
 
@@ -270,6 +273,7 @@ export default function JayulApplyForm() {
       : !a.region ? '지역을 선택해 주세요.'
       : !a.lessonClass ? '기초 단체 강습을 선택해 주세요.'
       : !a.equipment ? '대여 장비를 선택해 주세요.'
+      : a.cashReceiptType === 'business' && a.cashReceiptBizno.length !== 10 ? '현금영수증 지출증빙용 사업자등록번호 10자리를 입력해 주세요.'
       : !a.privacyConsent || !a.confirmChecked ? '필수 동의 항목을 확인해 주세요.'
       : selectedFull && !waitlistAck ? '정원이 마감된 차수입니다. 예비(대기) 신청 확인에 동의해 주세요.'
       : null
@@ -291,6 +295,8 @@ export default function JayulApplyForm() {
       note: a.note,
       payerDiffers: a.payerDiffers,
       payerName: a.payerName,
+      cashReceiptType: a.cashReceiptType,
+      cashReceiptBizno: a.cashReceiptType === 'business' ? a.cashReceiptBizno : '',
       routes: a.routes,
       privacyConsent: a.privacyConsent,
       marketingOptIn: a.marketingOptIn,
@@ -496,6 +502,11 @@ export default function JayulApplyForm() {
         onTogglePayer={togglePayerDiffers}
         onPayerName={(v) => set('payerName', v)}
         payerSelfLabel="대표 신청자"
+        cashReceiptType={form.cashReceiptType}
+        cashReceiptBizno={form.cashReceiptBizno}
+        onCashReceiptType={(v) => set('cashReceiptType', v)}
+        onCashReceiptBizno={(v) => set('cashReceiptBizno', v)}
+        applicantPhone={form.phone}
         submitError={submitError}
         saved={saved}
         submitting={submitting}

@@ -267,6 +267,29 @@ export interface CertificateRosterRow {
   issued_at: string | null
 }
 
+// 현금영수증 — 무통장 입금확인 시 자동발급(팝빌 등 대행 API 전제). 환불 시 취소발급.
+export type CashReceiptType = 'personal' | 'business' | 'none' // 신청 시 발급의도(소득공제/지출증빙/발급안함)
+export type CashReceiptKind = 'issue' | 'cancel'
+export type CashReceiptPurpose = 'personal' | 'business' | 'self' // 실제 발급 목적(자진발급=self, 010-000-1234)
+export type CashReceiptStatus = 'pending' | 'issued' | 'failed' | 'cancelled'
+
+// 현금영수증 발급현황(어드민) — cash_receipts 원장 1행 = 발급/취소 이벤트 1건.
+export interface CashReceiptAdminRow {
+  id: string
+  application_no: string | null
+  applicant_name: string | null
+  kind: CashReceiptKind
+  purpose: CashReceiptPurpose
+  identifier: string // 개인 휴대폰 / 사업자번호 / 자진발급 010-000-1234
+  amount: number // 면세 총액
+  status: CashReceiptStatus
+  approval_no: string | null // 국세청 승인번호(미연동 시 null)
+  issued_at: string | null
+  created_at: string
+  session_label: string | null
+  program_kind: 'jikmu' | 'jayul' | null // 유형 필터용
+}
+
 export interface SiteContent {
   id: string
   key: string

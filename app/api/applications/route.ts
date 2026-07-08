@@ -47,6 +47,8 @@ const jikmuSchema = z.object({
   notes: z.string(),
   payerDiffers: z.boolean(),
   payerName: z.string(),
+  cashReceiptType: z.enum(['personal', 'business', 'none']),
+  cashReceiptBizno: z.string(),
   routes: z.array(z.string()),
   privacyConsent: z.literal(true), // 필수 동의 없이는 접수 불가
   marketingOptIn: z.boolean(),
@@ -65,6 +67,8 @@ const jayulSchema = z.object({
   note: z.string(),
   payerDiffers: z.boolean(),
   payerName: z.string(),
+  cashReceiptType: z.enum(['personal', 'business', 'none']),
+  cashReceiptBizno: z.string(),
   routes: z.array(z.string()),
   privacyConsent: z.literal(true),
   marketingOptIn: z.boolean(),
@@ -152,6 +156,10 @@ export async function POST(req: Request) {
     privacy_agreed: true,
     privacy_agreed_at: now,
     marketing_opt_in: payload.marketingOptIn,
+    // 현금영수증 발급의도 — 개인(소득공제)은 phone 재사용이라 별도저장 없음. 사업자만 bizno. [[cash-receipt-spec]]
+    cash_receipt_type: payload.cashReceiptType,
+    cash_receipt_bizno:
+      payload.cashReceiptType === 'business' ? payload.cashReceiptBizno.replace(/\D/g, '') || null : null,
   }
   const { data: appIns, error: aErr } = await supabaseAdmin
     .from('applications')

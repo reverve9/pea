@@ -37,13 +37,17 @@ export async function POST(req: Request) {
   // 소유권 확인 — 대상 신청이 토큰 주인의 것인지.
   const { data: app, error: aErr } = await supabaseAdmin
     .from('applications')
-    .select('id')
+    .select('id, status')
     .eq('id', b.applicationId)
     .eq('phone', claims.phone)
     .eq('applicant_name', claims.name)
     .maybeSingle()
   if (aErr) return NextResponse.json({ error: '처리 중 오류가 발생했습니다.' }, { status: 500 })
   if (!app) return NextResponse.json({ error: '대상 신청 내역을 찾을 수 없습니다.' }, { status: 404 })
+  // 정보완료 후 입금 원칙 — 입금확인(paid) 이후 직접수정 잠금. 변경은 수정요청 채널로. [[cash-receipt-spec]]
+  if (app.status !== 'pending') {
+    return NextResponse.json({ error: '입금 확인 후에는 수정요청을 통해 변경해 주세요.' }, { status: 409 })
+  }
 
   // 참가자가 그 신청 소속인지 확인(다른 신청의 참가자 조작 방지).
   const { data: part, error: pErr } = await supabaseAdmin

@@ -151,6 +151,13 @@ body {
 /* 신청폼 셀렉트: native <select>는 마우스로 열어도 :focus-visible이 걸려 위 네이비 아웃라인이 뜸(옵션 버튼과 달라 보임).
    억제하고 선택 상태는 틴트 채움(selectTint)으로만 표시 → 옵션 버튼과 통일. */
 .apply-select:focus-visible { outline: none !important; }
+/* 신청폼·마이 입력필드(input/textarea): 회색 hairline은 유지하되, 위 전역 네이비 :focus-visible 아웃라인만 억제
+   → 드롭다운(apply-select)과 동일한 포커스 거동으로 통일. 선택/포커스는 배경 틴트(focus:bg)로만. */
+.apply-field:focus-visible { outline: none !important; }
+/* 네이비 포커스 테두리 전면 제거 — 입력필드·선택카드(버튼)·링크 모두. 포커스/선택 표시는 배경 틴트·선택상태로만(오너: 테두리 자체 불가).
+   ⚠ 키보드 포커스 링도 사라짐 → 접근성상 포커스 이동은 배경 틴트 등 시각 단서로 대체(디자인 의도). */
+input:focus-visible, textarea:focus-visible, select:focus-visible,
+button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: none !important; }
 
 /* 어드민 필터 필드(input/select): 테두리 절대 금지. 포커스/클릭 시 네이비 아웃라인 억제하고
    선택 상태는 배경 틴트(focus:bg)로만 표시. native <select>는 appearance 제거해 테두리 없이 평탄화 + 커스텀 셰브런. */

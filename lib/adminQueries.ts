@@ -19,6 +19,10 @@ import type {
   ModificationStatus,
   ModificationChange,
   CertificateRosterRow,
+  CashReceiptAdminRow,
+  CashReceiptKind,
+  CashReceiptPurpose,
+  CashReceiptStatus,
   PriceItemAdmin,
   SessionPriceOverride,
 } from './types'
@@ -325,6 +329,58 @@ export async function getCertificateRoster(): Promise<CertificateRosterRow[]> {
     }
   }
   return rows
+}
+
+// 현금영수증 발급현황 — cash_receipts 원장(발급/취소 이벤트) × 신청(번호·신청자·차수) 조인. 최신순.
+// 무통장 입금확인 시 자동발급되므로 여기선 이력 조회가 주(수동 발급 버튼 없음). [[cash-receipt-spec]]
+export async function getCashReceipts(): Promise<CashReceiptAdminRow[]> {
+  const { data, error } = await supabaseAdmin
+    .from('cash_receipts')
+    .select(
+      'id, kind, purpose, identifier, amount, status, approval_no, issued_at, created_at, application:applications(application_no, applicant_name, session:sessions(label, schedule_type))',
+    )
+    .order('created_at', { ascending: false })
+  if (error) {
+    console.warn('[adminQueries] getCashReceipts:', error)
+    return []
+  }
+  type SessRow = { label: string; schedule_type: ScheduleType } | { label: string; schedule_type: ScheduleType }[] | null
+  type AppRow =
+    | { application_no: string; applicant_name: string; session: SessRow }
+    | { application_no: string; applicant_name: string; session: SessRow }[]
+    | null
+  type Row = {
+    id: string
+    kind: CashReceiptKind
+    purpose: CashReceiptPurpose
+    identifier: string
+    amount: number
+    status: CashReceiptStatus
+    approval_no: string | null
+    issued_at: string | null
+    created_at: string
+    application: AppRow
+  }
+  return ((data as unknown as Row[]) ?? []).map((r) => {
+    const app = Array.isArray(r.application) ? r.application[0] : r.application
+    const sess = app ? (Array.isArray(app.session) ? app.session[0] : app.session) : null
+    const st = sess?.schedule_type ?? null
+    return {
+      id: r.id,
+      application_no: app?.application_no ?? null,
+      applicant_name: app?.applicant_name ?? null,
+      kind: r.kind,
+      purpose: r.purpose,
+      identifier: r.identifier,
+      amount: r.amount,
+      status: r.status,
+      approval_no: r.approval_no,
+      issued_at: r.issued_at,
+      created_at: r.created_at,
+      session_label: sess?.label ?? null,
+      program_kind: st == null ? null : st === 'jikmu' ? 'jikmu' : 'jayul',
+    }
+  })
 }
 
 // 연수 차수 전체 — 프로그램(course.name) 조인 + 회차별 신청현황(점유/예비) 집계. 시작일 오름차순.

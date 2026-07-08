@@ -59,9 +59,9 @@ const REFUND_STATUS: Record<'requested' | 'confirmed' | 'completed', { label: st
 // 모바일은 서브헤더(← 마이페이지)가 컨텍스트를 이미 주므로 생략(세로 공간·중복 방지).
 function MyHero() {
   return (
-    <p className="hidden px-4 pt-1 pb-7 text-center font-score text-[clamp(0.9375rem,3.4cqi,1.0625rem)] font-[300] leading-[1.85] text-[#4b5563] md:block">
+    <p className="hidden px-4 md:px-8 pt-1 pb-7 text-center font-score text-[clamp(0.9375rem,3.4cqi,1.0625rem)] font-[300] leading-[1.85] text-[#4b5563] md:block">
       본인 확인 후 <span className="font-[500] text-[#1e3a5f]">신청 내역</span>을 조회하고,<br />
-      정보 수정 · 환불 · 증명서 발급을 요청할 수 있습니다.
+      정보 수정 · 환불 · 수료증 발급을 요청할 수 있습니다.
     </p>
   )
 }
@@ -86,13 +86,13 @@ function AuthGate({ onVerified, error, loading }: { onVerified: (v: Auth) => voi
   const [phone, setPhone] = useState('')
   const [birth, setBirth] = useState('')
   const ok = name.trim().length > 0 && phone.length >= 10 && birth.length === 6
-  // 통일 규칙: 포커스에 하드 테두리 안 씀. 테두리 고정(#e5eaef), 포커스는 옅은 배경 틴트로만.
+  // 신청폼 드롭다운(apply-select)과 동일 필드 룩 — 회색 hairline 유지 + 배경 틴트, 네이비 포커스 아웃라인만 억제(apply-field).
   const inputCls =
-    'w-full rounded-[10px] border border-[#e5eaef] bg-white px-3.5 py-2.5 text-center font-score text-[16px] text-[#1f2937] placeholder:text-[#b6bcc4] transition-colors focus:bg-[#f7f9fb] focus:outline-none'
+    'apply-field w-full rounded-[10px] border border-[#e5eaef] bg-white px-3.5 py-2.5 text-center font-score text-[16px] text-[#1f2937] placeholder:text-[#b6bcc4] transition-colors focus:bg-[#f7f9fb] focus:outline-none'
   return (
     <div className="pb-8 pt-5">
       <MyHero />
-      <section className="px-4">
+      <section className="px-4 md:px-8">
         <WhiteBox className="p-6 text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#eef2f7]">
             <ShieldCheck size={26} className="text-[#1e3a5f]" />
@@ -144,9 +144,9 @@ function ApplicationCard(app: MyApplicationRow, selected: boolean) {
   )
 }
 
-// 상세 폼 입력 — 통일 규칙(포커스 하드 테두리 없이 배경 틴트). 입력 16px(iOS 확대 방지).
+// 상세 폼 입력 — 신청폼 드롭다운과 동일(회색 hairline + 배경 틴트, 네이비 아웃라인 억제 apply-field). 입력 16px(iOS 확대 방지).
 const fieldCls =
-  'w-full rounded-[10px] border border-[#e5eaef] bg-white px-3.5 py-2.5 font-score text-[16px] text-[#1f2937] placeholder:text-[#b6bcc4] transition-colors focus:bg-[#f7f9fb] focus:outline-none'
+  'apply-field w-full rounded-[10px] border border-[#e5eaef] bg-white px-3.5 py-2.5 font-score text-[16px] text-[#1f2937] placeholder:text-[#b6bcc4] transition-colors focus:bg-[#f7f9fb] focus:outline-none'
 
 // 참가자 후속입력 — 자율패키지 신청 후 대표가 참가자 성함·생년월일·강습·장비·(보험시)뒷자리를 대신 입력.
 // 신청 단계를 단순 유지하기 위해 상세는 신청 후 채운다([[companion-detail-post-signup-fill]]).
@@ -272,6 +272,7 @@ function CompanionFill({ applicationId, token }: { applicationId: string; token:
       <Text variant="label" className="text-[#374151]">참가자 정보</Text>
       <Text variant="caption" as="p" className="mt-1 text-[#9ca3af]">
         참가자 성함 · 생년월일 · 강습 · 대여장비를 대표가 대신 입력하거나, 참가자별 입력 링크를 복사해 각자에게 전달하면 본인이 직접 입력할 수 있습니다. 각 링크는 본인 정보만 수정 가능합니다.
+        <br />가능하면 <b>입금 전에 모두 입력</b>해 주세요. 입금 완료 후에는 수정요청을 통해 변경하실 수 있습니다.
       </Text>
 
       {/* 렌탈·보험 배정 — 옵션 귀속·보험은 대표가 결정(잠금). 렌탈이 없어도 다인원이면 보험 배정을 위해 노출. */}
@@ -551,7 +552,7 @@ function ModificationForm({ app, token, onDone }: { app: MyApplicationRow; token
 }
 
 // 신청 상세(디테일) — 데스크탑 우측 페인 / 모바일 모달 공용. refundBody = site_contents refund_policy(어드민 편집).
-// 수정요청·환불신청 = 토큰으로 소유권 검증 후 접수(/api/my/requests). 증명서는 준비 중.
+// 수정요청·환불신청 = 토큰으로 소유권 검증 후 접수(/api/my/requests). 수료증은 준비 중.
 function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; refundBody: string | null; token: string }) {
   const st = statusView(app)
   const [open, setOpen] = useState<null | 'modification' | 'refund' | 'payment'>(null)
@@ -736,8 +737,19 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
         </div>
       )}
 
-      {/* 참가자 정보 — 자율패키지는 참가자 후속입력(대표 대신입력). 직무연수는 단독 신청이라 생략. */}
-      {app.kind === 'jayul' && <CompanionFill applicationId={app.id} token={token} />}
+      {/* 참가자 정보 — 자율패키지 대표 대신입력. 입금 전(pending)만 직접수정,
+          입금완료 후엔 헷갈림 방지 위해 잠그고 수정요청 채널로. [[cash-receipt-spec]] */}
+      {app.kind === 'jayul' &&
+        (app.status === 'pending' ? (
+          <CompanionFill applicationId={app.id} token={token} />
+        ) : (
+          <div className="mt-4 rounded-[10px] border border-[#e5eaef] bg-[#f7f9fb] p-4">
+            <Text variant="label" className="text-[#374151]">참가자 정보</Text>
+            <Text variant="caption" as="p" className="mt-1 text-[#9ca3af]">
+              입금이 확인된 신청은 참가자 정보를 직접 수정할 수 없습니다. 변경이 필요하시면 아래 <b>수정요청</b>을 이용해 주세요.
+            </Text>
+          </div>
+        ))}
 
       <div className="mt-4 grid grid-cols-3 gap-2">
         <Button variant="primary" size="sm" onClick={() => toggle('modification')} disabled={done.modification}>
@@ -746,7 +758,7 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
         <Button variant="primary" size="sm" onClick={() => toggle('refund')} disabled={done.refund}>
           <RefreshCcw size={13} className="mr-1" />{done.refund ? '신청됨' : '환불신청'}
         </Button>
-        <Button variant="primary" size="sm" disabled><FileText size={13} className="mr-1" />증명서</Button>
+        <Button variant="primary" size="sm" disabled><FileText size={13} className="mr-1" />수료증</Button>
       </div>
 
       {/* 수정 요청 — 정형 폼(항목별 현재값→변경값). 차수 변경은 대상 아님(취소 후 재신청). */}
@@ -777,7 +789,7 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
 
       {done.modification && <p className="mt-3 rounded-[8px] bg-[#eaf4ec] px-3 py-2 font-score text-[13px] text-[#2f803a]">수정 요청이 접수되었습니다. 담당자 확인 후 반영됩니다.</p>}
       {done.refund && <p className="mt-3 rounded-[8px] bg-[#eaf4ec] px-3 py-2 font-score text-[13px] text-[#2f803a]">환불 신청이 접수되었습니다. 담당자 확인 후 처리됩니다.</p>}
-      <Text variant="caption" as="p" className="mt-2 text-center text-[#b6bcc4]">증명서 발급은 준비 중입니다.</Text>
+      <Text variant="caption" as="p" className="mt-2 text-center text-[#b6bcc4]">수료증 발급은 준비 중입니다.</Text>
 
       {/* 환불 규정 — site_contents(refund_policy) 실데이터. 환불신청 맥락에서 노출. */}
       <div className="mt-4 rounded-[10px] border border-[#e5eaef] bg-[#f7f9fb] p-4">
@@ -898,7 +910,7 @@ export default function MyPage() {
             <ExtendedHeader title="마이페이지" eyebrow="MY PAGE" />
             <SectionTitle title="이용 안내" />
             <WhiteBox className="p-6">
-              <Text variant="body" className="text-[#4b5563]">본인 확인 후 신청 내역 조회 · 정보 수정요청 · 환불 신청 · 증명서 발급을 이용할 수 있습니다.</Text>
+              <Text variant="body" className="text-[#4b5563]">본인 확인 후 신청 내역 조회 · 정보 수정요청 · 환불 신청 · 수료증 발급을 이용할 수 있습니다.</Text>
             </WhiteBox>
           </div>
         }
@@ -913,7 +925,7 @@ export default function MyPage() {
         main={
           <div className="pb-8 pt-10 md:pt-5">
             <MyHero />
-            <div className="px-4"><LoadingState /></div>
+            <div className="px-4 md:px-8"><LoadingState /></div>
           </div>
         }
         extended={<div><ExtendedHeader title="마이페이지" eyebrow="MY PAGE" /><SectionTitle title="신청 상세" /></div>}
@@ -928,12 +940,12 @@ export default function MyPage() {
         main={
           <div className="pb-8 pt-10 md:pt-5">
             <MyHero />
-            <div className="flex items-center justify-between gap-2 px-4 pb-1">
+            <div className="flex items-center justify-between gap-2 px-4 md:px-8 pb-1">
               <Text variant="sub" className="text-[#6b7280]">{session.name} 님의 신청 내역 {apps.length}건</Text>
               <button type="button" onClick={clearSession} className="shrink-0 font-score text-[12px] text-[#9ca3af] underline underline-offset-2">다른 정보로 조회</button>
             </div>
             {listError && (
-              <div className="px-4 pb-2">
+              <div className="px-4 md:px-8 pb-2">
                 <p className="rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{listError}</p>
               </div>
             )}
