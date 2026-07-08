@@ -410,7 +410,10 @@ function ApplicationsPanel({
       {reviewCount > 0 && (
         <div className="mb-3 ml-auto flex w-fit items-center gap-2 rounded-[8px] bg-[#f3f6f9] px-3.5 py-2.5 text-[12.5px]">
           <Badge color="amber" size="sm">입금확인요청</Badge>
-          <span className="font-[400] text-[#4b5563]">{reviewCount}건 · 통장 대조 후 처리해 주세요</span>
+          <span className="flex items-baseline gap-3.5">
+            <span className="text-[14px] font-[700] tabular-nums text-[#1e3a5f]">{reviewCount}건</span>
+            <span className="font-[400] text-[#4b5563]">통장 대조 후 처리해 주세요</span>
+          </span>
           <button
             type="button"
             onClick={() => setReviewOnly((v) => !v)}
