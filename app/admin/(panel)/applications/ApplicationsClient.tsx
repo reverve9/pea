@@ -417,7 +417,7 @@ function ApplicationsPanel({
         >
           <AlertTriangle size={15} className="shrink-0" />
           <span className="text-[13px] font-[600]">입금 확인요청 {reviewCount}건</span>
-          <span className="ml-8 shrink-0 text-[12px] font-[500]">
+          <span className="ml-14 shrink-0 text-[12px] font-[500]">
             {reviewOnly ? '전체 보기 ✕' : '확인요청건 보기 →'}
           </span>
         </button>
