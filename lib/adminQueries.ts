@@ -188,8 +188,9 @@ export async function getAllApplications(): Promise<ApplicationAdmin[]> {
     }
   })
 
-  // 입금완료 신고 대기 건을 최상단으로(created_at desc 는 이미 적용됨)
-  return rows.sort((a, b) => Number(b.needs_review) - Number(a.needs_review))
+  // 정렬 = 신청순(created_at desc)만. 입금확인 대기 우선 최상단 구조는 폐기(오너 2026-07-09).
+  // needs_review 필드는 유지(요청 배지/카운트용) — 순서에는 관여하지 않음.
+  return rows
 }
 
 // 환불 요청 전체 — 연결 신청(번호·신청자명) 조인. 최신순.
