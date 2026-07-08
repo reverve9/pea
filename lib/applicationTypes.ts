@@ -95,8 +95,26 @@ export interface MyApplicationRow {
   headcount: number
   total_amount: number
   due_amount: number // 추가결제 부족분(수정 증액). >0 이면 '입금대기(추가)' 표시
+  due_claimed: boolean // 추가입금 완료 신고 여부(고객이 눌러 어드민 대조 대기)
   status: 'pending' | 'paid' | 'completed' | 'cancelled' | 'refunded'
   payment_claimed: boolean // 입금 확인 요청(신고) 여부
+  created_at: string
+  // 요청 처리 현황 — 고객에게 상태·답변 노출(어드민 처리 결과 도달). [[requests-reorg-modification-restructure]]
+  modifications: MyModificationRow[]
+  refunds: MyRefundRow[]
+}
+
+// 마이페이지 요청 현황 — 고객 노출용 최소 필드. 내부메모(internal_note/admin_memo)는 절대 싣지 않는다.
+export interface MyModificationRow {
+  status: 'pending' | 'completed' | 'rejected'
+  changes_summary: string // 변경 항목 라벨 요약(예: '연락처 · 성함')
+  admin_reply: string | null // 완료/반려 시 고객 통지 답변
+  created_at: string
+}
+export interface MyRefundRow {
+  status: 'requested' | 'confirmed' | 'completed'
+  origin: 'user' | 'modification' | 'admin' // 고객 환불신청 / 수정 감액 자동 / 관리자 직접
+  amount: number | null // 요청/예상 환불액
   created_at: string
 }
 

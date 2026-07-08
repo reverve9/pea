@@ -28,6 +28,7 @@ const schema = z.discriminatedUnion('type', [
   z.object({ ...base, type: z.literal('refund'), reason: z.string().trim().max(1000), refundAccount: z.string().trim().min(1).max(200) }),
   z.object({ ...base, type: z.literal('modification'), changes: z.array(changeSchema).min(1).max(30), userNote: z.string().trim().max(1000).optional() }),
   z.object({ ...base, type: z.literal('payment'), payerName: z.string().trim().min(1).max(100) }),
+  z.object({ ...base, type: z.literal('due_payment') }), // 추가입금(수정 증액) 완료 신고 — 금액은 서버 due_amount 기준
 ])
 
 export async function POST(req: Request) {
@@ -71,6 +72,23 @@ export async function POST(req: Request) {
     if (error) {
       console.error('[my/requests] modification insert:', error)
       return NextResponse.json({ error: '수정 요청 저장 중 오류가 발생했습니다.' }, { status: 500 })
+    }
+  } else if (body.type === 'due_payment') {
+    // 추가입금 완료 신고 — 최초 입금과 별개(due_claimed_at). due_amount>0(추가입금 대기) 건에만, 1회.
+    // status·total 은 안 바꾼다(어드민 confirmDuePayment 가 due_amount=0 + due_claimed_at=null 로 소비).
+    const { data: upd, error } = await supabaseAdmin
+      .from('applications')
+      .update({ due_claimed_at: new Date().toISOString() })
+      .eq('id', body.applicationId)
+      .gt('due_amount', 0)
+      .is('due_claimed_at', null)
+      .select('id')
+    if (error) {
+      console.error('[my/requests] due claim:', error)
+      return NextResponse.json({ error: '추가입금 확인 요청 처리 중 오류가 발생했습니다.' }, { status: 500 })
+    }
+    if (!upd || upd.length === 0) {
+      return NextResponse.json({ error: '이미 처리되었거나 요청할 수 없는 상태입니다.' }, { status: 409 })
     }
   } else {
     // 입금 확인 요청 — status 는 안 바꾼다(관리자만 paid 전환). 입금대기 건에 신고 시각·입금자명만 기록.

@@ -94,8 +94,8 @@ export default function SettlementsClient({ data }: { data: SettlementDatum[] })
     return { gross, refund, net: gross - refund }
   }, [detailData])
 
-  // 페이지네이션(공용 InlinePagination) — 현재 뷰의 표시 목록(집계 rows / 건별 detailData)을 20개씩.
-  const PAGE = 20
+  // 페이지네이션(공용 InlinePagination) — 현재 뷰의 표시 목록(집계 rows / 건별 detailData)을 15개씩.
+  const PAGE = 15
   const [page, setPage] = useState(1)
   useEffect(() => setPage(1), [view, axis, from, to])
   const listLen = view === 'detail' ? detailData.length : rows.length

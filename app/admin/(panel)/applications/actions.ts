@@ -41,26 +41,66 @@ export async function setApplicationStatus(id: string, status: ApplicationStatus
   }
 }
 
-// 환불 처리 — status=refunded + 환불 확정액(관리자 수기 설정) 저장.
-// 환불규정이 상황별로 달라 금액이 가변 → 자동 계산이 아니라 입력값을 그대로 환불(PG 환불도 동일).
-// deposit_confirmed_at 은 setApplicationStatus 와 동일하게 유지(정산 기준일 유실 방지).
-export async function setApplicationRefund(id: string, amount: number): Promise<ActionResult> {
+// 관리자 직접 환불 등록 — 고객/수정 요청 없이 관리자가 환불을 개시(폐강·비대면요청·중복입금·재량).
+// 요청 기반으로 통일: refund_request(origin='admin', status='completed')를 생성해 이력·마이페이지에 잡히게 하고,
+// 동시에 refunded_amount 반영(정산 자동). 전액이면 status=refunded, 부분이면 status 유지(refunded_amount만).
+// 되돌리기는 '처리된 요청'의 revertRefund 로 통일(모달 위 모달인 직접 환불 경로 폐지).
+export async function registerAdminRefund(
+  appId: string,
+  amount: number,
+  markRefunded: boolean,
+  account: string,
+  reason: string,
+): Promise<ActionResult> {
   try {
     await requireAdmin()
-    if (!Number.isFinite(amount) || amount < 0 || !Number.isInteger(amount)) {
-      return { ok: false, error: '환불 금액이 올바르지 않습니다.' }
-    }
+    if (!Number.isInteger(amount) || amount < 0) return { ok: false, error: '환불 금액이 올바르지 않습니다.' }
+    const { data: app, error: gErr } = await supabaseAdmin
+      .from('applications').select('phone').eq('id', appId).maybeSingle()
+    if (gErr) throw gErr
+    if (!app) return { ok: false, error: '신청을 찾을 수 없습니다.' }
+    const { error: insErr } = await supabaseAdmin.from('refund_requests').insert({
+      application_id: appId,
+      phone: app.phone,
+      origin: 'admin',
+      amount,
+      refund_account: account.trim() || null,
+      reason: reason.trim() || '관리자 직접 환불',
+      status: 'completed',
+    })
+    if (insErr) throw insErr
+    const appPatch: Record<string, unknown> = { refunded_amount: amount, updated_at: new Date().toISOString() }
+    if (markRefunded) appPatch.status = 'refunded'
+    const { error: upErr } = await supabaseAdmin.from('applications').update(appPatch).eq('id', appId)
+    if (upErr) throw upErr
+    revalidatePath('/admin/applications')
+    revalidatePath('/admin/settlements')
+    return { ok: true }
+  } catch (e) {
+    console.error('[applications] registerAdminRefund:', e)
+    return { ok: false, error: '환불 등록에 실패했습니다.' }
+  }
+}
+
+// 취소 되돌리기 — 취소도 목록에 남고 회귀 가능해야 함(오너). deposit_confirmed_at(취소 시 보존됨) 있으면
+// paid, 없으면 pending 으로 복원. deposit_confirmed_at 은 재스탬프하지 않아 정산 기준일 유지.
+export async function revertCancel(id: string): Promise<ActionResult> {
+  try {
+    await requireAdmin()
+    const { data: app, error: gErr } = await supabaseAdmin
+      .from('applications').select('status, deposit_confirmed_at').eq('id', id).maybeSingle()
+    if (gErr) throw gErr
+    if (!app || app.status !== 'cancelled') return { ok: false, error: '취소 상태가 아닙니다.' }
+    const next: ApplicationStatus = app.deposit_confirmed_at ? 'paid' : 'pending'
     const { error } = await supabaseAdmin
-      .from('applications')
-      .update({ status: 'refunded', refunded_amount: amount, updated_at: new Date().toISOString() })
-      .eq('id', id)
+      .from('applications').update({ status: next, updated_at: new Date().toISOString() }).eq('id', id)
     if (error) throw error
     revalidatePath('/admin/applications')
     revalidatePath('/admin/settlements')
     return { ok: true }
   } catch (e) {
-    console.error('[applications] setRefund:', e)
-    return { ok: false, error: '환불 처리에 실패했습니다.' }
+    console.error('[applications] revertCancel:', e)
+    return { ok: false, error: '되돌리기에 실패했습니다.' }
   }
 }
 
@@ -103,9 +143,14 @@ export async function setApplicationWaitlist(id: string, waitlisted: boolean): P
 export async function confirmDuePayment(id: string): Promise<ActionResult> {
   try {
     await requireAdmin()
+    // 확정 시 due_amount 를 0 으로 소비하되, 금액을 due_settled_amount 에 보존(되돌리기용).
+    const { data: app, error: gErr } = await supabaseAdmin
+      .from('applications').select('due_amount').eq('id', id).maybeSingle()
+    if (gErr) throw gErr
+    if (!app || (app.due_amount ?? 0) <= 0) return { ok: false, error: '추가입금 대기 상태가 아닙니다.' }
     const { error } = await supabaseAdmin
       .from('applications')
-      .update({ due_amount: 0, updated_at: new Date().toISOString() })
+      .update({ due_amount: 0, due_settled_amount: app.due_amount, due_claimed_at: null, updated_at: new Date().toISOString() })
       .eq('id', id)
     if (error) throw error
     revalidatePath('/admin/applications')
@@ -114,6 +159,28 @@ export async function confirmDuePayment(id: string): Promise<ActionResult> {
   } catch (e) {
     console.error('[applications] confirmDuePayment:', e)
     return { ok: false, error: '추가입금 확인에 실패했습니다.' }
+  }
+}
+
+// 추가입금 확인 되돌리기 — 오클릭 복구. 보존한 due_settled_amount 를 due_amount 로 복원(정산 재차감).
+export async function revertDuePayment(id: string): Promise<ActionResult> {
+  try {
+    await requireAdmin()
+    const { data: app, error: gErr } = await supabaseAdmin
+      .from('applications').select('due_settled_amount').eq('id', id).maybeSingle()
+    if (gErr) throw gErr
+    if (!app || app.due_settled_amount == null) return { ok: false, error: '되돌릴 추가입금 확인 내역이 없습니다.' }
+    const { error } = await supabaseAdmin
+      .from('applications')
+      .update({ due_amount: app.due_settled_amount, due_settled_amount: null, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    if (error) throw error
+    revalidatePath('/admin/applications')
+    revalidatePath('/admin/settlements')
+    return { ok: true }
+  } catch (e) {
+    console.error('[applications] revertDuePayment:', e)
+    return { ok: false, error: '되돌리기에 실패했습니다.' }
   }
 }
 
@@ -256,11 +323,14 @@ export async function saveRefundRequestMemo(id: string, memo: string): Promise<A
 
 // 환불 확정 — 환불요청 상세에서 금액 입력 → 신청 refunded_amount 설정 + 요청 completed 를 한 번에.
 // 환불요청(①)과 금액확정(②)의 단절 해소. 전액취소 아닌 부분환불이면 부분값만 반영(status는 아래 규칙).
+// refundAccount = 수정 감액 자동생성 건은 계좌가 비어 있음 → 어드민이 유선으로 받은 계좌를 처리 중 기록.
+//   빈 값이면 기존 계좌 유지(user 신청은 이미 채워짐).
 export async function confirmRefundFromRequest(
   reqId: string,
   appId: string,
   amount: number,
   markRefunded: boolean,
+  refundAccount?: string,
 ): Promise<ActionResult> {
   try {
     await requireAdmin()
@@ -270,9 +340,12 @@ export async function confirmRefundFromRequest(
     if (markRefunded) appPatch.status = 'refunded'
     const { error: aErr } = await supabaseAdmin.from('applications').update(appPatch).eq('id', appId)
     if (aErr) throw aErr
+    const reqPatch: Record<string, unknown> = { status: 'completed', updated_at: new Date().toISOString() }
+    const acct = refundAccount?.trim()
+    if (acct) reqPatch.refund_account = acct
     const { error: rErr } = await supabaseAdmin
       .from('refund_requests')
-      .update({ status: 'completed', updated_at: new Date().toISOString() })
+      .update(reqPatch)
       .eq('id', reqId)
     if (rErr) throw rErr
     revalidatePath('/admin/applications')
@@ -281,6 +354,30 @@ export async function confirmRefundFromRequest(
   } catch (e) {
     console.error('[applications] confirmRefundFromRequest:', e)
     return { ok: false, error: '환불 확정에 실패했습니다.' }
+  }
+}
+
+// 환불 확정 되돌리기 — 오클릭 복구. refunded_amount=0 + (전액환불이었으면 status paid 복원) + 요청 재오픈.
+// ⚠ refunded_amount 는 신청당 단일값(confirm 이 덮어씀) → 한 신청에 환불이 여럿이면 마지막 것만 정확히 복구됨.
+export async function revertRefund(reqId: string, appId: string): Promise<ActionResult> {
+  try {
+    await requireAdmin()
+    const { data: app, error: gErr } = await supabaseAdmin
+      .from('applications').select('status').eq('id', appId).maybeSingle()
+    if (gErr) throw gErr
+    const appPatch: Record<string, unknown> = { refunded_amount: 0, updated_at: new Date().toISOString() }
+    if (app?.status === 'refunded') appPatch.status = 'paid' // 전액환불 되돌림 → 입금확인 상태로
+    const { error: aErr } = await supabaseAdmin.from('applications').update(appPatch).eq('id', appId)
+    if (aErr) throw aErr
+    const { error: rErr } = await supabaseAdmin
+      .from('refund_requests').update({ status: 'requested', updated_at: new Date().toISOString() }).eq('id', reqId)
+    if (rErr) throw rErr
+    revalidatePath('/admin/applications')
+    revalidatePath('/admin/settlements')
+    return { ok: true }
+  } catch (e) {
+    console.error('[applications] revertRefund:', e)
+    return { ok: false, error: '되돌리기에 실패했습니다.' }
   }
 }
 
@@ -445,6 +542,8 @@ export async function applyModification(id: string, adminReply: string): Promise
         routeNote = `부분환불 ${refund.toLocaleString()}원이 환불요청으로 접수되었습니다. 담당자 확인 후 환불됩니다.`
       } else {
         appPatch.due_amount = (app.due_amount ?? 0) + delta
+        appPatch.due_claimed_at = null      // 새 부족분 발생 → 신규 신고 필요(이전 신고 무효화)
+        appPatch.due_settled_amount = null  // 이전 확정 마커 초기화(되돌리기 대상 아님)
         routeNote = `옵션 추가로 ${delta.toLocaleString()}원 추가 입금이 필요합니다. 마이페이지 안내를 확인해 주세요.`
       }
     }
@@ -465,5 +564,137 @@ export async function applyModification(id: string, adminReply: string): Promise
   } catch (e) {
     console.error('[applications] applyModification:', e)
     return { ok: false, error: '수정 반영에 실패했습니다.' }
+  }
+}
+
+// 수정 반영 되돌리기 — 오클릭 복구. applyModification 의 역연산 + 요청 재오픈(pending).
+//  · 참가자 필드: changes.current(변경 전 스냅샷)로 역복원.
+//  · 요금: total_amount −= delta. 증액분은 미확정 due 에서 차감, 감액 자동환불요청은 회수(미완료분).
+//  · 안전장치: 연동 환불이 이미 '완료'면 되돌리기 차단(실제 환불금 지급됨 → 먼저 환불 되돌려야).
+export async function revertModification(id: string): Promise<ActionResult> {
+  try {
+    await requireAdmin()
+    const { data: req, error: rErr } = await supabaseAdmin
+      .from('modification_requests')
+      .select('id, application_id, changes, status')
+      .eq('id', id)
+      .maybeSingle()
+    if (rErr) throw rErr
+    if (!req || req.status !== 'completed') return { ok: false, error: '반영 완료된 수정요청만 되돌릴 수 있습니다.' }
+    if (!req.application_id) return { ok: false, error: '연결된 신청을 찾을 수 없습니다.' }
+    const changes = (Array.isArray(req.changes) ? req.changes : []) as ModificationChange[]
+
+    const { data: app, error: aErr } = await supabaseAdmin
+      .from('applications')
+      .select('id, session_id, total_amount, due_amount, status, session:sessions(schedule_type), participants(id, rentals)')
+      .eq('id', req.application_id)
+      .maybeSingle()
+    if (aErr) throw aErr
+    if (!app) return { ok: false, error: '신청을 찾을 수 없습니다.' }
+    const sess = Array.isArray(app.session) ? app.session[0] : app.session
+    const isJikmu = (sess?.schedule_type ?? 'jikmu') === 'jikmu'
+    const partRows = (app.participants ?? []) as { id: string; rentals: Record<string, unknown> }[]
+
+    // 요금 델타 재계산(applyModification 과 동일) — 역복원·안전장치 판단에 사용
+    let delta = 0
+    if (isJikmu) {
+      const rentalChanges = changes.filter((c) => c.field in RENTAL_FIELD_KEY)
+      if (rentalChanges.length) {
+        const { data: priceRows } = await supabaseAdmin
+          .from('price_items')
+          .select('id, category, item_key, label, amount, sort_order')
+          .eq('is_active', true)
+        const { data: ovRows } = await supabaseAdmin
+          .from('session_price_overrides')
+          .select('item_key, amount')
+          .eq('session_id', app.session_id)
+        const items = applyOverrides((priceRows as PriceItem[]) ?? [], (ovRows as { item_key: string; amount: number }[]) ?? [])
+        const by: Record<string, number> = {}
+        for (const it of items) by[it.item_key] = it.amount
+        for (const c of rentalChanges) {
+          const amt = by[RENTAL_FIELD_KEY[c.field]] ?? 0
+          if (c.requested === 'true' && c.current !== 'true') delta += amt
+          else if (c.requested !== 'true' && c.current === 'true') delta -= amt
+        }
+      }
+    }
+
+    // 안전장치: 감액 연동 환불이 이미 완료됐으면 차단(먼저 환불 되돌려야 함)
+    if (delta < 0) {
+      const { data: doneRefunds, error: dErr } = await supabaseAdmin
+        .from('refund_requests').select('id').eq('modification_request_id', id).eq('status', 'completed')
+      if (dErr) throw dErr
+      if (doneRefunds && doneRefunds.length > 0) {
+        return { ok: false, error: '연동된 환불이 이미 완료되었습니다. 먼저 환불을 되돌린 뒤 다시 시도해 주세요.' }
+      }
+    }
+
+    // 1) 참가자 필드 역복원(requested → current)
+    const byPart = new Map<string, ModificationChange[]>()
+    for (const c of changes) {
+      if (c.target !== 'participant' || !c.participant_id) continue
+      const arr = byPart.get(c.participant_id) ?? []
+      arr.push(c)
+      byPart.set(c.participant_id, arr)
+    }
+    for (const [pid, cs] of byPart) {
+      const cur = partRows.find((p) => p.id === pid)
+      const rentals: Record<string, unknown> = { ...(cur?.rentals ?? {}) }
+      const patch: Record<string, unknown> = {}
+      let rentalsTouched = false
+      for (const c of cs) {
+        switch (c.field) {
+          case 'name': patch.name = c.current; break
+          case 'phone': patch.phone = c.current || null; break
+          case 'birth_front': patch.birth_front = c.current || null; break
+          case 'gender': patch.gender = c.current || null; break
+          case 'lesson_level': patch.lesson_level = c.current || null; break
+          case 'equipment': rentals.equipment = c.current || null; rentalsTouched = true; break
+          case 'rental_apparel': rentals.apparel = c.current === 'true'; rentalsTouched = true; break
+          case 'rental_protector': rentals.protector = c.current === 'true'; rentalsTouched = true; break
+          case 'rental_goggle': rentals.goggle = c.current === 'true'; rentalsTouched = true; break
+          case 'rental_glove': rentals.glove = c.current === 'true'; rentalsTouched = true; break
+        }
+      }
+      if (rentalsTouched) patch.rentals = rentals
+      if (Object.keys(patch).length) {
+        const { error } = await supabaseAdmin.from('participants').update(patch).eq('id', pid)
+        if (error) throw error
+      }
+    }
+
+    // 2) 금액 역복원
+    const appPatch: Record<string, unknown> = {
+      total_amount: (app.total_amount ?? 0) - delta,
+      updated_at: new Date().toISOString(),
+    }
+    if (delta > 0) {
+      const nextDue = Math.max(0, (app.due_amount ?? 0) - delta)
+      appPatch.due_amount = nextDue
+      if (nextDue === 0) appPatch.due_claimed_at = null
+    }
+    const { error: upErr } = await supabaseAdmin.from('applications').update(appPatch).eq('id', app.id)
+    if (upErr) throw upErr
+
+    // 3) 감액 자동생성 환불요청 회수(미완료분만)
+    if (delta < 0) {
+      const { error: delErr } = await supabaseAdmin
+        .from('refund_requests').delete().eq('modification_request_id', id).neq('status', 'completed')
+      if (delErr) throw delErr
+    }
+
+    // 4) 요청 재오픈(pending) + 답변 회수
+    const { error: cErr } = await supabaseAdmin
+      .from('modification_requests')
+      .update({ status: 'pending', admin_reply: null, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    if (cErr) throw cErr
+
+    revalidatePath('/admin/applications')
+    revalidatePath('/admin/settlements')
+    return { ok: true }
+  } catch (e) {
+    console.error('[applications] revertModification:', e)
+    return { ok: false, error: '되돌리기에 실패했습니다.' }
   }
 }

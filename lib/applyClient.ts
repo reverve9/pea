@@ -18,6 +18,7 @@ export type MyRequestBody =
   | { token: string; applicationId: string; type: 'refund'; reason: string; refundAccount: string }
   | { token: string; applicationId: string; type: 'modification'; changes: ModificationChange[]; userNote?: string }
   | { token: string; applicationId: string; type: 'payment'; payerName: string }
+  | { token: string; applicationId: string; type: 'due_payment' }
 
 export async function submitMyRequest(body: MyRequestBody): Promise<void> {
   const res = await fetch('/api/my/requests', {

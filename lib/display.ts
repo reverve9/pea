@@ -17,7 +17,7 @@ export const APPLICATION_STATUS: Record<ApplicationStatus, { label: string; colo
   pending: { label: '입금대기', color: 'amber' },
   paid: { label: '입금확인', color: 'navy' },
   completed: { label: '연수완료', color: 'emerald' },
-  cancelled: { label: '취소', color: 'slate' },
+  cancelled: { label: '신청취소', color: 'slate' },
   refunded: { label: '환불완료', color: 'terracotta' },
 }
 

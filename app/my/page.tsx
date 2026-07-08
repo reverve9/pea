@@ -29,7 +29,7 @@ const STATUS: Record<ApplicationStatus, { label: string; color: BadgeColor }> = 
   pending: { label: '입금 대기', color: 'amber' },
   paid: { label: '입금 확인', color: 'navy' },
   completed: { label: '연수 완료', color: 'emerald' },
-  cancelled: { label: '취소', color: 'slate' },
+  cancelled: { label: '신청취소', color: 'slate' },
   refunded: { label: '환불 완료', color: 'slate' },
 }
 
@@ -42,6 +42,18 @@ function statusView(app: MyApplicationRow): { label: string; color: BadgeColor }
 }
 
 const won = (n: number) => n.toLocaleString('ko-KR') + '원'
+
+// 요청 처리 현황 — 고객 노출 상태 라벨. 어드민 처리 결과가 마이페이지에 도달하는 유일 경로. [[requests-reorg-modification-restructure]]
+const MOD_STATUS: Record<'pending' | 'completed' | 'rejected', { label: string; color: BadgeColor }> = {
+  pending: { label: '접수됨 · 확인 중', color: 'amber' },
+  completed: { label: '반영 완료', color: 'emerald' },
+  rejected: { label: '반려', color: 'slate' },
+}
+const REFUND_STATUS: Record<'requested' | 'confirmed' | 'completed', { label: string; color: BadgeColor }> = {
+  requested: { label: '접수됨 · 확인 중', color: 'amber' },
+  confirmed: { label: '환불 확정', color: 'navy' },
+  completed: { label: '환불 완료', color: 'emerald' },
+}
 
 // 텍스트 히어로 — 다른 페이지들과 동일한 중앙 인트로 문단. 데스크탑 전용(md:block):
 // 모바일은 서브헤더(← 마이페이지)가 컨텍스트를 이미 주므로 생략(세로 공간·중복 방지).
@@ -548,7 +560,22 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
   const [paymentName, setPaymentName] = useState(app.payer_name ?? app.applicant_name)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [done, setDone] = useState({ modification: false, refund: false, payment: false })
+  const [done, setDone] = useState({ modification: false, refund: false, payment: false, due: false })
+  const [dueError, setDueError] = useState<string | null>(null)
+
+  // 추가입금 완료 신고 — 별도 폼 없이 단일 버튼. due_amount>0 건에만, 1회(어드민이 대조 후 소비).
+  const submitDue = async () => {
+    setDueError(null)
+    setSubmitting(true)
+    try {
+      await submitMyRequest({ token, applicationId: app.id, type: 'due_payment' })
+      setDone((d) => ({ ...d, due: true }))
+    } catch (e) {
+      setDueError(e instanceof Error ? e.message : '요청 처리 중 오류가 발생했습니다.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   const rows: [string, string][] = [
     ['신청자', app.applicant_name],
@@ -624,8 +651,19 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
       {app.due_amount > 0 && (
         <div className="mt-4 rounded-[10px] border border-[#e6cfa8] bg-[#fbf3e6] px-4 py-3">
           <Text variant="sub" className="text-[#8a5a1a]">
-            <b>추가 입금이 필요합니다.</b> 옵션 변경으로 요금이 {won(app.due_amount)} 늘었습니다. 아래 계좌로 부족분을 입금해 주세요. 담당자 확인 후 처리됩니다.
+            <b>추가 입금이 필요합니다.</b> 옵션 변경으로 요금이 {won(app.due_amount)} 늘었습니다. 아래 계좌로 부족분을 입금해 주세요.
           </Text>
+          {app.due_claimed || done.due ? (
+            <Text variant="caption" as="p" className="mt-2 text-[#2f803a]">추가입금 완료 알림이 접수되었습니다. 담당자가 통장 대조 후 처리합니다.</Text>
+          ) : (
+            <>
+              <Text variant="caption" as="p" className="mt-1 text-[#a07a3a]">입금하셨으면 아래 버튼을 눌러 주세요. 담당자에게 전달돼 대조 후 처리됩니다.</Text>
+              {dueError && <p className="mt-2 rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{dueError}</p>}
+              <Button variant="primary" size="md" onClick={submitDue} disabled={submitting} className="mt-2 w-full">
+                {submitting ? '접수 중…' : '추가입금 완료 알림'}
+              </Button>
+            </>
+          )}
         </div>
       )}
 
@@ -656,6 +694,46 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
             )}
           </div>
         )
+      )}
+
+      {/* 요청 처리 현황 — 내가 넣은 수정·환불 요청의 처리 상태와 담당자 답변. 어드민 반영 결과 도달 경로. */}
+      {(app.modifications.length > 0 || app.refunds.length > 0) && (
+        <div className="mt-4 rounded-[10px] border border-[#e5eaef] bg-[#f7f9fb] p-4">
+          <Text variant="label" className="text-[#374151]">요청 처리 현황</Text>
+          <div className="mt-2 space-y-2">
+            {app.modifications.map((m, i) => {
+              const st = MOD_STATUS[m.status]
+              return (
+                <div key={`m${i}`} className="rounded-[9px] bg-white px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <Text variant="caption" className="text-[#6b7280]">정보 수정요청</Text>
+                    <Badge color={st.color} size="sm">{st.label}</Badge>
+                    <Text variant="caption" className="ml-auto text-[#b6bcc4]">{m.created_at.slice(0, 10).replaceAll('-', '/')}</Text>
+                  </div>
+                  <Text variant="sub" as="p" className="mt-1 text-[#4b5563]">{m.changes_summary}</Text>
+                  {m.admin_reply && (
+                    <p className="mt-1.5 whitespace-pre-line rounded-[7px] bg-[#f3f6f9] px-2.5 py-2 font-score text-[12.5px] leading-relaxed text-[#4b5563]">{m.admin_reply}</p>
+                  )}
+                </div>
+              )
+            })}
+            {app.refunds.map((f, i) => {
+              const st = REFUND_STATUS[f.status]
+              return (
+                <div key={`f${i}`} className="rounded-[9px] bg-white px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <Text variant="caption" className="text-[#6b7280]">{f.origin === 'modification' ? '부분환불 (수정 반영)' : f.origin === 'admin' ? '환불 (담당자 처리)' : '환불 신청'}</Text>
+                    <Badge color={st.color} size="sm">{st.label}</Badge>
+                    <Text variant="caption" className="ml-auto text-[#b6bcc4]">{f.created_at.slice(0, 10).replaceAll('-', '/')}</Text>
+                  </div>
+                  {f.amount != null && f.amount > 0 && (
+                    <Text variant="sub" as="p" className="mt-1 tabular-nums text-[#4b5563]">환불 금액 {won(f.amount)}</Text>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
       )}
 
       {/* 참가자 정보 — 자율패키지는 참가자 후속입력(대표 대신입력). 직무연수는 단독 신청이라 생략. */}

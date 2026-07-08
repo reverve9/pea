@@ -138,6 +138,8 @@ export interface ApplicationAdmin {
   total_amount: number
   refunded_amount: number // 환불 확정액(관리자 수기 설정). status=refunded 또는 부분환불 시 유효
   due_amount: number // 추가결제 부족분(수정 증액). >0 이면 마이페이지 '입금대기(추가)' 표시
+  due_claimed_at: string | null // 고객이 추가입금 완료를 신고한 시각(어드민 대조 신호)
+  due_settled_amount: number | null // 추가입금 확정 시 보존한 금액(되돌리기용). null=확정된 적 없음
   status: ApplicationStatus
   is_waitlisted: boolean // 소프트 정원 초과 대기분 — 어드민 승인(정원 편입)/거절 대상
   payment_claimed_at: string | null
@@ -191,7 +193,7 @@ export interface InsuranceRosterEntry {
 
 // ── 요청(어드민) — 신청관리 세그먼트로 흡수(요청관리 메뉴 해체) ──
 export type RefundStatus = 'requested' | 'confirmed' | 'completed'
-export type RefundOrigin = 'user' | 'modification' // 고객 환불신청 / 수정 감액 자동생성
+export type RefundOrigin = 'user' | 'modification' | 'admin' // 고객 환불신청 / 수정 감액 자동생성 / 관리자 직접
 export interface RefundRequestAdmin {
   id: string
   application_id: string | null

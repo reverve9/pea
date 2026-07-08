@@ -72,7 +72,7 @@ export async function getAllApplications(): Promise<ApplicationAdmin[]> {
   const { data, error } = await supabaseAdmin
     .from('applications')
     .select(
-      'id, application_no, applicant_name, phone, payer_name, room_type, room_spec, pkg_size, total_amount, refunded_amount, due_amount, status, is_waitlisted, payment_claimed_at, payment_claim_name, companion_memo, special_notes, referral_source, marketing_opt_in, admin_memo, created_at, session:sessions(label, schedule_type, starts_on, ends_on, nights, course:courses(sport)), participants(id, name, gender, phone, lesson_level, rentals, birth_front, birth_back_enc, is_leader, line_amount, sort_order)',
+      'id, application_no, applicant_name, phone, payer_name, room_type, room_spec, pkg_size, total_amount, refunded_amount, due_amount, due_claimed_at, due_settled_amount, status, is_waitlisted, payment_claimed_at, payment_claim_name, companion_memo, special_notes, referral_source, marketing_opt_in, admin_memo, created_at, session:sessions(label, schedule_type, starts_on, ends_on, nights, course:courses(sport)), participants(id, name, gender, phone, lesson_level, rentals, birth_front, birth_back_enc, is_leader, line_amount, sort_order)',
     )
     .order('created_at', { ascending: false })
   if (error) {
@@ -105,6 +105,8 @@ export async function getAllApplications(): Promise<ApplicationAdmin[]> {
     total_amount: number
     refunded_amount: number
     due_amount: number
+    due_claimed_at: string | null
+    due_settled_amount: number | null
     status: ApplicationStatus
     is_waitlisted: boolean
     payment_claimed_at: string | null
@@ -166,6 +168,8 @@ export async function getAllApplications(): Promise<ApplicationAdmin[]> {
       total_amount: r.total_amount,
       refunded_amount: r.refunded_amount ?? 0,
       due_amount: r.due_amount ?? 0,
+      due_claimed_at: r.due_claimed_at,
+      due_settled_amount: r.due_settled_amount,
       status: r.status,
       is_waitlisted: r.is_waitlisted ?? false,
       payment_claimed_at: r.payment_claimed_at,

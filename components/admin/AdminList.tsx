@@ -39,7 +39,7 @@ export default function AdminList<T>({
   getRowKey,
   toolbar,
   exportButton,
-  pageSize = 20,
+  pageSize = 15,
   emptyLabel = '데이터가 없습니다.',
   rowClassName,
   resetKey,

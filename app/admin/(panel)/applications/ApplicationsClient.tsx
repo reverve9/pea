@@ -20,11 +20,12 @@ import type {
   InsuranceRosterEntry,
   ParticipantAdmin,
   RefundRequestAdmin,
+  RefundOrigin,
   ModificationRequestAdmin,
 } from '@/lib/types'
 import {
   setApplicationStatus,
-  setApplicationRefund,
+  revertCancel,
   setApplicationWaitlist,
   releasePaymentClaim,
   saveAdminMemo,
@@ -36,6 +37,10 @@ import {
   setModificationStatus,
   confirmRefundFromRequest,
   confirmDuePayment,
+  revertModification,
+  revertRefund,
+  revertDuePayment,
+  registerAdminRefund,
 } from './actions'
 
 // 정상 생애주기(순방향 진행) vs 예외/종료(오프램프) — 같은 층위 아님.
@@ -89,7 +94,7 @@ export default function ApplicationsClient({
 }
 
 // 신청 목록에 걸린 대기 요청 표시용 — 앱별 pending 환불/수정 플래그. 환불은 origin으로 부분/전액 구분.
-type ReqFlag = { refundOrigin: 'user' | 'modification' | null; mod: boolean }
+type ReqFlag = { refundOrigin: RefundOrigin | null; mod: boolean }
 type ReqFilter = 'all' | 'mod' | 'refund'
 const REQ_OPTIONS: { key: ReqFilter; label: string }[] = [
   { key: 'all', label: '요청 전체' },
@@ -422,6 +427,8 @@ function ApplicationsPanel({
           app={detail}
           pendingMods={modifications.filter((m) => m.status === 'pending' && m.application_id === detail.id)}
           pendingRefunds={refunds.filter((r) => r.status !== 'completed' && r.application_id === detail.id)}
+          processedMods={modifications.filter((m) => m.status !== 'pending' && m.application_id === detail.id)}
+          processedRefunds={refunds.filter((r) => r.status === 'completed' && r.application_id === detail.id)}
           onClose={() => setDetail(null)}
           onChanged={() => router.refresh()}
         />
@@ -434,20 +441,27 @@ function ApplicationsPanel({
 function RefundInline({
   r,
   appId,
+  total,
   pending,
   runAndRefresh,
 }: {
   r: RefundRequestAdmin
   appId: string
+  total: number
   pending: boolean
   runAndRefresh: (fn: () => Promise<{ ok: boolean; error?: string }>) => void
 }) {
   const [amount, setAmount] = useState(String(r.amount ?? ''))
   const [markRefunded, setMarkRefunded] = useState(r.origin !== 'modification')
+  // 수정 감액 자동생성 건은 계좌가 비어 있음 → 어드민이 유선 확보한 계좌를 여기서 기록.
+  const [account, setAccount] = useState('')
+  const needsAccount = !r.refund_account
   const confirmRefund = () => {
     const amt = parseInt(amount, 10)
     if (!Number.isInteger(amt) || amt < 0) return alert('환불 금액을 확인해 주세요.')
-    runAndRefresh(() => confirmRefundFromRequest(r.id, appId, amt, markRefunded))
+    if (needsAccount && !account.trim()) return alert('환불 계좌를 입력해 주세요 (고객에게 확인 후 기록).')
+    if (!confirm(`환불 ${formatKRW(amt)}${markRefunded ? ' (전액 · 환불완료 전환)' : ' (부분환불)'}을 확정할까요? 정산에 반영됩니다.`)) return
+    runAndRefresh(() => confirmRefundFromRequest(r.id, appId, amt, markRefunded, account.trim() || undefined))
   }
   return (
     <div className="mb-2 rounded-[10px] bg-[#fdf4e3] p-3">
@@ -460,7 +474,19 @@ function RefundInline({
       </div>
       <div className="mt-1.5 space-y-0.5 text-[12.5px] font-[300] text-[#6b5836]">
         {r.reason && <p>사유: {r.reason}</p>}
-        <p>환불계좌: {r.refund_account || '(미입력 — 고객 확인 필요)'}</p>
+        {r.refund_account ? (
+          <p>환불계좌: {r.refund_account}</p>
+        ) : (
+          <div className="pt-0.5">
+            <p className="text-[11.5px] font-[400] text-[#a06a1a]">환불계좌 미입력 — 고객에게 확인 후 기록</p>
+            <input
+              value={account}
+              onChange={(e) => setAccount(e.target.value)}
+              placeholder="은행 · 예금주 · 계좌번호"
+              className="admin-field mt-1 w-full rounded-[8px] bg-white px-2.5 py-1.5 text-[12.5px] text-[#1f2937] outline-none focus:bg-[#f3f5f8]"
+            />
+          </div>
+        )}
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <input
@@ -470,6 +496,7 @@ function RefundInline({
           placeholder="환불 금액"
           className="admin-field w-32 rounded-[8px] bg-white px-2.5 py-1.5 text-[12.5px] tabular-nums text-[#1f2937] outline-none focus:bg-[#f3f5f8]"
         />
+        <RefundQuick total={total} onPick={(v) => setAmount(String(v))} />
         <label className="flex cursor-pointer items-center gap-1.5 text-[11.5px] font-[400] text-[#6b5836]">
           <input type="checkbox" checked={markRefunded} onChange={(e) => setMarkRefunded(e.target.checked)} className="h-3.5 w-3.5 accent-[#1e3a5f]" />
           전액(환불완료 전환)
@@ -487,17 +514,100 @@ function RefundInline({
   )
 }
 
+// 환불 금액 단축 — 전액(100%)·반액(50%). 결제 총액 기준. 인라인 환불(요청·관리자) 공용.
+function RefundQuick({ total, onPick }: { total: number; onPick: (v: number) => void }) {
+  return (
+    <div className="flex gap-1">
+      <button type="button" onClick={() => onPick(total)} className="rounded-[6px] bg-[#eef1f4] px-2 py-1 text-[11px] font-[400] text-[#6b7280] transition-colors hover:bg-[#e4e8ec]">전액</button>
+      <button type="button" onClick={() => onPick(Math.round(total / 2))} className="rounded-[6px] bg-[#eef1f4] px-2 py-1 text-[11px] font-[400] text-[#6b7280] transition-colors hover:bg-[#e4e8ec]">반액</button>
+    </div>
+  )
+}
+
+// 관리자 직접 환불 등록(인라인) — 요청 없이 개시. registerAdminRefund 로 refund_request(admin·완료) 생성 + 환불 반영.
+// 모달 위 모달 폐지: 상세 안 인라인 폼. 되돌리기는 '처리된 요청'(revertRefund)으로 통일.
+function AdminRefundInline({
+  app,
+  pending,
+  runAndRefresh,
+  onDone,
+}: {
+  app: ApplicationAdmin
+  pending: boolean
+  runAndRefresh: (fn: () => Promise<{ ok: boolean; error?: string }>) => void
+  onDone: () => void
+}) {
+  const [amount, setAmount] = useState(String(app.total_amount))
+  const [markRefunded, setMarkRefunded] = useState(true)
+  const [account, setAccount] = useState('')
+  const [reason, setReason] = useState('')
+  const submit = () => {
+    const amt = parseInt(amount, 10)
+    if (!Number.isInteger(amt) || amt <= 0) return alert('환불 금액을 확인해 주세요.')
+    if (amt > app.total_amount && !confirm('환불액이 결제 총액보다 큽니다. 그대로 진행할까요?')) return
+    if (!confirm(`관리자 환불 ${formatKRW(amt)}${markRefunded ? ' (전액 · 환불완료)' : ' (부분)'}을 등록할까요? 정산에 반영됩니다.`)) return
+    runAndRefresh(() => registerAdminRefund(app.id, amt, markRefunded, account, reason))
+  }
+  return (
+    <div className="mt-3 rounded-[10px] bg-[#f6e9e5] p-3">
+      <p className="text-[12px] font-[500] text-[#8f3a2a]">관리자 직접 환불 등록</p>
+      <p className="mt-0.5 text-[11px] font-[300] text-[#a56a5c]">요청 없이 개시(폐강 · 비대면 · 중복입금 · 재량). 등록 시 이력 · 마이페이지에 잡히고, 되돌리기는 ‘처리된 요청’에서.</p>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <input
+          value={amount}
+          onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))}
+          inputMode="numeric"
+          placeholder="환불 금액"
+          className="admin-field w-32 rounded-[8px] bg-white px-2.5 py-1.5 text-[12.5px] tabular-nums text-[#1f2937] outline-none focus:bg-[#f3f5f8]"
+        />
+        <RefundQuick total={app.total_amount} onPick={(v) => setAmount(String(v))} />
+        <label className="flex cursor-pointer items-center gap-1.5 text-[11.5px] font-[400] text-[#8f3a2a]">
+          <input type="checkbox" checked={markRefunded} onChange={(e) => setMarkRefunded(e.target.checked)} className="h-3.5 w-3.5 accent-[#8f3a2a]" />
+          전액(환불완료 전환)
+        </label>
+      </div>
+      <input
+        value={account}
+        onChange={(e) => setAccount(e.target.value)}
+        placeholder="환불 계좌 (선택 · 은행 · 예금주 · 계좌번호)"
+        className="admin-field mt-2 w-full rounded-[8px] bg-white px-2.5 py-1.5 text-[12.5px] text-[#1f2937] outline-none focus:bg-[#f3f5f8]"
+      />
+      <input
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        placeholder="사유 (선택 · 폐강 / 중복입금 등)"
+        className="admin-field mt-2 w-full rounded-[8px] bg-white px-2.5 py-1.5 text-[12.5px] text-[#1f2937] outline-none focus:bg-[#f3f5f8]"
+      />
+      <div className="mt-2 flex justify-end gap-2">
+        <button type="button" onClick={onDone} className="rounded-[8px] bg-white px-3 py-1.5 text-[12px] font-[400] text-[#8f3a2a] transition-colors hover:bg-[#fbf5f3]">닫기</button>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={submit}
+          className="rounded-[8px] bg-[#8f3a2a] px-3.5 py-1.5 text-[12px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+        >
+          환불 등록
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── 상세 모달 ──
 function DetailModal({
   app,
   pendingMods,
   pendingRefunds,
+  processedMods,
+  processedRefunds,
   onClose,
   onChanged,
 }: {
   app: ApplicationAdmin
   pendingMods: ModificationRequestAdmin[]
   pendingRefunds: RefundRequestAdmin[]
+  processedMods: ModificationRequestAdmin[]
+  processedRefunds: RefundRequestAdmin[]
   onClose: () => void
   onChanged: () => void
 }) {
@@ -507,8 +617,7 @@ function DetailModal({
   const [editingPart, setEditingPart] = useState<ParticipantAdmin | null>(null)
   const [copiedFillId, setCopiedFillId] = useState<string | null>(null)
   const [fillBusyId, setFillBusyId] = useState<string | null>(null)
-  const [refundOpen, setRefundOpen] = useState(false)
-  const [refundAmount, setRefundAmount] = useState(String(app.refunded_amount || app.total_amount))
+  const [adminRefundOpen, setAdminRefundOpen] = useState(false)
 
   // 셀프필 링크 발급·복사(참가자별 개별) — 각 링크는 본인 슬롯만 수정 가능. 관리자가 해당 참가자에게 전달.
   const copyFillLink = async (participantId: string) => {
@@ -651,6 +760,9 @@ function DetailModal({
           <span className="font-[300] text-[#6b5340]">
             부족분 <span className="font-[600] tabular-nums text-[#b0561f]">{formatKRW(app.due_amount)}</span> — 수정 반영으로 발생
           </span>
+          {app.due_claimed_at && (
+            <span className="rounded-[4px] bg-[#eaf4ec] px-1.5 py-0.5 text-[11px] font-[500] text-[#2f803a]">고객 입금완료 신고</span>
+          )}
           <button
             type="button"
             disabled={pending}
@@ -661,6 +773,26 @@ function DetailModal({
             className="ml-auto rounded-[7px] bg-[#1e3a5f] px-3 py-1.5 text-[12px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
           >
             추가입금 확인
+          </button>
+        </div>
+      )}
+
+      {/* 추가입금 확인됨 — 정규 입금확인의 '입금대기' 회귀와 동등하게 되돌리기 버튼 제공(오클릭 복구).
+          보존한 due_settled_amount 를 due_amount 로 복원 → '추가입금 대기'로 즉시 회귀(마이·정산 반영). */}
+      {app.due_amount === 0 && app.due_settled_amount != null && (
+        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-[8px] bg-[#eef4ee] px-3 py-2 text-[12px]">
+          <Badge color="emerald" size="sm">추가입금 확인됨</Badge>
+          <span className="font-[300] tabular-nums text-[#4b6b52]">부족분 {formatKRW(app.due_settled_amount)} 입금완료 처리</span>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => {
+              if (!confirm('추가입금 확인을 되돌릴까요? "추가입금 대기"로 복원됩니다.')) return
+              runAndRefresh(() => revertDuePayment(app.id))
+            }}
+            className="ml-auto rounded-[7px] bg-[#f6e9e5] px-3 py-1.5 text-[12px] font-[500] text-[#8f3a2a] transition-colors hover:bg-[#efddd7] disabled:opacity-40"
+          >
+            추가입금 대기로 되돌리기
           </button>
         </div>
       )}
@@ -697,58 +829,48 @@ function DetailModal({
         {/* 예외 처리: 취소 · 환불완료 (되돌리기 성격 — 분리·danger 톤) */}
         <div className="mt-3 flex items-center gap-2 border-t border-[#f1f3f5] pt-3">
           <span className="shrink-0 text-[11px] font-[400] text-[#9ca3af]">예외 처리</span>
-          <button
-            type="button"
-            disabled={pending || app.status === 'cancelled'}
-            onClick={() => {
-              if (!confirm('상태를 "취소"로 변경할까요? 되돌리기 어려운 처리입니다.')) return
-              runAndRefresh(() => setApplicationStatus(app.id, 'cancelled'))
-            }}
-            className={`rounded-[8px] px-3 py-1.5 text-[12px] font-[500] transition-colors disabled:cursor-default ${
-              app.status === 'cancelled'
-                ? 'bg-[#8f3a2a] text-white'
-                : 'bg-[#f6e9e5] text-[#8f3a2a] hover:bg-[#efddd7] disabled:opacity-40'
-            }`}
-          >
-            취소
-          </button>
-          {/* 환불완료 — 환불 확정액을 관리자가 입력(규정별 가변, PG 환불도 동일). */}
+          {/* 취소 = 토글 버튼. 취소 상태면 같은 자리서 '취소 되돌리기'로 전환(두 버튼 병치 방지).
+              되돌리기는 입금확인 이력 있으면 입금확인, 없으면 입금대기로 복원(기준일 보존). */}
           <button
             type="button"
             disabled={pending}
             onClick={() => {
-              setRefundAmount(String(app.refunded_amount || app.total_amount))
-              setRefundOpen(true)
+              if (app.status === 'cancelled') {
+                if (!confirm('취소를 되돌릴까요? 입금 이력이 있으면 "입금 확인", 없으면 "입금 대기"로 복원됩니다.')) return
+                runAndRefresh(() => revertCancel(app.id))
+              } else {
+                if (!confirm('신청을 취소 처리할까요? (취소 후에도 목록에 남으며 되돌릴 수 있습니다.)')) return
+                runAndRefresh(() => setApplicationStatus(app.id, 'cancelled'))
+              }
             }}
-            className={`rounded-[8px] px-3 py-1.5 text-[12px] font-[500] transition-colors disabled:cursor-default ${
-              app.status === 'refunded'
-                ? 'bg-[#8f3a2a] text-white'
-                : 'bg-[#f6e9e5] text-[#8f3a2a] hover:bg-[#efddd7] disabled:opacity-40'
+            className={`rounded-[8px] px-3 py-1.5 text-[12px] font-[500] transition-colors disabled:opacity-40 ${
+              app.status === 'cancelled'
+                ? 'bg-[#eef2f7] text-[#3f6a99] hover:bg-[#e4ebf3]'
+                : 'bg-[#f6e9e5] text-[#8f3a2a] hover:bg-[#efddd7]'
             }`}
           >
-            {app.status === 'refunded' ? `환불완료 · ${formatKRW(app.refunded_amount)}` : '환불완료…'}
+            {app.status === 'cancelled' ? '재신청' : '신청취소'}
+          </button>
+          {/* 관리자 직접 환불 — 요청 없이 개시(폐강·비대면·중복입금·재량). 모달 대신 인라인 폼(모달 위 모달 폐지).
+              등록 시 refund_request(admin, 완료)로 잡혀 이력·마이·되돌리기('처리된 요청')로 통일. */}
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => setAdminRefundOpen((v) => !v)}
+            className="rounded-[8px] bg-[#f6e9e5] px-3 py-1.5 text-[12px] font-[500] text-[#8f3a2a] transition-colors hover:bg-[#efddd7] disabled:opacity-40"
+          >
+            환불 등록
           </button>
         </div>
+        {adminRefundOpen && (
+          <AdminRefundInline
+            app={app}
+            pending={pending}
+            runAndRefresh={runAndRefresh}
+            onDone={() => setAdminRefundOpen(false)}
+          />
+        )}
       </div>
-
-      {refundOpen && (
-        <RefundModal
-          app={app}
-          amount={refundAmount}
-          onAmount={setRefundAmount}
-          pending={pending}
-          onClose={() => setRefundOpen(false)}
-          onSubmit={() => {
-            const amt = Number(refundAmount.replace(/[^\d]/g, ''))
-            if (!Number.isInteger(amt) || amt < 0) {
-              alert('환불 금액을 올바르게 입력해 주세요.')
-              return
-            }
-            if (amt > app.total_amount && !confirm('환불액이 결제 총액보다 큽니다. 그대로 진행할까요?')) return
-            runAndRefresh(() => setApplicationRefund(app.id, amt))
-          }}
-        />
-      )}
 
       {/* 참가자 명단 */}
       <div className="mt-5">
@@ -864,7 +986,10 @@ function DetailModal({
                 <button
                   type="button"
                   disabled={pending}
-                  onClick={() => runAndRefresh(() => setModificationStatus(m.id, 'rejected'))}
+                  onClick={() => {
+                    if (!confirm('이 수정요청을 반려할까요? 고객에게 반려로 표시됩니다.')) return
+                    runAndRefresh(() => setModificationStatus(m.id, 'rejected'))
+                  }}
                   className="rounded-[8px] bg-[#f6e9e5] px-3.5 py-2 text-[12.5px] font-[500] text-[#8f3a2a] transition-colors hover:bg-[#efddd7] disabled:opacity-40"
                 >
                   반려
@@ -874,7 +999,54 @@ function DetailModal({
           ))}
 
           {pendingRefunds.map((r) => (
-            <RefundInline key={r.id} r={r} appId={app.id} pending={pending} runAndRefresh={runAndRefresh} />
+            <RefundInline key={r.id} r={r} appId={app.id} total={app.total_amount} pending={pending} runAndRefresh={runAndRefresh} />
+          ))}
+        </div>
+      )}
+
+      {/* 처리된 요청 — 오클릭 복구용 되돌리기(재오픈 + 금액 복원). 참가자 필드는 변경 전 스냅샷으로 역복원. */}
+      {(processedMods.length > 0 || processedRefunds.length > 0) && (
+        <div className="mt-4">
+          <p className="mb-2 text-[12.5px] font-[500] text-[#8a94a0]">처리된 요청</p>
+          {processedMods.map((m) => {
+            const summary = m.changes.map((c) => `${c.participant_name} ${c.label}`).join(', ') || '변경 항목 없음'
+            const isCompleted = m.status === 'completed'
+            return (
+              <div key={m.id} className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[9px] bg-[#f4f6f8] px-3 py-2 text-[12px]">
+                <Badge color={isCompleted ? 'emerald' : 'slate'} size="sm">{isCompleted ? '수정 반영완료' : '수정 반려'}</Badge>
+                <span className="font-[300] text-[#6b7280]">{summary}</span>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => {
+                    if (!confirm(isCompleted
+                      ? '반영을 되돌릴까요? 참가자 정보·금액이 변경 전으로 복원되고 요청은 대기로 재오픈됩니다.'
+                      : '반려를 취소하고 요청을 대기로 재오픈할까요?')) return
+                    runAndRefresh(() => (isCompleted ? revertModification(m.id) : setModificationStatus(m.id, 'pending')))
+                  }}
+                  className="ml-auto text-[11.5px] font-[400] text-[#3f6a99] underline-offset-2 hover:underline disabled:opacity-40"
+                >
+                  되돌리기
+                </button>
+              </div>
+            )
+          })}
+          {processedRefunds.map((r) => (
+            <div key={r.id} className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[9px] bg-[#f4f6f8] px-3 py-2 text-[12px]">
+              <Badge color="emerald" size="sm">{r.origin === 'modification' ? '부분환불 완료' : r.origin === 'admin' ? '관리자 환불 완료' : '환불 완료'}</Badge>
+              {r.amount != null && <span className="font-[300] tabular-nums text-[#6b7280]">{formatKRW(r.amount)}</span>}
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => {
+                  if (!confirm('환불 확정을 되돌릴까요? 환불액이 0으로 복원되고 요청이 재오픈됩니다. (실제 환불금 지급 여부는 별도 확인)')) return
+                  runAndRefresh(() => revertRefund(r.id, app.id))
+                }}
+                className="ml-auto text-[11.5px] font-[400] text-[#3f6a99] underline-offset-2 hover:underline disabled:opacity-40"
+              >
+                되돌리기
+              </button>
+            </div>
           ))}
         </div>
       )}
@@ -944,89 +1116,6 @@ function DetailModal({
       />
     )}
     </>
-  )
-}
-
-// 환불 처리 모달 — 환불 확정액을 관리자가 직접 입력(환불규정 상황별 가변, PG 환불도 동일 금액 기준).
-// 자동 계산하지 않는다. 결제 총액을 참고로 보여주되 실제 환불액은 입력값이 진실원천.
-function RefundModal({
-  app,
-  amount,
-  onAmount,
-  pending,
-  onClose,
-  onSubmit,
-}: {
-  app: ApplicationAdmin
-  amount: string
-  onAmount: (v: string) => void
-  pending: boolean
-  onClose: () => void
-  onSubmit: () => void
-}) {
-  const amt = Number(amount.replace(/[^\d]/g, '')) || 0
-  return (
-    <AdminModal title="환불 처리" onClose={onClose} maxWidth={420}>
-      <div className="space-y-4">
-        <div className="rounded-[9px] bg-[#f7f8f9] px-4 py-3 text-[12.5px] text-[#4b5563]">
-          <div className="flex justify-between">
-            <span className="text-[#9ca3af]">신청</span>
-            <span className="font-[500]">{app.applicant_name} · {app.application_no}</span>
-          </div>
-          <div className="mt-1.5 flex justify-between">
-            <span className="text-[#9ca3af]">결제 총액</span>
-            <span className="font-[500] tabular-nums">{formatKRW(app.total_amount)}</span>
-          </div>
-        </div>
-        <div>
-          <label className="mb-1.5 block text-[12px] font-[500] text-[#4b5563]">환불 금액</label>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              inputMode="numeric"
-              value={amount}
-              onChange={(e) => onAmount(e.target.value)}
-              autoFocus
-              className="admin-field w-full rounded-[8px] bg-[#f4f6f8] px-3 py-2 text-[15px] tabular-nums outline-none focus:bg-[#eaeef2]"
-            />
-            <span className="shrink-0 text-[13px] text-[#9ca3af]">원</span>
-          </div>
-          <div className="mt-2 flex gap-1.5">
-            {[app.total_amount, Math.round(app.total_amount / 2), 0].map((v, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => onAmount(String(v))}
-                className="rounded-[6px] bg-[#eef1f4] px-2.5 py-1 text-[11.5px] font-[400] text-[#6b7280] transition-colors hover:bg-[#e4e8ec]"
-              >
-                {i === 0 ? '전액' : i === 1 ? '반액' : '0원'}
-              </button>
-            ))}
-          </div>
-          <p className="mt-2 text-[11.5px] font-[300] leading-[1.6] text-[#9ca3af]">
-            환불규정에 따라 금액이 달라집니다. 입력한 금액이 그대로 환불 확정액으로 기록되며 정산에 반영됩니다.
-          </p>
-        </div>
-        <div className="flex justify-end gap-2 pt-1">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={pending}
-            className="rounded-[8px] bg-[#eef1f4] px-4 py-2 text-[12.5px] font-[500] text-[#6b7280] transition-colors hover:bg-[#e4e8ec] disabled:opacity-40"
-          >
-            닫기
-          </button>
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={pending}
-            className="rounded-[8px] bg-[#8f3a2a] px-4 py-2 text-[12.5px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-          >
-            {formatKRW(amt)} 환불 처리
-          </button>
-        </div>
-      </div>
-    </AdminModal>
   )
 }
 
