@@ -2,6 +2,8 @@
 
 작성 2026-07-08. 이 세션 = 정산 관리 신규 + 어드민 전반 UI 통일(테두리 제거·상단영역·날짜·리스트) + 연수 관리 요금 통합. 다음 세션은 "비교적 큰 작업들" 이어서.
 
+**커밋 = `6ffdf1f`** (origin/main push 완료, 이전 `cd3aeaf`). 단일 커밋에 전부 포함.
+
 ## ⚠ 배포 전 필수 — DB 마이그레이션
 `_DEV/seeds/16_refund_amount.sql` **Supabase에서 실행 필수.** `applications.refunded_amount int NOT NULL DEFAULT 0` 컬럼 추가.
 - 안 하면 `getAllApplications`·`getSettlementData`가 이 컬럼을 select 하므로 **/admin/applications·/admin/settlements 500.**
