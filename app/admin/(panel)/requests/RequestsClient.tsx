@@ -48,7 +48,7 @@ function RefundSection({ refunds, waiting }: { refunds: RefundRequestAdmin[]; wa
   return (
     <section>
       <SectionHead title="환불 요청" total={refunds.length} waiting={waiting} waitLabel="신청대기" />
-      <div className="overflow-hidden rounded-[12px] border border-[#eceef1] bg-white">
+      <div className="overflow-hidden rounded-[12px] bg-white shadow-[0_1px_2px_rgba(15,27,46,0.04),0_3px_10px_rgba(15,27,46,0.05)]">
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-[#eceef1] text-[12px] font-[500] text-[#9ca3af]">
@@ -184,7 +184,7 @@ function ModificationSection({
   return (
     <section>
       <SectionHead title="수정 요청" total={modifications.length} waiting={waiting} waitLabel="신청대기" />
-      <div className="overflow-hidden rounded-[12px] border border-[#eceef1] bg-white">
+      <div className="overflow-hidden rounded-[12px] bg-white shadow-[0_1px_2px_rgba(15,27,46,0.04),0_3px_10px_rgba(15,27,46,0.05)]">
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-[#eceef1] text-[12px] font-[500] text-[#9ca3af]">

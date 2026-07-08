@@ -136,6 +136,7 @@ export interface ApplicationAdmin {
   room_spec: string | null
   pkg_size: number | null
   total_amount: number
+  refunded_amount: number // 환불 확정액(관리자 수기 설정). status=refunded 일 때만 유효
   status: ApplicationStatus
   is_waitlisted: boolean // 소프트 정원 초과 대기분 — 어드민 승인(정원 편입)/거절 대상
   payment_claimed_at: string | null
@@ -224,6 +225,7 @@ export interface CertificateRosterRow {
   phone: string
   participant_name: string
   is_leader: boolean
+  kind: 'jikmu' | 'jayul' // 유형 필터용(직무연수/자율패키지)
   session_label: string // 차수 그룹/필터
   track_label: string
   period: string

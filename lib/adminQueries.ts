@@ -20,6 +20,7 @@ import type {
   PriceItemAdmin,
   SessionPriceOverride,
 } from './types'
+import type { SettlementDatum } from './settlement'
 
 // 요청 join 공통 — application 은 SET NULL 이라 null 가능. 배열/객체 어느 형태든 정규화.
 type JoinedApp = { application_no: string; applicant_name: string } | { application_no: string; applicant_name: string }[] | null
@@ -69,7 +70,7 @@ export async function getAllApplications(): Promise<ApplicationAdmin[]> {
   const { data, error } = await supabaseAdmin
     .from('applications')
     .select(
-      'id, application_no, applicant_name, phone, payer_name, room_type, room_spec, pkg_size, total_amount, status, is_waitlisted, payment_claimed_at, payment_claim_name, companion_memo, special_notes, referral_source, marketing_opt_in, admin_memo, created_at, session:sessions(label, schedule_type, starts_on, ends_on, nights, course:courses(sport)), participants(id, name, gender, phone, lesson_level, rentals, birth_front, birth_back_enc, is_leader, line_amount, sort_order)',
+      'id, application_no, applicant_name, phone, payer_name, room_type, room_spec, pkg_size, total_amount, refunded_amount, status, is_waitlisted, payment_claimed_at, payment_claim_name, companion_memo, special_notes, referral_source, marketing_opt_in, admin_memo, created_at, session:sessions(label, schedule_type, starts_on, ends_on, nights, course:courses(sport)), participants(id, name, gender, phone, lesson_level, rentals, birth_front, birth_back_enc, is_leader, line_amount, sort_order)',
     )
     .order('created_at', { ascending: false })
   if (error) {
@@ -100,6 +101,7 @@ export async function getAllApplications(): Promise<ApplicationAdmin[]> {
     room_spec: string | null
     pkg_size: number | null
     total_amount: number
+    refunded_amount: number
     status: ApplicationStatus
     is_waitlisted: boolean
     payment_claimed_at: string | null
@@ -159,6 +161,7 @@ export async function getAllApplications(): Promise<ApplicationAdmin[]> {
       room_spec: r.room_spec,
       pkg_size: r.pkg_size,
       total_amount: r.total_amount,
+      refunded_amount: r.refunded_amount ?? 0,
       status: r.status,
       is_waitlisted: r.is_waitlisted ?? false,
       payment_claimed_at: r.payment_claimed_at,
@@ -290,6 +293,7 @@ export async function getCertificateRoster(): Promise<CertificateRosterRow[]> {
         phone: r.phone,
         participant_name: p.name,
         is_leader: p.is_leader,
+        kind: isJikmu ? 'jikmu' : 'jayul',
         session_label: sessionLabel,
         track_label: trackLabel,
         period,
@@ -388,4 +392,53 @@ export async function getSelectableCourses(): Promise<CourseOption[]> {
     return []
   }
   return (data as CourseOption[]) ?? []
+}
+
+// 정산 원자료 — 입금확정(paid+completed+refunded) 건만. 기준일=deposit_confirmed_at(null→created_at 폴백).
+// 집계·수식은 lib/settlement 에서. 여기선 flat 하게만 내려준다.
+export async function getSettlementData(): Promise<SettlementDatum[]> {
+  const { data, error } = await supabaseAdmin
+    .from('applications')
+    .select(
+      'id, application_no, applicant_name, payer_name, total_amount, refunded_amount, status, deposit_confirmed_at, created_at, session:sessions(id, label, schedule_type, starts_on, ends_on, nights)',
+    )
+    .in('status', ['paid', 'completed', 'refunded'])
+    .order('deposit_confirmed_at', { ascending: true })
+  if (error) {
+    console.warn('[adminQueries] getSettlementData:', error)
+    return []
+  }
+  type Row = {
+    id: string
+    application_no: string
+    applicant_name: string
+    payer_name: string | null
+    total_amount: number
+    refunded_amount: number | null
+    status: 'paid' | 'completed' | 'refunded'
+    deposit_confirmed_at: string | null
+    created_at: string
+    session:
+      | { id: string; label: string; schedule_type: ScheduleType; starts_on: string; ends_on: string; nights: number }
+      | { id: string; label: string; schedule_type: ScheduleType; starts_on: string; ends_on: string; nights: number }[]
+      | null
+  }
+  return ((data as unknown as Row[]) ?? []).map((r) => {
+    const s = Array.isArray(r.session) ? r.session[0] : r.session
+    const st = s?.schedule_type ?? 'jikmu'
+    return {
+      id: r.id,
+      applicationNo: r.application_no,
+      applicantName: r.applicant_name,
+      payerName: r.payer_name,
+      kind: st === 'jikmu' ? 'jikmu' : 'jayul',
+      sessionKey: s?.id ?? '__none__',
+      sessionLabel: s?.label ?? '(회차 없음)',
+      period: s ? formatPeriod(s.starts_on, s.ends_on, s.nights) : '',
+      status: r.status,
+      basisISO: r.deposit_confirmed_at ?? r.created_at,
+      grossAmount: r.total_amount,
+      refundAmount: r.status === 'refunded' ? (r.refunded_amount ?? 0) : 0,
+    }
+  })
 }

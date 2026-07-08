@@ -18,6 +18,8 @@ export interface SessionInput {
 }
 
 export type ActionResult = { ok: true } | { ok: false; error: string }
+// 생성은 새 차수 id 를 돌려준다 — 개설 직후 요금 오버라이드를 이어 저장하기 위함.
+export type CreateResult = { ok: true; id: string } | { ok: false; error: string }
 
 const TYPES: ScheduleType[] = ['weekday_2n', 'weekend_2n', 'weekend_1n', 'jikmu']
 
@@ -44,15 +46,15 @@ function clean(input: SessionInput) {
   }
 }
 
-export async function createSession(input: SessionInput): Promise<ActionResult> {
+export async function createSession(input: SessionInput): Promise<CreateResult> {
   try {
     await requireAdmin()
     const err = validate(input)
     if (err) return { ok: false, error: err }
-    const { error } = await supabaseAdmin.from('sessions').insert(clean(input))
+    const { data, error } = await supabaseAdmin.from('sessions').insert(clean(input)).select('id').single()
     if (error) throw error
     revalidatePath('/admin/sessions')
-    return { ok: true }
+    return { ok: true, id: (data as { id: string }).id }
   } catch (e) {
     console.error('[sessions] create:', e)
     return { ok: false, error: '회차 저장에 실패했습니다.' }

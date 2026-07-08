@@ -2,7 +2,10 @@
 
 import React, { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { Search } from 'lucide-react'
 import { Badge } from '@/components/common/Badge'
+import AdminListHeader from '@/components/admin/AdminListHeader'
+import { adminSelectClass } from '@/components/admin/AdminToolbar'
 import { formatDate } from '@/lib/display'
 import type { CertificateRosterRow } from '@/lib/types'
 import { issueCertificate, revokeCertificate } from './actions'
@@ -11,15 +14,24 @@ import { issueCertificate, revokeCertificate } from './actions'
 export default function CertificatesClient({ roster }: { roster: CertificateRosterRow[] }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
-  const [filter, setFilter] = useState<string>('all')
+  // 필터 — 신청관리와 동일: 유형 · 회차 · 상태 · 이름/연락처 검색(실시간).
+  const [kind, setKind] = useState<'all' | 'jikmu' | 'jayul'>('all')
+  const [session, setSession] = useState('all')
+  const [status, setStatus] = useState<'all' | 'issued' | 'pending'>('all')
+  const [query, setQuery] = useState('')
 
   // 차수(session_label) 목록 — 필터 드롭다운.
-  const sessions = useMemo(() => {
-    const set = new Set(roster.map((r) => r.session_label))
-    return Array.from(set)
-  }, [roster])
+  const sessions = useMemo(() => Array.from(new Set(roster.map((r) => r.session_label))), [roster])
 
-  const rows = filter === 'all' ? roster : roster.filter((r) => r.session_label === filter)
+  const q = query.trim().replace(/\s/g, '')
+  const rows = roster.filter((r) => {
+    if (kind !== 'all' && r.kind !== kind) return false
+    if (session !== 'all' && r.session_label !== session) return false
+    if (status === 'issued' && !r.issued) return false
+    if (status === 'pending' && r.issued) return false
+    if (q && !`${r.participant_name}${r.phone}`.replace(/\s/g, '').includes(q)) return false
+    return true
+  })
   const issuedCount = rows.filter((r) => r.issued).length
 
   const run = (fn: () => Promise<{ ok: boolean; error?: string }>) => {
@@ -32,7 +44,7 @@ export default function CertificatesClient({ roster }: { roster: CertificateRost
 
   if (roster.length === 0) {
     return (
-      <div className="rounded-[12px] border border-[#eceef1] bg-white px-5 py-16 text-center">
+      <div className="rounded-[12px] bg-white px-5 py-16 text-center shadow-[0_1px_2px_rgba(15,27,46,0.04),0_3px_10px_rgba(15,27,46,0.05)]">
         <p className="text-[13.5px] font-[400] text-[#6b7280]">연수완료 처리된 신청이 아직 없습니다.</p>
         <p className="mt-1.5 text-[12px] font-[300] text-[#9ca3af]">
           신청 관리에서 상태를 “연수완료”로 바꾸면 해당 참가자가 발급 대상으로 나타납니다.
@@ -43,28 +55,47 @@ export default function CertificatesClient({ roster }: { roster: CertificateRost
 
   return (
     <>
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <label className="text-[12.5px] font-[500] text-[#4b5563]">차수</label>
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="rounded-[8px] bg-[#eef2f6] px-3 py-1.5 text-[13px] text-[#1f2937] outline-none focus:bg-[#e3e9ef]"
-          >
-            <option value="all">전체</option>
-            {sessions.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </div>
-        <p className="text-[13px] font-[300] text-[#6b7280]">
-          대상 {rows.length}명 · <span className="font-[500] text-[#0f5a3c]">발급 {issuedCount}명</span>
-        </p>
-      </div>
+      <AdminListHeader
+        left={
+          <div className="flex flex-wrap items-center gap-2">
+            <select className={adminSelectClass} value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
+              <option value="all">유형 전체</option>
+              <option value="jikmu">직무연수</option>
+              <option value="jayul">자율패키지</option>
+            </select>
+            <select className={adminSelectClass} value={session} onChange={(e) => setSession(e.target.value)}>
+              <option value="all">회차 전체</option>
+              {sessions.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+            <select className={adminSelectClass} value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
+              <option value="all">상태 전체</option>
+              <option value="issued">발급완료</option>
+              <option value="pending">미발급</option>
+            </select>
+            <div className="relative">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#9ca3af]" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="이름 · 연락처 검색"
+                className="admin-field w-[180px] rounded-[7px] bg-white py-1.5 pl-7 pr-2.5 text-[12.5px] text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:bg-[#e7eef7]"
+              />
+            </div>
+          </div>
+        }
+        right={
+          <p className="whitespace-nowrap text-[12px] font-[300] text-[#6b7280]">
+            대상 <span className="font-[600] tabular-nums text-[#1f2937]">{rows.length}</span>명 ·{' '}
+            <span className="font-[500] text-[#0f5a3c]">발급 {issuedCount}명</span>
+          </p>
+        }
+      />
 
-      <div className="overflow-hidden rounded-[12px] border border-[#eceef1] bg-white">
+      <div className="overflow-hidden rounded-[12px] bg-white shadow-[0_1px_2px_rgba(15,27,46,0.04),0_3px_10px_rgba(15,27,46,0.05)]">
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-[#eceef1] text-[12px] font-[500] text-[#9ca3af]">

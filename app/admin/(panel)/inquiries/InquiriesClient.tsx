@@ -22,7 +22,7 @@ export default function InquiriesClient({ inquiries }: { inquiries: InquiryAdmin
         전체 {inquiries.length}건 · <span className="font-[500] text-[#8a4b00]">답변대기 {waiting}건</span>
       </p>
 
-      <div className="overflow-hidden rounded-[12px] border border-[#eceef1] bg-white">
+      <div className="overflow-hidden rounded-[12px] bg-white shadow-[0_1px_2px_rgba(15,27,46,0.04),0_3px_10px_rgba(15,27,46,0.05)]">
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-[#eceef1] text-[12px] font-[500] text-[#9ca3af]">

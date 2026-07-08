@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import AdminToolbar from './AdminToolbar'
 
 // 어드민 공용 리스트 — 순번(01,02…) + 필터/검색 박스(toolbar 슬롯) + 우측상단 페이지네이션(20개/페이지, 1페이지면 숨김).
 // items 는 부모가 이미 필터링·정렬(최신 위)한 상태로 넘긴다. 순번 = 표시 인덱스(최상단 01, 페이지 넘어가면 이어짐).
@@ -21,6 +22,7 @@ export interface AdminListProps<T> {
   columns: AdminListColumn<T>[]
   getRowKey: (row: T) => string
   toolbar?: React.ReactNode
+  exportButton?: React.ReactNode // 우측 메타 영역(건수·페이지네이션) 앞에 붙는 액션(엑셀 내보내기 등)
   pageSize?: number
   emptyLabel?: string
   rowClassName?: (row: T) => string
@@ -36,6 +38,7 @@ export default function AdminList<T>({
   columns,
   getRowKey,
   toolbar,
+  exportButton,
   pageSize = 20,
   emptyLabel = '데이터가 없습니다.',
   rowClassName,
@@ -57,20 +60,25 @@ export default function AdminList<T>({
 
   return (
     <>
-      {/* 필터/검색 박스 — 배경 틴트만(테두리 없음). 단일 행: toolbar(좌) · 건수+페이지네이션(우 끝) */}
-      <div className="mb-3 flex items-center justify-between gap-3 rounded-[10px] bg-[#eef2f6] px-4 py-2.5">
-        <div className="min-w-0 flex-1">{toolbar}</div>
-        <div className="flex shrink-0 items-center gap-4">
-          <p className="whitespace-nowrap text-[12px] font-[300] text-[#6b7280]">
-            {filterActive ? '검색결과 ' : '전체 '}
-            <span className="font-[600] tabular-nums text-[#1f2937]">{items.length}</span>건
-            {filterActive && total != null && <span className="text-[#9ca3af]"> / 전체 {total}건</span>}
-          </p>
-          <InlinePagination page={safePage} totalPages={totalPages} onChange={setPage} />
-        </div>
-      </div>
+      {/* 필터/검색 박스 — 공용 AdminToolbar 셸. 단일 행: toolbar(좌) · 건수+페이지네이션(우 끝) */}
+      <AdminToolbar
+        className="mb-3"
+        right={
+          <>
+            {exportButton}
+            <p className="whitespace-nowrap text-[12px] font-[300] text-[#6b7280]">
+              {filterActive ? '검색결과 ' : '전체 '}
+              <span className="font-[600] tabular-nums text-[#1f2937]">{items.length}</span>건
+              {filterActive && total != null && <span className="text-[#9ca3af]"> / 전체 {total}건</span>}
+            </p>
+            <InlinePagination page={safePage} totalPages={totalPages} onChange={setPage} />
+          </>
+        }
+      >
+        {toolbar}
+      </AdminToolbar>
 
-      <div className="overflow-hidden rounded-[12px] border border-[#eceef1] bg-white">
+      <div className="overflow-hidden rounded-[12px] bg-white shadow-[0_1px_2px_rgba(15,27,46,0.04),0_3px_10px_rgba(15,27,46,0.05)]">
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-[#eceef1] text-[12px] font-[500] text-[#9ca3af]">
@@ -150,8 +158,8 @@ export function AdminFilterPills<T extends string>({
   )
 }
 
-// 우측 상단 인라인 페이지네이션 — 1페이지면 렌더 안 함(20개 이하 자동 숨김).
-function InlinePagination({
+// 우측 상단 인라인 페이지네이션 — 1페이지면 렌더 안 함(20개 이하 자동 숨김). 정산 등 다른 리스트도 공용.
+export function InlinePagination({
   page,
   totalPages,
   onChange,

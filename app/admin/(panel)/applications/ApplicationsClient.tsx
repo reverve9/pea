@@ -2,12 +2,14 @@
 
 import React, { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, ChevronRight, Link2, Search } from 'lucide-react'
+import { AlertTriangle, ChevronRight, Download, Link2, Search } from 'lucide-react'
 import { Badge } from '@/components/common/Badge'
 import AdminModal from '@/components/admin/AdminModal'
 import AdminList, { type AdminListColumn } from '@/components/admin/AdminList'
 import AdminTabs from '@/components/admin/AdminTabs'
+import { adminSelectClass } from '@/components/admin/AdminToolbar'
 import { formatDate, formatKRW, APPLICATION_STATUS } from '@/lib/display'
+import { exportToExcel } from '@/lib/excel'
 import { lessonLevelLabel, equipmentLabel, JAYUL_LESSONS, EQUIPMENT_TYPES } from '@/lib/lessonOptions'
 import { APPAREL_SIZES, GEAR_SIZES } from '@/lib/rentalOptions'
 import { PROGRAMS, OPEN_PROGRAMS } from '@/lib/programs'
@@ -15,6 +17,7 @@ import type { ParticipantDetailInput } from '@/lib/participantDetail'
 import type { ApplicationAdmin, ApplicationStatus, InsuranceRosterEntry, ParticipantAdmin } from '@/lib/types'
 import {
   setApplicationStatus,
+  setApplicationRefund,
   setApplicationWaitlist,
   releasePaymentClaim,
   saveAdminMemo,
@@ -25,7 +28,6 @@ import {
 
 // 정상 생애주기(순방향 진행) vs 예외/종료(오프램프) — 같은 층위 아님.
 const LIFECYCLE: ApplicationStatus[] = ['pending', 'paid', 'completed']
-const EXCEPTIONS: ApplicationStatus[] = ['cancelled', 'refunded']
 
 // 프로그램 필터 = 전체 + 신청페이지와 동일 프로그램(종목). 유형/상태는 셀렉트.
 // 탭은 개설 종목(OPEN_PROGRAMS)만 — 준비중 종목은 숨김. 매칭류(activeProgram)는 전체 PROGRAMS 유지. [[pea-taxonomy-program-vs-course]]
@@ -195,9 +197,8 @@ export default function ApplicationsClient({ applications }: { applications: App
     },
   ]
 
-  // 선택·입력 = 배경 틴트만(테두리 없음). 흰 채움으로 틴트 박스와 구분.
-  const selectClass =
-    'rounded-[7px] bg-white px-2.5 py-1.5 text-[12.5px] font-[400] text-[#374151] outline-none focus:bg-[#e7eef7]'
+  // 선택·입력 = 공용 툴바 컨트롤 클래스(흰 채움 + 포커스 틴트). [[match-canonical-not-hardcode]]
+  const selectClass = adminSelectClass
 
   // 프로그램(종목) 탭 — 박스 밖(위). 여백 없이 붙은 라운드 없는 사각 탭. 활성=네이비 채움/비활성=흰 채움.
   // 개설 종목이 1개 이하면 종목 구분이 무의미 → 탭 바 자체 숨김(ProgramTabs 정본 방식과 동일).
@@ -236,7 +237,7 @@ export default function ApplicationsClient({ applications }: { applications: App
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="이름 · 연락처 검색"
-            className="w-[180px] rounded-[7px] bg-white py-1.5 pl-7 pr-2.5 text-[12.5px] text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:bg-[#e7eef7]"
+            className="admin-field w-[180px] rounded-[7px] bg-white py-1.5 pl-7 pr-2.5 text-[12.5px] text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:bg-[#e7eef7]"
           />
         </div>
       </div>
@@ -246,6 +247,58 @@ export default function ApplicationsClient({ applications }: { applications: App
     activeProgram && !activeProgram.ready
       ? `${activeProgram.title} 연수는 준비 중입니다.`
       : '조건에 맞는 신청이 없습니다.'
+
+  // 엑셀 내보내기 — 현재 필터가 적용된 목록을 그대로 시트로. 금액은 숫자(천단위 포맷은 엑셀 유틸이 적용).
+  const exportExcel = () =>
+    exportToExcel(
+      filtered.map((a) => ({
+        no: a.application_no,
+        created: formatDate(a.created_at),
+        status: APPLICATION_STATUS[a.status].label,
+        assign: a.is_waitlisted ? '예비' : '정원',
+        track: a.track_label,
+        sport: a.program_sport ?? '',
+        session: a.session_label,
+        period: a.period,
+        applicant: a.applicant_name,
+        phone: a.phone,
+        payer: a.payer_name ?? '',
+        headcount: a.headcount,
+        amount: a.total_amount,
+        claim: a.payment_claimed_at ? (a.payment_claim_name ?? '요청') : '',
+        memo: a.admin_memo ?? '',
+      })),
+      [
+        { key: 'no', label: '신청번호' },
+        { key: 'created', label: '신청일' },
+        { key: 'status', label: '상태' },
+        { key: 'assign', label: '배정' },
+        { key: 'track', label: '유형' },
+        { key: 'sport', label: '종목' },
+        { key: 'session', label: '회차' },
+        { key: 'period', label: '기간' },
+        { key: 'applicant', label: '신청자' },
+        { key: 'phone', label: '연락처' },
+        { key: 'payer', label: '입금자명' },
+        { key: 'headcount', label: '인원' },
+        { key: 'amount', label: '금액' },
+        { key: 'claim', label: '입금확인요청' },
+        { key: 'memo', label: '관리자메모' },
+      ],
+      '신청목록',
+    )
+
+  const exportButton = (
+    <button
+      type="button"
+      onClick={exportExcel}
+      disabled={filtered.length === 0}
+      className="flex items-center gap-1.5 rounded-[8px] bg-[#1e6b4f] px-3 py-1.5 text-[12px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+    >
+      <Download size={13} />
+      엑셀 내보내기
+    </button>
+  )
 
   return (
     <>
@@ -262,6 +315,7 @@ export default function ApplicationsClient({ applications }: { applications: App
         columns={columns}
         getRowKey={(a) => a.id}
         toolbar={toolbar}
+        exportButton={exportButton}
         emptyLabel={emptyLabel}
         rowClassName={(a) => (a.needs_review ? 'bg-[#fffaf0]' : '')}
         resetKey={`${program}|${kind}|${status}|${assign}|${q}`}
@@ -296,6 +350,8 @@ function DetailModal({
   const [editingPart, setEditingPart] = useState<ParticipantAdmin | null>(null)
   const [copiedFillId, setCopiedFillId] = useState<string | null>(null)
   const [fillBusyId, setFillBusyId] = useState<string | null>(null)
+  const [refundOpen, setRefundOpen] = useState(false)
+  const [refundAmount, setRefundAmount] = useState(String(app.refunded_amount || app.total_amount))
 
   // 셀프필 링크 발급·복사(참가자별 개별) — 각 링크는 본인 슬롯만 수정 가능. 관리자가 해당 참가자에게 전달.
   const copyFillLink = async (participantId: string) => {
@@ -481,26 +537,58 @@ function DetailModal({
         {/* 예외 처리: 취소 · 환불완료 (되돌리기 성격 — 분리·danger 톤) */}
         <div className="mt-3 flex items-center gap-2 border-t border-[#f1f3f5] pt-3">
           <span className="shrink-0 text-[11px] font-[400] text-[#9ca3af]">예외 처리</span>
-          {EXCEPTIONS.map((s) => (
-            <button
-              key={s}
-              type="button"
-              disabled={pending || app.status === s}
-              onClick={() => {
-                if (!confirm(`상태를 "${APPLICATION_STATUS[s].label}"(으)로 변경할까요? 되돌리기 어려운 처리입니다.`)) return
-                runAndRefresh(() => setApplicationStatus(app.id, s))
-              }}
-              className={`rounded-[8px] px-3 py-1.5 text-[12px] font-[500] transition-colors disabled:cursor-default ${
-                app.status === s
-                  ? 'bg-[#8f3a2a] text-white'
-                  : 'border border-[#e2c9c3] bg-white text-[#8f3a2a] hover:bg-[#fbf3f1] disabled:opacity-40'
-              }`}
-            >
-              {APPLICATION_STATUS[s].label}
-            </button>
-          ))}
+          <button
+            type="button"
+            disabled={pending || app.status === 'cancelled'}
+            onClick={() => {
+              if (!confirm('상태를 "취소"로 변경할까요? 되돌리기 어려운 처리입니다.')) return
+              runAndRefresh(() => setApplicationStatus(app.id, 'cancelled'))
+            }}
+            className={`rounded-[8px] px-3 py-1.5 text-[12px] font-[500] transition-colors disabled:cursor-default ${
+              app.status === 'cancelled'
+                ? 'bg-[#8f3a2a] text-white'
+                : 'border border-[#e2c9c3] bg-white text-[#8f3a2a] hover:bg-[#fbf3f1] disabled:opacity-40'
+            }`}
+          >
+            취소
+          </button>
+          {/* 환불완료 — 환불 확정액을 관리자가 입력(규정별 가변, PG 환불도 동일). */}
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => {
+              setRefundAmount(String(app.refunded_amount || app.total_amount))
+              setRefundOpen(true)
+            }}
+            className={`rounded-[8px] px-3 py-1.5 text-[12px] font-[500] transition-colors disabled:cursor-default ${
+              app.status === 'refunded'
+                ? 'bg-[#8f3a2a] text-white'
+                : 'border border-[#e2c9c3] bg-white text-[#8f3a2a] hover:bg-[#fbf3f1] disabled:opacity-40'
+            }`}
+          >
+            {app.status === 'refunded' ? `환불완료 · ${formatKRW(app.refunded_amount)}` : '환불완료…'}
+          </button>
         </div>
       </div>
+
+      {refundOpen && (
+        <RefundModal
+          app={app}
+          amount={refundAmount}
+          onAmount={setRefundAmount}
+          pending={pending}
+          onClose={() => setRefundOpen(false)}
+          onSubmit={() => {
+            const amt = Number(refundAmount.replace(/[^\d]/g, ''))
+            if (!Number.isInteger(amt) || amt < 0) {
+              alert('환불 금액을 올바르게 입력해 주세요.')
+              return
+            }
+            if (amt > app.total_amount && !confirm('환불액이 결제 총액보다 큽니다. 그대로 진행할까요?')) return
+            runAndRefresh(() => setApplicationRefund(app.id, amt))
+          }}
+        />
+      )}
 
       {/* 참가자 명단 */}
       <div className="mt-5">
@@ -618,6 +706,89 @@ function DetailModal({
       />
     )}
     </>
+  )
+}
+
+// 환불 처리 모달 — 환불 확정액을 관리자가 직접 입력(환불규정 상황별 가변, PG 환불도 동일 금액 기준).
+// 자동 계산하지 않는다. 결제 총액을 참고로 보여주되 실제 환불액은 입력값이 진실원천.
+function RefundModal({
+  app,
+  amount,
+  onAmount,
+  pending,
+  onClose,
+  onSubmit,
+}: {
+  app: ApplicationAdmin
+  amount: string
+  onAmount: (v: string) => void
+  pending: boolean
+  onClose: () => void
+  onSubmit: () => void
+}) {
+  const amt = Number(amount.replace(/[^\d]/g, '')) || 0
+  return (
+    <AdminModal title="환불 처리" onClose={onClose} maxWidth={420}>
+      <div className="space-y-4">
+        <div className="rounded-[9px] bg-[#f7f8f9] px-4 py-3 text-[12.5px] text-[#4b5563]">
+          <div className="flex justify-between">
+            <span className="text-[#9ca3af]">신청</span>
+            <span className="font-[500]">{app.applicant_name} · {app.application_no}</span>
+          </div>
+          <div className="mt-1.5 flex justify-between">
+            <span className="text-[#9ca3af]">결제 총액</span>
+            <span className="font-[500] tabular-nums">{formatKRW(app.total_amount)}</span>
+          </div>
+        </div>
+        <div>
+          <label className="mb-1.5 block text-[12px] font-[500] text-[#4b5563]">환불 금액</label>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              inputMode="numeric"
+              value={amount}
+              onChange={(e) => onAmount(e.target.value)}
+              autoFocus
+              className="w-full rounded-[8px] border border-[#dfe3e8] px-3 py-2 text-[15px] tabular-nums outline-none focus:border-[#1e3a5f]"
+            />
+            <span className="shrink-0 text-[13px] text-[#9ca3af]">원</span>
+          </div>
+          <div className="mt-2 flex gap-1.5">
+            {[app.total_amount, Math.round(app.total_amount / 2), 0].map((v, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onAmount(String(v))}
+                className="rounded-[6px] border border-[#e5e7eb] bg-white px-2.5 py-1 text-[11.5px] font-[400] text-[#6b7280] transition-colors hover:bg-[#f3f4f6]"
+              >
+                {i === 0 ? '전액' : i === 1 ? '반액' : '0원'}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-[11.5px] font-[300] leading-[1.6] text-[#9ca3af]">
+            환불규정에 따라 금액이 달라집니다. 입력한 금액이 그대로 환불 확정액으로 기록되며 정산에 반영됩니다.
+          </p>
+        </div>
+        <div className="flex justify-end gap-2 pt-1">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={pending}
+            className="rounded-[8px] border border-[#e5e7eb] bg-white px-4 py-2 text-[12.5px] font-[500] text-[#6b7280] transition-colors hover:bg-[#f3f4f6] disabled:opacity-40"
+          >
+            닫기
+          </button>
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={pending}
+            className="rounded-[8px] bg-[#8f3a2a] px-4 py-2 text-[12.5px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+          >
+            {formatKRW(amt)} 환불 처리
+          </button>
+        </div>
+      </div>
+    </AdminModal>
   )
 }
 

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { PenLine, Plus } from 'lucide-react'
 import { Badge } from '@/components/common/Badge'
 import AdminModal from '@/components/admin/AdminModal'
+import AdminListHeader, { AdminHeaderButton } from '@/components/admin/AdminListHeader'
 import type { FaqAdmin } from '@/lib/types'
 import { createFaq, updateFaq, deleteFaq, type FaqInput } from './actions'
 
@@ -19,17 +20,16 @@ export default function FaqsClient({ faqs }: { faqs: FaqAdmin[] }) {
 
   return (
     <>
-      <div className="mb-4 flex justify-end">
-        <button
-          type="button"
-          onClick={() => setEditing('new')}
-          className="flex items-center gap-1.5 rounded-[9px] bg-[#1e3a5f] px-4 py-2.5 text-[13px] font-[500] text-white transition-opacity hover:opacity-90"
-        >
-          <Plus size={15} />새 FAQ 작성
-        </button>
-      </div>
+      <AdminListHeader
+        count={faqs.length}
+        right={
+          <AdminHeaderButton onClick={() => setEditing('new')}>
+            <Plus size={15} />새 FAQ 작성
+          </AdminHeaderButton>
+        }
+      />
 
-      <div className="overflow-hidden rounded-[12px] border border-[#eceef1] bg-white">
+      <div className="overflow-hidden rounded-[12px] bg-white shadow-[0_1px_2px_rgba(15,27,46,0.04),0_3px_10px_rgba(15,27,46,0.05)]">
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-[#eceef1] text-[12px] font-[500] text-[#9ca3af]">

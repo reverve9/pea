@@ -152,6 +152,18 @@ body {
    억제하고 선택 상태는 틴트 채움(selectTint)으로만 표시 → 옵션 버튼과 통일. */
 .apply-select:focus-visible { outline: none !important; }
 
+/* 어드민 필터 필드(input/select): 테두리 절대 금지. 포커스/클릭 시 네이비 아웃라인 억제하고
+   선택 상태는 배경 틴트(focus:bg)로만 표시. native <select>는 appearance 제거해 테두리 없이 평탄화 + 커스텀 셰브런. */
+.admin-field:focus-visible { outline: none !important; }
+.admin-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  padding-right: 1.75rem;
+}
+
 /* Safe Area */
 .safe-area-top { padding-top: env(safe-area-inset-top); }
 .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }

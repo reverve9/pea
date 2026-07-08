@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { SCHEDULE_TYPE } from '@/lib/display'
 import type { PriceItemAdmin, ScheduleType } from '@/lib/types'
 
@@ -90,12 +91,18 @@ export default function BaseGrid({
 }
 
 function Bundle({ title, children }: { title: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false)
   return (
-    <section className="overflow-hidden rounded-[10px] border border-[#eceef1]">
-      <div className="border-b border-[#eceef1] bg-[#fafbfc] px-4 py-2 text-[12.5px] font-[600] text-[#1f2937]">
+    <section className="overflow-hidden rounded-[10px] bg-[#f6f8fa]">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between bg-[#eef1f4] px-4 py-2.5 text-left text-[12.5px] font-[600] text-[#1f2937] transition-colors hover:bg-[#e6e9ec]"
+      >
         {title}
-      </div>
-      <div className="divide-y divide-[#f4f5f7]">{children}</div>
+        <ChevronDown size={15} className={`shrink-0 text-[#9ca3af] transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && <div className="divide-y divide-[#f4f5f7]">{children}</div>}
     </section>
   )
 }
@@ -136,8 +143,8 @@ function Row({
           inputMode="numeric"
           value={value}
           onChange={(e) => onAmount(e.target.value)}
-          className={`w-28 rounded-[7px] border bg-white py-1.5 pl-2.5 pr-6 text-right text-[12.5px] tabular-nums text-[#1f2937] outline-none focus:border-[#1e3a5f] ${
-            invalid ? 'border-[#e0a3a0]' : dirty ? 'border-[#c2751a]' : 'border-[#e2e5e9]'
+          className={`admin-field w-28 rounded-[7px] py-1.5 pl-2.5 pr-6 text-right text-[12.5px] tabular-nums text-[#1f2937] outline-none focus:bg-[#eef2f6] ${
+            invalid ? 'bg-[#fdeceb]' : dirty ? 'bg-[#fdf4e8]' : 'bg-white'
           }`}
         />
         <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-[300] text-[#9ca3af]">

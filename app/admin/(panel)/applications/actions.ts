@@ -13,13 +13,16 @@ export type ActionResult = { ok: true } | { ok: false; error: string }
 const STATUSES: ApplicationStatus[] = ['pending', 'paid', 'completed', 'cancelled', 'refunded']
 
 // 상태 변경 — pending→paid→completed / cancel / refund.
-// paid 로 전환 시 deposit_confirmed_at 을 찍는다(통장대조 완료 시각). 되돌리면 비운다.
+// deposit_confirmed_at = 통장대조(입금확인) 시각. paid 로 전환 시 찍고, pending 으로 되돌리면 비운다.
+// completed/refunded 로 진행 시엔 그대로 보존한다(정산 기준일 = 입금확인일이므로 유실 금지).
 export async function setApplicationStatus(id: string, status: ApplicationStatus): Promise<ActionResult> {
   try {
     await requireAdmin()
     if (!STATUSES.includes(status)) return { ok: false, error: '알 수 없는 상태입니다.' }
     const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() }
-    patch.deposit_confirmed_at = status === 'paid' ? new Date().toISOString() : null
+    if (status === 'paid') patch.deposit_confirmed_at = new Date().toISOString()
+    else if (status === 'pending') patch.deposit_confirmed_at = null
+    // completed/cancelled/refunded: deposit_confirmed_at 유지
     const { error } = await supabaseAdmin.from('applications').update(patch).eq('id', id)
     if (error) throw error
     revalidatePath('/admin/applications')
@@ -27,6 +30,29 @@ export async function setApplicationStatus(id: string, status: ApplicationStatus
   } catch (e) {
     console.error('[applications] setStatus:', e)
     return { ok: false, error: '상태 변경에 실패했습니다.' }
+  }
+}
+
+// 환불 처리 — status=refunded + 환불 확정액(관리자 수기 설정) 저장.
+// 환불규정이 상황별로 달라 금액이 가변 → 자동 계산이 아니라 입력값을 그대로 환불(PG 환불도 동일).
+// deposit_confirmed_at 은 setApplicationStatus 와 동일하게 유지(정산 기준일 유실 방지).
+export async function setApplicationRefund(id: string, amount: number): Promise<ActionResult> {
+  try {
+    await requireAdmin()
+    if (!Number.isFinite(amount) || amount < 0 || !Number.isInteger(amount)) {
+      return { ok: false, error: '환불 금액이 올바르지 않습니다.' }
+    }
+    const { error } = await supabaseAdmin
+      .from('applications')
+      .update({ status: 'refunded', refunded_amount: amount, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    if (error) throw error
+    revalidatePath('/admin/applications')
+    revalidatePath('/admin/settlements')
+    return { ok: true }
+  } catch (e) {
+    console.error('[applications] setRefund:', e)
+    return { ok: false, error: '환불 처리에 실패했습니다.' }
   }
 }
 

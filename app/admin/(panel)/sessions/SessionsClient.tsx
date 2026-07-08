@@ -2,15 +2,19 @@
 
 import React, { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, PenLine, Tags, Save } from 'lucide-react'
+import { Plus, PenLine, Tags, Save, ChevronDown } from 'lucide-react'
 import { Badge } from '@/components/common/Badge'
 import AdminModal from '@/components/admin/AdminModal'
+import AdminDateField from '@/components/admin/AdminDateField'
+import AdminListHeader, { AdminHeaderButton } from '@/components/admin/AdminListHeader'
 import { SCHEDULE_TYPE, formatPeriod, formatKRW } from '@/lib/display'
 import type { SessionAdmin, CourseOption, ScheduleType, PriceItemAdmin, PriceCategory, SessionPriceOverride } from '@/lib/types'
 import { createSession, updateSession, deleteSession, syncSessionOverrides, savePriceItems, type SessionInput } from './actions'
 import BaseGrid, { initBaseAmounts, basePatches, baseHasInvalid, baseDirtyCount } from './BaseGrid'
 
 const TYPE_ORDER: ScheduleType[] = ['jikmu', 'weekday_2n', 'weekend_2n', 'weekend_1n']
+// 자율패키지 하위 옵션 표시 순서(오너 지정): 주말2박 · 주말1박 · 주중2박.
+const JAYUL_VARIANTS: ScheduleType[] = ['weekend_2n', 'weekend_1n', 'weekday_2n']
 
 // 차수 요금 조정(오버라이드) 섹션의 카테고리 표시 순서·라벨.
 const PRICE_CATEGORIES: { key: PriceCategory; label: string }[] = [
@@ -19,6 +23,15 @@ const PRICE_CATEGORIES: { key: PriceCategory; label: string }[] = [
   { key: 'pkg_price', label: '자율 패키지가' },
   { key: 'rental', label: '렌탈·옵션' },
 ]
+
+// 이 차수가 실제로 받는 요금 항목만 — 유형별 필터(신청폼 computeJikmu/computeJayul 과 동일 기준).
+//  직무 = 기본가·개별객실·렌탈 / 자율(변형) = 해당 변형 pkg_price + 렌탈. 관계없는 항목은 안 보인다.
+function relevantPriceItems(items: PriceItemAdmin[], st: ScheduleType): PriceItemAdmin[] {
+  if (st === 'jikmu') return items.filter((it) => it.category !== 'pkg_price')
+  return items.filter(
+    (it) => it.category === 'rental' || (it.category === 'pkg_price' && it.item_key.startsWith(`pkg_${st}_`)),
+  )
+}
 
 // 날짜 차이 → 박수(nights). 둘 다 있을 때만.
 function calcNights(starts: string, ends: string): number {
@@ -43,7 +56,6 @@ export default function SessionsClient({
 }) {
   const router = useRouter()
   const [editing, setEditing] = useState<Editing>(null)
-  const [pricingFor, setPricingFor] = useState<SessionAdmin | null>(null)
   const [baseOpen, setBaseOpen] = useState(false)
   const [pending, startTransition] = useTransition()
 
@@ -54,31 +66,93 @@ export default function SessionsClient({
     return m
   }, [overrides])
 
+  // 리스트는 계속 쌓이는 평면 목록 — 헤더 행 없이, '유형'을 컬럼으로 두고 그룹 첫 행에만 표시(반복 금지).
+  // 정렬: 직무연수 → 자율(주말2박·주말1박·주중2박), 각 유형 내부 시작일순.
+  const ordered = React.useMemo(() => {
+    const groupOrder: ScheduleType[] = ['jikmu', ...JAYUL_VARIANTS]
+    return groupOrder.flatMap((t) =>
+      sessions.filter((s) => s.schedule_type === t).sort((a, b) => a.starts_on.localeCompare(b.starts_on)),
+    )
+  }, [sessions])
+
+  // 차수 한 행. showType/showSchedule = 각 그룹의 첫 행일 때만 값 표시(연속 행은 빈칸 — 컬럼 값 반복 금지).
+  //  유형 = 직무연수/자율패키지(텍스트·상위 그룹), 일정구분 = 주말2박 등(배지·하위).
+  const renderRow = (s: SessionAdmin, showType: boolean, showSchedule: boolean) => {
+    const type = SCHEDULE_TYPE[s.schedule_type]
+    return (
+      <tr
+        key={s.id}
+        className={`border-t hover:bg-[#f9fafb] ${showType ? 'border-[#e2e6ea]' : 'border-[#f4f5f7]'} ${s.is_active ? '' : 'text-[#9ca3af]'}`}
+      >
+        <td className="px-5 py-3.5 align-top text-[13px] font-[600] text-[#1f2937]">
+          {showType && (s.schedule_type === 'jikmu' ? '직무연수' : '자율패키지')}
+        </td>
+        <td className="px-2 py-3.5 align-top">
+          {showSchedule && (
+            <Badge color={type.color} size="sm">
+              {type.label}
+            </Badge>
+          )}
+        </td>
+        <td className="px-2 py-3.5">
+          <div className="text-[13.5px] font-[500] text-[#1f2937]">{s.label}</div>
+          <div className="text-[11.5px] font-[300] text-[#9ca3af]">{s.course_name}</div>
+          {overrideCount[s.id] > 0 && (
+            <span className="mt-1 inline-flex items-center gap-1 rounded-[4px] bg-[#eef2f7] px-1.5 py-0.5 text-[10.5px] font-[500] leading-none text-[#3f6a99]">
+              <Tags size={10} />요금조정 {overrideCount[s.id]}
+            </span>
+          )}
+        </td>
+        <td className="px-2 py-3.5 whitespace-nowrap text-[12.5px] font-[300] tabular-nums text-[#4b5563]">
+          {formatPeriod(s.starts_on, s.ends_on, s.nights)}
+        </td>
+        <td className="px-2 py-3.5 whitespace-nowrap text-[13px] font-[500] tabular-nums text-[#1f2937]">
+          {s.capacity}
+          <span className="text-[11.5px] font-[300] text-[#9ca3af]">명</span>
+        </td>
+        <td className="px-2 py-3.5">
+          <Badge color={s.is_active ? 'emerald' : 'slate'} size="sm">
+            {s.is_active ? '활성' : '비활성'}
+          </Badge>
+        </td>
+        <td className="px-5 py-3.5 text-right">
+          <button
+            type="button"
+            onClick={() => setEditing(s)}
+            className="text-[13px] font-[400] text-[#3f6a99] hover:underline"
+          >
+            수정
+          </button>
+          <span className="px-1.5 text-[#e5e7eb]">|</span>
+          <DeleteButton id={s.id} onDone={() => router.refresh()} />
+        </td>
+      </tr>
+    )
+  }
+
   return (
     <>
-      <div className="mb-4 flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={() => setBaseOpen(true)}
-          className="flex items-center gap-1.5 rounded-[9px] border border-[#e2e5e9] bg-white px-4 py-2.5 text-[13px] font-[500] text-[#4b5563] transition-colors hover:bg-[#f7f8f9]"
-        >
-          <Tags size={15} />기본 요금
-        </button>
-        <button
-          type="button"
-          onClick={() => setEditing('new')}
-          className="flex items-center gap-1.5 rounded-[9px] bg-[#1e3a5f] px-4 py-2.5 text-[13px] font-[500] text-white transition-opacity hover:opacity-90"
-        >
-          <Plus size={15} />새 회차 개설
-        </button>
-      </div>
+      <AdminListHeader
+        count={sessions.length}
+        right={
+          <>
+            <AdminHeaderButton variant="secondary" onClick={() => setBaseOpen(true)}>
+              <Tags size={15} />기본 요금
+            </AdminHeaderButton>
+            <AdminHeaderButton onClick={() => setEditing('new')}>
+              <Plus size={15} />새 회차 개설
+            </AdminHeaderButton>
+          </>
+        }
+      />
 
-      <div className="overflow-hidden rounded-[12px] border border-[#eceef1] bg-white">
+      <div className="overflow-hidden rounded-[12px] bg-white shadow-[0_1px_2px_rgba(15,27,46,0.04),0_3px_10px_rgba(15,27,46,0.05)]">
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-[#eceef1] text-[12px] font-[500] text-[#9ca3af]">
-              <th className="px-5 py-3">회차</th>
-              <th className="px-2 py-3">유형</th>
+              <th className="px-5 py-3">유형</th>
+              <th className="px-2 py-3">일정구분</th>
+              <th className="px-2 py-3">회차</th>
               <th className="px-2 py-3 whitespace-nowrap">일정</th>
               <th className="px-2 py-3 whitespace-nowrap">정원</th>
               <th className="px-2 py-3">활성</th>
@@ -88,65 +162,17 @@ export default function SessionsClient({
           <tbody>
             {sessions.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-5 py-16 text-center text-[13px] font-[300] text-[#9ca3af]">
+                <td colSpan={7} className="px-5 py-16 text-center text-[13px] font-[300] text-[#9ca3af]">
                   개설된 회차가 없습니다. 우측 상단에서 새 회차를 개설하세요.
                 </td>
               </tr>
             ) : (
-              sessions.map((s) => {
-                const type = SCHEDULE_TYPE[s.schedule_type]
-                return (
-                  <tr
-                    key={s.id}
-                    className={`border-b border-[#f1f3f5] last:border-0 hover:bg-[#f9fafb] ${
-                      s.is_active ? '' : 'bg-[#fafbfc] text-[#9ca3af]'
-                    }`}
-                  >
-                    <td className="px-5 py-3.5">
-                      <div className="text-[13.5px] font-[500] text-[#1f2937]">{s.label}</div>
-                      <div className="text-[11.5px] font-[300] text-[#9ca3af]">{s.course_name}</div>
-                      {overrideCount[s.id] > 0 && (
-                        <span className="mt-1 inline-flex items-center gap-1 rounded-[4px] bg-[#eef2f7] px-1.5 py-0.5 text-[10.5px] font-[500] leading-none text-[#3f6a99]">
-                          <Tags size={10} />요금조정 {overrideCount[s.id]}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-2 py-3.5">
-                      <Badge color={type.color} size="sm">{type.label}</Badge>
-                    </td>
-                    <td className="px-2 py-3.5 whitespace-nowrap text-[12.5px] font-[300] tabular-nums text-[#4b5563]">
-                      {formatPeriod(s.starts_on, s.ends_on, s.nights)}
-                    </td>
-                    <td className="px-2 py-3.5 whitespace-nowrap text-[13px] font-[500] tabular-nums text-[#1f2937]">
-                      {s.capacity}
-                      <span className="text-[11.5px] font-[300] text-[#9ca3af]">명</span>
-                    </td>
-                    <td className="px-2 py-3.5">
-                      <Badge color={s.is_active ? 'emerald' : 'slate'} size="sm">
-                        {s.is_active ? '활성' : '비활성'}
-                      </Badge>
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <button
-                        type="button"
-                        onClick={() => setEditing(s)}
-                        className="text-[13px] font-[400] text-[#3f6a99] hover:underline"
-                      >
-                        수정
-                      </button>
-                      <span className="px-1.5 text-[#e5e7eb]">|</span>
-                      <button
-                        type="button"
-                        onClick={() => setPricingFor(s)}
-                        className="text-[13px] font-[400] text-[#3f6a99] hover:underline"
-                      >
-                        요금
-                      </button>
-                      <span className="px-1.5 text-[#e5e7eb]">|</span>
-                      <DeleteButton id={s.id} onDone={() => router.refresh()} />
-                    </td>
-                  </tr>
-                )
+              ordered.map((s, i) => {
+                const prev = ordered[i - 1]
+                const courseType = (t: ScheduleType) => (t === 'jikmu' ? 'jikmu' : 'jayul')
+                const showType = i === 0 || courseType(prev.schedule_type) !== courseType(s.schedule_type)
+                const showSchedule = i === 0 || prev.schedule_type !== s.schedule_type
+                return renderRow(s, showType, showSchedule)
               })
             )}
           </tbody>
@@ -157,31 +183,29 @@ export default function SessionsClient({
         <SessionEditor
           editing={editing}
           courses={courses}
+          items={priceItems}
+          overrides={editing === 'new' ? [] : overrides.filter((o) => o.session_id === editing.id)}
           pending={pending}
           onClose={() => setEditing(null)}
-          onSubmit={(input) => {
+          onSubmit={(input, ov) => {
             startTransition(async () => {
-              const res = editing === 'new' ? await createSession(input) : await updateSession(editing.id, input)
-              if (res.ok) {
-                setEditing(null)
-                router.refresh()
+              // 회차 저장 → 같은 흐름에서 이 차수 요금 오버라이드 동기화(생성은 새 id 로).
+              if (editing === 'new') {
+                const res = await createSession(input)
+                if (!res.ok) return alert(res.error)
+                if (ov.length > 0) {
+                  const r2 = await syncSessionOverrides(res.id, ov)
+                  if (!r2.ok) return alert(r2.error)
+                }
               } else {
-                alert(res.error)
+                const res = await updateSession(editing.id, input)
+                if (!res.ok) return alert(res.error)
+                const r2 = await syncSessionOverrides(editing.id, ov)
+                if (!r2.ok) return alert(r2.error)
               }
+              setEditing(null)
+              router.refresh()
             })
-          }}
-        />
-      )}
-
-      {pricingFor && (
-        <SessionPriceModal
-          session={pricingFor}
-          items={priceItems}
-          overrides={overrides.filter((o) => o.session_id === pricingFor.id)}
-          onClose={() => setPricingFor(null)}
-          onSaved={() => {
-            setPricingFor(null)
-            router.refresh()
           }}
         />
       )}
@@ -197,138 +221,6 @@ export default function SessionsClient({
         />
       )}
     </>
-  )
-}
-
-// 차수 요금 = 상단 '이 차수 조정'(오버라이드) + 하단 '기본 요금'(모든 차수 공통, 편집). 한 번에 저장.
-function SessionPriceModal({
-  session,
-  items,
-  overrides,
-  onClose,
-  onSaved,
-}: {
-  session: SessionAdmin
-  items: PriceItemAdmin[]
-  overrides: SessionPriceOverride[]
-  onClose: () => void
-  onSaved: () => void
-}) {
-  const [pending, startTransition] = useTransition()
-  // 오버라이드 입력값(문자열, item_key 키) — 기존은 프리필, 없으면 빈칸(=기본가).
-  const [vals, setVals] = useState<Record<string, string>>(() => {
-    const m: Record<string, string> = {}
-    for (const o of overrides) m[o.item_key] = String(o.amount)
-    return m
-  })
-  // 하단 기본 요금 편집값(id 키).
-  const [baseAmounts, setBaseAmounts] = useState<Record<string, string>>(() => initBaseAmounts(items))
-
-  const baseInvalid = baseHasInvalid(items, baseAmounts)
-  const baseChanges = baseDirtyCount(items, baseAmounts)
-
-  const save = () => {
-    if (baseInvalid) return
-    // 차수 오버라이드: 비었거나 기본가와 같으면 제외(sparse).
-    const ov: { item_key: string; amount: number }[] = []
-    for (const it of items) {
-      const raw = vals[it.item_key]
-      if (raw == null || raw.trim() === '') continue
-      const n = Math.trunc(Number(raw))
-      if (!Number.isFinite(n) || n < 0) continue
-      if (n === it.amount) continue
-      ov.push({ item_key: it.item_key, amount: n })
-    }
-    const bPatches = basePatches(items, baseAmounts)
-    startTransition(async () => {
-      if (bPatches.length > 0) {
-        const r1 = await savePriceItems(bPatches)
-        if (!r1.ok) return alert(r1.error)
-      }
-      const r2 = await syncSessionOverrides(session.id, ov)
-      if (r2.ok) onSaved()
-      else alert(r2.error)
-    })
-  }
-
-  return (
-    <AdminModal title={`요금 · ${session.label}`} onClose={onClose}>
-      <div className="max-h-[62vh] space-y-6 overflow-y-auto pr-1">
-        {/* 상단: 이 차수 조정 */}
-        <div>
-          <div className="mb-1 text-[13px] font-[600] text-[#1f2937]">이 차수 조정</div>
-          <p className="mb-3 text-[12px] font-[300] leading-relaxed text-[#6b7280]">
-            이 차수에서만 다른 금액을 쓸 항목에 입력하세요. 비우면 아래 기본 요금을 그대로 씁니다. 기존 신청은 제출 당시 금액으로 확정되어 영향받지 않습니다.
-          </p>
-          <div className="space-y-4">
-            {PRICE_CATEGORIES.map((cat) => {
-              const rows = items.filter((it) => it.category === cat.key)
-              if (rows.length === 0) return null
-              return (
-                <div key={cat.key}>
-                  <div className="mb-1.5 text-[11.5px] font-[600] text-[#9ca3af]">{cat.label}</div>
-                  <div className="space-y-1">
-                    {rows.map((it) => (
-                      <div key={it.item_key} className="flex items-center gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-[12.5px] font-[400] text-[#374151]">{it.label}</div>
-                          <div className="text-[11px] font-[300] tabular-nums text-[#9ca3af]">기본 {formatKRW(it.amount)}</div>
-                        </div>
-                        <input
-                          type="number"
-                          min={0}
-                          step={500}
-                          inputMode="numeric"
-                          value={vals[it.item_key] ?? ''}
-                          onChange={(e) => setVals((v) => ({ ...v, [it.item_key]: e.target.value }))}
-                          placeholder={String(it.amount)}
-                          className="w-28 rounded-[7px] border border-[#e2e5e9] bg-white px-2.5 py-1.5 text-right text-[12.5px] tabular-nums text-[#1f2937] outline-none placeholder:text-[#cfd4da] focus:border-[#1e3a5f]"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* 하단: 기본 요금(공통) */}
-        <div className="border-t border-[#eceef1] pt-4">
-          <div className="mb-1 flex items-center gap-2">
-            <span className="text-[13px] font-[600] text-[#1f2937]">기본 요금</span>
-            <span className="rounded-[4px] bg-[#fdf1e6] px-1.5 py-0.5 text-[10.5px] font-[500] text-[#c2751a]">
-              모든 차수 공통 · 바꾸면 전체 적용
-            </span>
-          </div>
-          <p className="mb-3 text-[12px] font-[300] text-[#6b7280]">여기 값을 바꾸면 조정하지 않은 모든 차수에 반영됩니다.</p>
-          <BaseGrid items={items} amounts={baseAmounts} onAmount={(id, v) => setBaseAmounts((a) => ({ ...a, [id]: v }))} />
-        </div>
-      </div>
-
-      <div className="mt-6 flex items-center justify-end gap-3">
-        {baseChanges > 0 && !baseInvalid && (
-          <span className="text-[12px] font-[400] text-[#c2751a]">기본 요금 {baseChanges}건 변경</span>
-        )}
-        {baseInvalid && <span className="text-[12px] font-[400] text-[#c0392b]">기본 요금 입력값 확인</span>}
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-[9px] border border-[#e2e5e9] bg-white px-4 py-2.5 text-[13px] font-[500] text-[#4b5563] transition-colors hover:bg-[#f7f8f9]"
-        >
-          취소
-        </button>
-        <button
-          type="button"
-          disabled={pending || baseInvalid}
-          onClick={save}
-          className="flex items-center gap-1.5 rounded-[9px] bg-[#1e3a5f] px-5 py-2.5 text-[13px] font-[500] text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          <PenLine size={14} />
-          {pending ? '저장 중…' : '저장'}
-        </button>
-      </div>
-    </AdminModal>
   )
 }
 
@@ -374,7 +266,7 @@ function BaseModal({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-[9px] border border-[#e2e5e9] bg-white px-4 py-2.5 text-[13px] font-[500] text-[#4b5563] transition-colors hover:bg-[#f7f8f9]"
+          className="rounded-[9px] bg-[#eef1f4] px-4 py-2.5 text-[13px] font-[500] text-[#4b5563] transition-colors hover:bg-[#e4e8ec]"
         >
           취소
         </button>
@@ -416,17 +308,45 @@ function DeleteButton({ id, onDone }: { id: string; onDone: () => void }) {
 function SessionEditor({
   editing,
   courses,
+  items,
+  overrides,
   pending,
   onClose,
   onSubmit,
 }: {
   editing: SessionAdmin | 'new'
   courses: CourseOption[]
+  items: PriceItemAdmin[]
+  overrides: SessionPriceOverride[]
   pending: boolean
   onClose: () => void
-  onSubmit: (input: SessionInput) => void
+  onSubmit: (input: SessionInput, overrides: { item_key: string; amount: number }[]) => void
 }) {
   const occupied = editing !== 'new' ? editing.occupied : null
+  // 이 차수 요금 — 기본가를 실제 값으로 채워두고(수정 가능함이 직관적으로 보이게), 오버라이드 있으면 덮어씀.
+  // 기본가와 같은 값은 저장 시 오버라이드로 안 넘어간다(sparse).
+  const [priceVals, setPriceVals] = useState<Record<string, string>>(() => {
+    const m: Record<string, string> = {}
+    for (const it of items) m[it.item_key] = String(it.amount)
+    for (const o of overrides) m[o.item_key] = String(o.amount)
+    return m
+  })
+  // 요금 아코디언 — 조정된 값이 있는 카테고리는 처음부터 펼쳐서 눈에 띄게, 나머진 접힘.
+  const [openCats, setOpenCats] = useState<Set<string>>(() => {
+    const s = new Set<string>()
+    for (const o of overrides) {
+      const it = items.find((i) => i.item_key === o.item_key)
+      if (it) s.add(it.category)
+    }
+    return s
+  })
+  const toggleCat = (k: string) =>
+    setOpenCats((s) => {
+      const n = new Set(s)
+      if (n.has(k)) n.delete(k)
+      else n.add(k)
+      return n
+    })
   const initial: SessionInput =
     editing === 'new'
       ? {
@@ -450,6 +370,20 @@ function SessionEditor({
           is_active: editing.is_active,
         }
   const [form, setForm] = useState<SessionInput>(initial)
+  // 이 차수 유형이 실제로 받는 항목만 — 유형(form.schedule_type) 바꾸면 반응해서 갱신.
+  const relevant = React.useMemo(() => relevantPriceItems(items, form.schedule_type), [items, form.schedule_type])
+  // 저장 시 넘길 sparse 오버라이드 — relevant 중 비었거나 기본가와 같지 않은 항목만.
+  const buildOverrides = () => {
+    const ov: { item_key: string; amount: number }[] = []
+    for (const it of relevant) {
+      const raw = priceVals[it.item_key]
+      if (raw == null || raw.trim() === '') continue
+      const n = Math.trunc(Number(raw))
+      if (!Number.isFinite(n) || n < 0 || n === it.amount) continue
+      ov.push({ item_key: it.item_key, amount: n })
+    }
+    return ov
+  }
   const nights = calcNights(form.starts_on, form.ends_on)
   const belowOccupied = occupied != null && form.capacity < occupied
   const canSubmit =
@@ -462,8 +396,10 @@ function SessionEditor({
     !pending
 
   return (
-    <AdminModal title={editing === 'new' ? '새 회차 개설' : '회차 수정'} onClose={onClose}>
-      <div className="space-y-4">
+    <AdminModal title={editing === 'new' ? '새 회차 개설' : '회차 수정'} onClose={onClose} maxWidth={860}>
+      <div className="grid gap-x-6 gap-y-4 md:grid-cols-2">
+        {/* 좌: 일정·정원 */}
+        <div className="space-y-4">
         <Field label="프로그램(과정)">
           <select
             value={form.course_id}
@@ -504,19 +440,16 @@ function SessionEditor({
 
         <div className="grid grid-cols-2 gap-3">
           <Field label="시작일">
-            <input
-              type="date"
+            <AdminDateField
               value={form.starts_on}
-              onChange={(e) => setForm((f) => ({ ...f, starts_on: e.target.value }))}
+              onChange={(iso) => setForm((f) => ({ ...f, starts_on: iso }))}
               className={inputClass}
             />
           </Field>
           <Field label="종료일">
-            <input
-              type="date"
+            <AdminDateField
               value={form.ends_on}
-              min={form.starts_on || undefined}
-              onChange={(e) => setForm((f) => ({ ...f, ends_on: e.target.value }))}
+              onChange={(iso) => setForm((f) => ({ ...f, ends_on: iso }))}
               className={inputClass}
             />
           </Field>
@@ -551,20 +484,99 @@ function SessionEditor({
             <span className="font-[300] text-[#b0b6be]"> (신청 현황은 신청 관리에서)</span>
           </p>
         )}
+        </div>
+
+        {/* 우: 이 차수 요금 — 이 유형이 받는 항목만, 카테고리 아코디언(평소엔 헤더만). 일정·정원과 한 모달. */}
+        {relevant.length > 0 && (
+          <div>
+            <div className="mb-1 text-[13px] font-[600] text-[#1f2937]">이 차수 요금</div>
+            <p className="mb-2.5 text-[12px] font-[300] leading-relaxed text-[#6b7280]">
+              기본 요금이 채워져 있습니다. 이 차수만 다르게 받을 항목의 금액을 바꾸세요. 그대로 두면 기본가가 적용됩니다.
+            </p>
+            <div className="space-y-1.5">
+              {PRICE_CATEGORIES.map((cat) => {
+                const rows = relevant.filter((it) => it.category === cat.key)
+                if (rows.length === 0) return null
+                const adj = rows.filter((it) => {
+                  const raw = priceVals[it.item_key]
+                  return raw != null && raw.trim() !== '' && Math.trunc(Number(raw)) !== it.amount
+                }).length
+                const open = openCats.has(cat.key)
+                return (
+                  <div key={cat.key} className="overflow-hidden rounded-[9px] bg-[#f6f8fa]">
+                    <button
+                      type="button"
+                      onClick={() => toggleCat(cat.key)}
+                      className="flex w-full items-center justify-between px-3.5 py-2.5 text-left transition-colors hover:bg-[#eef1f4]"
+                    >
+                      <span className="flex items-center gap-2 text-[12.5px] font-[500] text-[#374151]">
+                        {cat.label}
+                        {adj > 0 && (
+                          <span className="rounded-[4px] bg-[#fdf1e6] px-1.5 py-0.5 text-[10.5px] font-[500] text-[#c2751a]">
+                            조정 {adj}
+                          </span>
+                        )}
+                      </span>
+                      <ChevronDown size={15} className={`shrink-0 text-[#9ca3af] transition-transform ${open ? 'rotate-180' : ''}`} />
+                    </button>
+                    {open && (
+                      <div className="space-y-1 px-3.5 pb-3">
+                        {rows.map((it) => {
+                          const raw = priceVals[it.item_key] ?? ''
+                          const changed = raw.trim() !== '' && Math.trunc(Number(raw)) !== it.amount
+                          return (
+                            <div key={it.item_key} className="flex items-center gap-3">
+                              <div className="min-w-0 flex-1">
+                                <div className="truncate text-[12.5px] font-[400] text-[#374151]">{it.label}</div>
+                                <div className="text-[11px] font-[300] tabular-nums text-[#9ca3af]">
+                                  기본 {formatKRW(it.amount)}
+                                  {changed && <span className="ml-1.5 font-[500] text-[#c2751a]">· 조정됨</span>}
+                                </div>
+                              </div>
+                              <div className="relative shrink-0">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={500}
+                                  inputMode="numeric"
+                                  value={priceVals[it.item_key] ?? ''}
+                                  onChange={(e) => setPriceVals((v) => ({ ...v, [it.item_key]: e.target.value }))}
+                                  className={`admin-field w-28 rounded-[7px] py-1.5 pl-2.5 pr-7 text-right text-[12.5px] font-[500] tabular-nums text-[#1f2937] outline-none focus:bg-[#eef2f6] ${
+                                    changed ? 'bg-[#fdf4e8]' : 'bg-white'
+                                  }`}
+                                />
+                                <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-[300] text-[#9ca3af]">
+                                  원
+                                </span>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            <p className="mt-2.5 text-[11.5px] font-[300] text-[#9ca3af]">
+              기본 요금(모든 차수 공통)은 상단 <span className="font-[500] text-[#6b7280]">기본 요금</span>에서.
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="mt-6 flex justify-end gap-2">
         <button
           type="button"
           onClick={onClose}
-          className="rounded-[9px] border border-[#e2e5e9] bg-white px-4 py-2.5 text-[13px] font-[500] text-[#4b5563] transition-colors hover:bg-[#f7f8f9]"
+          className="rounded-[9px] bg-[#eef1f4] px-4 py-2.5 text-[13px] font-[500] text-[#4b5563] transition-colors hover:bg-[#e4e8ec]"
         >
           취소
         </button>
         <button
           type="button"
           disabled={!canSubmit}
-          onClick={() => onSubmit({ ...form, label: form.label.trim(), nights })}
+          onClick={() => onSubmit({ ...form, label: form.label.trim(), nights }, buildOverrides())}
           className="flex items-center gap-1.5 rounded-[9px] bg-[#1e3a5f] px-5 py-2.5 text-[13px] font-[500] text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <PenLine size={14} />
@@ -575,10 +587,11 @@ function SessionEditor({
   )
 }
 
+// 테두리 없음 — 배경 채움(틴트)만. 포커스 아웃라인은 .admin-field 로 억제. [[no-borders-rule]]
 const inputClass =
-  'w-full rounded-[9px] border border-[#e2e5e9] bg-white px-3 py-2.5 text-[13.5px] text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:border-[#1e3a5f]'
+  'admin-field w-full rounded-[9px] bg-[#f4f6f8] px-3 py-2.5 text-[13.5px] text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:bg-[#eaeef2]'
 const selectClass =
-  'w-full rounded-[9px] border border-[#e2e5e9] bg-white px-3 py-2.5 text-[13.5px] text-[#1f2937] outline-none focus:border-[#1e3a5f]'
+  'admin-select admin-field w-full rounded-[9px] bg-[#f4f6f8] px-3 py-2.5 text-[13.5px] text-[#1f2937] outline-none focus:bg-[#eaeef2]'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
