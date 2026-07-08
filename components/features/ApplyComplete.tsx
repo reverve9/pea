@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { CheckCircle2, Clock } from 'lucide-react'
 import Text, { BTN } from '@/components/common/Text'
+import { DepositAccount } from '@/components/features/apply/shared'
 
 // 신청 완료 화면 — 신청번호를 크게 노출(사용자 보관용). 직무=네이비 / 자율=그린 accent.
 // waitlisted=정원 초과 예비(대기) 접수 → 문구·안내를 명확히 구분(입금은 편입 확정 후). [[application-plan-reference]] ⑦
@@ -10,10 +11,12 @@ export default function ApplyComplete({
   applicationNo,
   accent,
   waitlisted = false,
+  amount,
 }: {
   applicationNo: string
   accent: string
   waitlisted?: boolean
+  amount?: number
 }) {
   // 예비 접수는 대기 성격이라 accent 대신 뉴트럴 앰버 톤으로(입금 확정 유도 방지).
   const tone = waitlisted ? '#c2751a' : accent
@@ -46,9 +49,10 @@ export default function ApplyComplete({
             </Text>
           </div>
         ) : (
-          <div className="mt-4 rounded-[10px] bg-[#f7f9fb] p-4 text-left">
+          <div className="mt-4 space-y-3 text-left">
+            <DepositAccount amount={amount} accent={tone} />
             <Text variant="sub" as="p" className="text-[#4b5563]">
-              안내에 따라 <b>무통장 입금</b>을 완료하시면 접수가 확정됩니다. 신청자명과 입금자명이 다르면 확정이 지연될 수 있습니다.
+              위 계좌로 <b>무통장 입금</b> 후, 마이페이지에서 <b>입금 확인 요청</b>을 하시면 확인이 빨라집니다. 입금은 담당자 통장 대조 후 확정되며(즉시 확정 아님), 신청자명과 입금자명이 다르면 지연될 수 있습니다.
             </Text>
           </div>
         )}

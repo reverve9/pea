@@ -1,6 +1,9 @@
 'use client'
 
+import { useState } from 'react'
+import { Copy, Check } from 'lucide-react'
 import Text, { BTN } from '@/components/common/Text'
+import { PLACEHOLDER_ORG as ORG } from '@/lib/siteMeta'
 
 // 신청폼 공용 조각 — 직무(JikmuApplyForm)·자율(JayulApplyForm) 공유. accent(브랜드색)만 prop 으로 분기.
 // 도메인 섹션(종목/객실/렌탈수량 등)은 각 폼에 인라인. 여기엔 100% 동일한 프리미티브·고지문·입금자·경로만. [[jikmu-form-is-componentization-source]]
@@ -309,6 +312,48 @@ export function ApplicantFields({
   )
 }
 
+// 입금 계좌 — 신청 흐름 내 직접 노출(푸터·공지로 이탈 방지). 값=siteMeta placeholder(푸터 공용, site_settings 연동 전).
+// 합계 박스(신청단계)·완료화면 공용. amount 주면 입금액 병기. 계좌번호 원터치 복사.
+export function DepositAccount({ amount, accent = '#1e3a5f' }: { amount?: number; accent?: string }) {
+  const [copied, setCopied] = useState(false)
+  const copy = () => {
+    if (typeof navigator === 'undefined' || !navigator.clipboard) return
+    navigator.clipboard
+      .writeText(ORG.account)
+      .then(() => {
+        setCopied(true)
+        setTimeout(() => setCopied(false), 1500)
+      })
+      .catch(() => {})
+  }
+  return (
+    <div className="rounded-[10px] border border-[#e5eaef] bg-white p-3 text-left">
+      <div className="flex items-center justify-between">
+        <Text variant="caption" className="text-[#8a94a0]">입금 계좌</Text>
+        {amount != null && (
+          <Text variant="sub" className="font-[600]" style={{ color: accent }}>{won(amount)}</Text>
+        )}
+      </div>
+      <div className="mt-1.5 flex items-end justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate font-score text-[15px] font-[600] tabular-nums text-[#1f2937]">
+            {ORG.bank} {ORG.account}
+          </p>
+          <p className="mt-0.5 text-[12px] font-[300] text-[#6b7280]">예금주 {ORG.accountHolder}</p>
+        </div>
+        <button
+          type="button"
+          onClick={copy}
+          className="flex shrink-0 items-center gap-1 rounded-[8px] border border-[#e2e5e9] bg-white px-2.5 py-1.5 text-[12px] font-[500] text-[#4b5563] transition-colors hover:bg-[#f2f5f9]"
+        >
+          {copied ? <Check size={13} className="text-[#2e9e6b]" /> : <Copy size={13} />}
+          {copied ? '복사됨' : '복사'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // 합계·액션 박스 — 라인아이템 + 총금액 + 입금자확인 + 제출에러 + 임시저장/신청 버튼. 두 폼 동일, emptyHint·accent·selfLabel만 분기.
 // 신청 버튼은 accent 인라인 bg + hover:brightness-95 로 통일(직무·자율 동일 hover 거동). 합계 계산(lines/total/canSubmit)은 각 폼 도메인.
 export function SummaryActions({
@@ -350,6 +395,11 @@ export function SummaryActions({
         <Text variant="card-title-sm">총 금액</Text>
         <Text variant="num-lg">{won(total)}</Text>
       </div>
+      {total > 0 && (
+        <div className="mt-3">
+          <DepositAccount accent={accent} />
+        </div>
+      )}
       <PayerConfirm
         payerDiffers={payerDiffers}
         payerName={payerName}

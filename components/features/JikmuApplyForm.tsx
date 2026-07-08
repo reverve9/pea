@@ -323,7 +323,7 @@ export default function JikmuApplyForm() {
     }
   }
 
-  if (resultNo) return <ApplyComplete applicationNo={resultNo} accent={NAVY} waitlisted={resultWaitlisted} />
+  if (resultNo) return <ApplyComplete applicationNo={resultNo} accent={NAVY} waitlisted={resultWaitlisted} amount={total} />
 
   return (
     <div>

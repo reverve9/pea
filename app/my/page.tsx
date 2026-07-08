@@ -436,7 +436,7 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
       {app.status === 'paid' && (
         <div className="mt-4 flex items-start gap-2 rounded-[10px] border border-[#cfe6d5] bg-[#eaf4ec] px-4 py-3">
           <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-[#2f803a]" />
-          <Text variant="sub" className="text-[#2f803a]"><b>입금이 확인되었습니다.</b> 접수가 확정되었어요.</Text>
+          <Text variant="sub" className="text-[#2f803a]"><b>입금이 확인되었습니다.</b> 접수가 확정되었습니다.</Text>
         </div>
       )}
 
@@ -444,12 +444,12 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
       {app.status === 'pending' && (
         app.payment_claimed || done.payment ? (
           <div className="mt-4 rounded-[10px] border border-[#cfe6d5] bg-[#eaf4ec] px-4 py-3">
-            <Text variant="sub" className="text-[#2f803a]">입금 확인 요청이 접수되었습니다. 담당자가 통장 확인 후 처리하며, 확인까지 시간이 걸릴 수 있습니다.</Text>
+            <Text variant="sub" className="text-[#2f803a]">입금 확인 요청이 접수되었습니다. 담당자가 통장 대조 후 ‘입금 확인’으로 바꿉니다. 확인 전까지는 ‘입금 대기’로 표시되며, 영업일 기준 시간이 걸릴 수 있습니다.</Text>
           </div>
         ) : (
           <div className="mt-4 rounded-[10px] border border-[#e5eaef] bg-[#f7f9fb] p-4">
             <Text variant="label" className="text-[#374151]">입금을 완료하셨나요?</Text>
-            <Text variant="caption" as="p" className="mt-1 text-[#9ca3af]">입금 후에도 ‘입금 대기’로 보이면 확인을 요청할 수 있습니다. 담당자가 통장 대조 후 ‘입금 확인’으로 변경합니다.</Text>
+            <Text variant="caption" as="p" className="mt-1 text-[#9ca3af]">입금하셨으면 아래 ‘입금 확인 요청’을 눌러 주세요. 담당자에게 전달돼 통장 대조 후 ‘입금 확인’으로 바뀝니다. 요청하지 않으면 확인이 늦어질 수 있습니다.</Text>
             {open === 'payment' ? (
               <>
                 <input className={`${fieldCls} mt-2`} value={paymentName} onChange={(e) => setPaymentName(e.target.value)} placeholder="입금자 성명" />

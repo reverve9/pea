@@ -309,7 +309,7 @@ export default function JayulApplyForm() {
     }
   }
 
-  if (resultNo) return <ApplyComplete applicationNo={resultNo} accent={GREEN} waitlisted={resultWaitlisted} />
+  if (resultNo) return <ApplyComplete applicationNo={resultNo} accent={GREEN} waitlisted={resultWaitlisted} amount={total} />
 
   return (
     <div>
