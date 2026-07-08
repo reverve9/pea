@@ -9,27 +9,25 @@ export type AdminIconKey =
   | 'Inbox'
   | 'MessageSquare'
   | 'Megaphone'
-  | 'HelpCircle'
   | 'CalendarDays'
   | 'Award'
+  | 'Calculator'
 
 export const ADMIN_NAV: AdminNavGroup[] = [
   {
     title: '운영',
     items: [
       { href: '/admin', label: '대시보드', icon: 'LayoutDashboard' },
+      { href: '/admin/board', label: '공지·FAQ', icon: 'Megaphone' },
       { href: '/admin/applications', label: '신청 관리', icon: 'ClipboardList' },
       { href: '/admin/requests', label: '요청 관리', icon: 'Inbox' },
-      { href: '/admin/certificates', label: '증명서 발급', icon: 'Award' },
       { href: '/admin/inquiries', label: '문의 관리', icon: 'MessageSquare' },
+      { href: '/admin/certificates', label: '증명서 발급', icon: 'Award' },
+      { href: '/admin/settlements', label: '정산 관리', icon: 'Calculator' },
     ],
   },
   {
-    title: '콘텐츠',
-    items: [
-      { href: '/admin/notices', label: '공지사항', icon: 'Megaphone' },
-      { href: '/admin/faqs', label: 'FAQ', icon: 'HelpCircle' },
-      { href: '/admin/sessions', label: '연수 차수', icon: 'CalendarDays' },
-    ],
+    title: '설정',
+    items: [{ href: '/admin/sessions', label: '일정 관리', icon: 'CalendarDays' }],
   },
 ]

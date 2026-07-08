@@ -6,6 +6,7 @@ import { AlertTriangle, ChevronRight, Link2, Search } from 'lucide-react'
 import { Badge } from '@/components/common/Badge'
 import AdminModal from '@/components/admin/AdminModal'
 import AdminList, { type AdminListColumn } from '@/components/admin/AdminList'
+import AdminTabs from '@/components/admin/AdminTabs'
 import { formatDate, formatKRW, APPLICATION_STATUS } from '@/lib/display'
 import { lessonLevelLabel, equipmentLabel, JAYUL_LESSONS, EQUIPMENT_TYPES } from '@/lib/lessonOptions'
 import { APPAREL_SIZES, GEAR_SIZES } from '@/lib/rentalOptions'
@@ -199,20 +200,7 @@ export default function ApplicationsClient({ applications }: { applications: App
 
   // 프로그램(종목) 탭 — 박스 밖(위). 여백 없이 붙은 라운드 없는 사각 탭. 활성=네이비 채움/비활성=흰 채움.
   const programTabs = (
-    <div className="mb-3 flex w-fit overflow-hidden">
-      {PROGRAM_OPTIONS.map((o) => (
-        <button
-          key={o.key}
-          type="button"
-          onClick={() => setProgram(o.key)}
-          className={`px-4 py-2 text-[12.5px] font-[500] transition-colors ${
-            program === o.key ? 'bg-[#1e3a5f] text-white' : 'bg-white text-[#4b5563] hover:bg-[#e3e9ef]'
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
+    <AdminTabs tabs={PROGRAM_OPTIONS} value={program} onChange={setProgram} className="mb-3" />
   )
 
   const toolbar = (
