@@ -408,19 +408,23 @@ function ApplicationsPanel({
   return (
     <>
       {reviewCount > 0 && (
-        <button
-          type="button"
-          onClick={() => setReviewOnly((v) => !v)}
-          className={`mb-3 inline-flex items-center gap-2.5 rounded-[10px] px-10 py-3 text-left transition-colors ${
-            reviewOnly ? 'bg-[#8a4b00] text-white' : 'bg-[#fdf1dc] text-[#8a4b00] hover:bg-[#fbe8c8]'
-          }`}
-        >
-          <AlertTriangle size={15} className="shrink-0" />
-          <span className="text-[13px] font-[600]">입금 확인요청 {reviewCount}건</span>
-          <span className="ml-14 shrink-0 text-[12px] font-[500]">
-            {reviewOnly ? '전체 보기 ✕' : '확인요청건 보기 →'}
+        <div className="mb-3 flex w-full items-center justify-between rounded-[10px] bg-[#fdf1dc] px-5 py-3">
+          <span className="inline-flex items-center gap-2 text-[13px] font-[600] text-[#8a4b00]">
+            <AlertTriangle size={15} className="shrink-0" />
+            입금 확인요청 {reviewCount}건 — 통장 대조 후 처리해 주세요
           </span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setReviewOnly((v) => !v)}
+            className={`ml-4 shrink-0 rounded-[8px] px-4 py-2 text-[12.5px] font-[500] transition-colors ${
+              reviewOnly
+                ? 'bg-[#8a4b00]/[0.14] text-[#8a4b00] hover:bg-[#8a4b00]/[0.22]'
+                : 'bg-[#8a4b00] text-white hover:bg-[#743f00]'
+            }`}
+          >
+            {reviewOnly ? '전체 보기' : '확인요청건 보기'}
+          </button>
+        </div>
       )}
 
       {programTabs}
