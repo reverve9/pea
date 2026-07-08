@@ -411,17 +411,14 @@ function ApplicationsPanel({
         <button
           type="button"
           onClick={() => setReviewOnly((v) => !v)}
-          className={`mb-3 flex w-full items-center gap-2.5 rounded-[10px] px-4 py-3 text-left transition-colors ${
+          className={`mb-3 inline-flex items-center gap-2.5 rounded-[10px] px-6 py-3 text-left transition-colors ${
             reviewOnly ? 'bg-[#8a4b00] text-white' : 'bg-[#fdf1dc] text-[#8a4b00] hover:bg-[#fbe8c8]'
           }`}
         >
-          <AlertTriangle size={16} className="shrink-0" />
-          <span className="text-[13.5px] font-[600]">입금 확인요청 {reviewCount}건</span>
-          <span className={`text-[12.5px] font-[300] ${reviewOnly ? 'text-white/80' : 'text-[#a5763a]'}`}>
-            통장 대조 후 처리해 주세요
-          </span>
-          <span className="ml-auto shrink-0 text-[12px] font-[500]">
-            {reviewOnly ? '전체 보기 ✕' : '대기건만 모아보기 →'}
+          <AlertTriangle size={15} className="shrink-0" />
+          <span className="text-[13px] font-[600]">입금 확인요청 {reviewCount}건</span>
+          <span className="ml-3 shrink-0 text-[12px] font-[500]">
+            {reviewOnly ? '· 전체 보기 ✕' : '· 확인요청건 보기 →'}
           </span>
         </button>
       )}
