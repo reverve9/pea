@@ -310,7 +310,7 @@ function ModificationModal({
           onChange={(e) => setReply(e.target.value)}
           rows={4}
           placeholder="답글을 작성하세요…"
-          className="w-full resize-y rounded-[9px] border border-[#e2e5e9] bg-white px-3 py-2.5 text-[13.5px] leading-relaxed text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:border-[#1e3a5f]"
+          className="admin-field w-full resize-y rounded-[9px] bg-[#f4f6f8] px-3 py-2.5 text-[13.5px] leading-relaxed text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:bg-[#eaeef2]"
         />
       </label>
 
@@ -402,7 +402,7 @@ function StatusStepper<S extends string>({
               className={`rounded-[8px] px-3 py-1.5 text-[12.5px] font-[500] transition-colors disabled:cursor-default ${
                 current === s
                   ? 'bg-[#1e3a5f] text-white'
-                  : 'border border-[#e2e5e9] bg-white text-[#4b5563] hover:bg-[#f7f8f9] disabled:opacity-40'
+                  : 'bg-[#eef1f4] text-[#4b5563] hover:bg-[#e4e8ec] disabled:opacity-40'
               }`}
             >
               {labelMap[s].label}
@@ -423,7 +423,7 @@ function StatusStepper<S extends string>({
             className={`rounded-[8px] px-3 py-1.5 text-[12px] font-[500] transition-colors disabled:cursor-default ${
               current === exception.status
                 ? 'bg-[#8f3a2a] text-white'
-                : 'border border-[#e2c9c3] bg-white text-[#8f3a2a] hover:bg-[#fbf3f1] disabled:opacity-40'
+                : 'bg-[#f6e9e5] text-[#8f3a2a] hover:bg-[#efddd7] disabled:opacity-40'
             }`}
           >
             {exception.label}
@@ -460,7 +460,7 @@ function MemoField({
           onChange={(e) => onChange(e.target.value)}
           rows={2}
           placeholder="내부 메모…"
-          className="w-full resize-y rounded-[9px] border border-[#e2e5e9] bg-white px-3 py-2.5 text-[13px] leading-relaxed text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:border-[#1e3a5f]"
+          className="admin-field w-full resize-y rounded-[9px] bg-[#f4f6f8] px-3 py-2.5 text-[13px] leading-relaxed text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:bg-[#eaeef2]"
         />
       </label>
       <div className="mt-5 flex justify-end gap-2">
@@ -483,7 +483,7 @@ function ModalCloseBtn({ onClose }: { onClose: () => void }) {
     <button
       type="button"
       onClick={onClose}
-      className="rounded-[9px] border border-[#e2e5e9] bg-white px-4 py-2.5 text-[13px] font-[500] text-[#4b5563] transition-colors hover:bg-[#f7f8f9]"
+      className="rounded-[9px] bg-[#eef1f4] px-4 py-2.5 text-[13px] font-[500] text-[#4b5563] transition-colors hover:bg-[#e4e8ec]"
     >
       닫기
     </button>

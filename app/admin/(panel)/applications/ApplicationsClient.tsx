@@ -426,7 +426,7 @@ function DetailModal({
 
       {/* 소프트 정원 예비 — 정원 초과 접수분. 승인=정원 편입 / 거절=취소 */}
       {app.is_waitlisted && (
-        <div className="mt-3 rounded-[10px] border border-[#f0d9a8] bg-[#fffaf0] p-4">
+        <div className="mt-3 rounded-[10px] bg-[#fdf4e3] p-4">
           <p className="text-[12px] font-[500] text-[#8a4b00]">정원 초과 · 예비</p>
           <p className="mt-1.5 text-[13px] font-[300] text-[#374151]">
             회차 정원을 초과해 예비로 접수된 신청입니다. 승인 시 정원에 편입되고, 거절 시 취소 처리됩니다.
@@ -450,7 +450,7 @@ function DetailModal({
                 if (!confirm('이 대기 건을 거절(취소)할까요? 되돌리기 어려운 처리입니다.')) return
                 runAndRefresh(() => setApplicationStatus(app.id, 'cancelled'))
               }}
-              className="rounded-[8px] border border-[#e2c9c3] bg-white px-3.5 py-2 text-[12.5px] font-[500] text-[#8f3a2a] transition-colors hover:bg-[#fbf3f1] disabled:opacity-40"
+              className="rounded-[8px] bg-[#f6e9e5] px-3.5 py-2 text-[12.5px] font-[500] text-[#8f3a2a] transition-colors hover:bg-[#efddd7] disabled:opacity-40"
             >
               거절 (취소)
             </button>
@@ -460,7 +460,7 @@ function DetailModal({
 
       {/* 입금 확인요청 대조 */}
       {app.payment_claimed_at && (
-        <div className="mt-3 rounded-[10px] border border-[#f0d9a8] bg-[#fffaf0] p-4">
+        <div className="mt-3 rounded-[10px] bg-[#fdf4e3] p-4">
           <p className="text-[12px] font-[500] text-[#8a4b00]">입금 확인요청</p>
           <p className="mt-1.5 text-[13px] font-[300] text-[#374151]">
             요청시각 {formatDate(app.payment_claimed_at.slice(0, 10))}
@@ -497,7 +497,7 @@ function DetailModal({
                 if (!confirm('입금 확인요청을 해제할까요? 신청자가 다시 요청할 수 있게 됩니다.')) return
                 runAndRefresh(() => releasePaymentClaim(app.id))
               }}
-              className="rounded-[8px] border border-[#e2c9c3] bg-white px-3.5 py-2 text-[12.5px] font-[500] text-[#8f3a2a] transition-colors hover:bg-[#fbf3f1] disabled:opacity-40"
+              className="rounded-[8px] bg-[#f6e9e5] px-3.5 py-2 text-[12.5px] font-[500] text-[#8f3a2a] transition-colors hover:bg-[#efddd7] disabled:opacity-40"
             >
               확인요청 해제
             </button>
@@ -523,7 +523,7 @@ function DetailModal({
                 className={`rounded-[8px] px-3 py-1.5 text-[12.5px] font-[500] transition-colors disabled:cursor-default ${
                   app.status === s
                     ? 'bg-[#1e3a5f] text-white'
-                    : 'border border-[#e2e5e9] bg-white text-[#4b5563] hover:bg-[#f7f8f9] disabled:opacity-40'
+                    : 'bg-[#eef1f4] text-[#4b5563] hover:bg-[#e4e8ec] disabled:opacity-40'
                 }`}
               >
                 {APPLICATION_STATUS[s].label}
@@ -547,7 +547,7 @@ function DetailModal({
             className={`rounded-[8px] px-3 py-1.5 text-[12px] font-[500] transition-colors disabled:cursor-default ${
               app.status === 'cancelled'
                 ? 'bg-[#8f3a2a] text-white'
-                : 'border border-[#e2c9c3] bg-white text-[#8f3a2a] hover:bg-[#fbf3f1] disabled:opacity-40'
+                : 'bg-[#f6e9e5] text-[#8f3a2a] hover:bg-[#efddd7] disabled:opacity-40'
             }`}
           >
             취소
@@ -563,7 +563,7 @@ function DetailModal({
             className={`rounded-[8px] px-3 py-1.5 text-[12px] font-[500] transition-colors disabled:cursor-default ${
               app.status === 'refunded'
                 ? 'bg-[#8f3a2a] text-white'
-                : 'border border-[#e2c9c3] bg-white text-[#8f3a2a] hover:bg-[#fbf3f1] disabled:opacity-40'
+                : 'bg-[#f6e9e5] text-[#8f3a2a] hover:bg-[#efddd7] disabled:opacity-40'
             }`}
           >
             {app.status === 'refunded' ? `환불완료 · ${formatKRW(app.refunded_amount)}` : '환불완료…'}
@@ -598,7 +598,7 @@ function DetailModal({
             {insuranceCount > 0 && <span className="ml-1 font-[300] text-[#9ca3af]">· 보험 {insuranceCount}명</span>}
           </p>
         </div>
-        <div className="overflow-hidden rounded-[9px] border border-[#eceef1]">
+        <div className="overflow-hidden rounded-[9px] bg-[#fafbfc]">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-[#eceef1] bg-[#fafbfc] text-[11.5px] font-[500] text-[#9ca3af]">
@@ -673,7 +673,7 @@ function DetailModal({
           onChange={(e) => setMemo(e.target.value)}
           rows={2}
           placeholder="내부 메모…"
-          className="w-full resize-y rounded-[9px] border border-[#e2e5e9] bg-white px-3 py-2.5 text-[13px] leading-relaxed text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:border-[#1e3a5f]"
+          className="admin-field w-full resize-y rounded-[9px] bg-[#f4f6f8] px-3 py-2.5 text-[13px] leading-relaxed text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:bg-[#eaeef2]"
         />
       </label>
 
@@ -681,7 +681,7 @@ function DetailModal({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-[9px] border border-[#e2e5e9] bg-white px-4 py-2.5 text-[13px] font-[500] text-[#4b5563] transition-colors hover:bg-[#f7f8f9]"
+          className="rounded-[9px] bg-[#eef1f4] px-4 py-2.5 text-[13px] font-[500] text-[#4b5563] transition-colors hover:bg-[#e4e8ec]"
         >
           닫기
         </button>
@@ -749,7 +749,7 @@ function RefundModal({
               value={amount}
               onChange={(e) => onAmount(e.target.value)}
               autoFocus
-              className="w-full rounded-[8px] border border-[#dfe3e8] px-3 py-2 text-[15px] tabular-nums outline-none focus:border-[#1e3a5f]"
+              className="admin-field w-full rounded-[8px] bg-[#f4f6f8] px-3 py-2 text-[15px] tabular-nums outline-none focus:bg-[#eaeef2]"
             />
             <span className="shrink-0 text-[13px] text-[#9ca3af]">원</span>
           </div>
@@ -759,7 +759,7 @@ function RefundModal({
                 key={i}
                 type="button"
                 onClick={() => onAmount(String(v))}
-                className="rounded-[6px] border border-[#e5e7eb] bg-white px-2.5 py-1 text-[11.5px] font-[400] text-[#6b7280] transition-colors hover:bg-[#f3f4f6]"
+                className="rounded-[6px] bg-[#eef1f4] px-2.5 py-1 text-[11.5px] font-[400] text-[#6b7280] transition-colors hover:bg-[#e4e8ec]"
               >
                 {i === 0 ? '전액' : i === 1 ? '반액' : '0원'}
               </button>
@@ -774,7 +774,7 @@ function RefundModal({
             type="button"
             onClick={onClose}
             disabled={pending}
-            className="rounded-[8px] border border-[#e5e7eb] bg-white px-4 py-2 text-[12.5px] font-[500] text-[#6b7280] transition-colors hover:bg-[#f3f4f6] disabled:opacity-40"
+            className="rounded-[8px] bg-[#eef1f4] px-4 py-2 text-[12.5px] font-[500] text-[#6b7280] transition-colors hover:bg-[#e4e8ec] disabled:opacity-40"
           >
             닫기
           </button>
@@ -825,7 +825,7 @@ function ParticipantEditModal({
   const [gloveSize, setGloveSize] = useState(typeof rentals.glove_size === 'string' ? rentals.glove_size : '')
   const isJayul = kind === 'jayul'
   const inputClass =
-    'w-full rounded-[9px] border border-[#e2e5e9] bg-white px-3 py-2.5 text-[13.5px] text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:border-[#1e3a5f]'
+    'admin-field w-full rounded-[9px] bg-[#f4f6f8] px-3 py-2.5 text-[13.5px] text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:bg-[#eaeef2]'
   const labelClass = 'mb-1.5 block text-[12.5px] font-[500] text-[#4b5563]'
 
   const submit = () => {
@@ -933,8 +933,9 @@ function ParticipantEditModal({
                   key={t.label}
                   type="button"
                   onClick={t.toggle}
-                  className="rounded-[7px] border px-2.5 py-1 text-[12.5px] transition-colors"
-                  style={{ borderColor: t.on ? '#1e3a5f' : '#e2e5e9', background: t.on ? '#1e3a5f' : '#ffffff', color: t.on ? '#ffffff' : '#6b7280' }}
+                  className={`rounded-[7px] px-2.5 py-1 text-[12.5px] transition-colors ${
+                    t.on ? 'bg-[#1e3a5f] text-white' : 'bg-[#eef1f4] text-[#6b7280] hover:bg-[#e4e8ec]'
+                  }`}
                 >
                   {t.label}
                 </button>
@@ -1002,7 +1003,7 @@ function ParticipantEditModal({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-[9px] border border-[#e2e5e9] bg-white px-4 py-2.5 text-[13px] font-[500] text-[#4b5563] transition-colors hover:bg-[#f7f8f9]"
+          className="rounded-[9px] bg-[#eef1f4] px-4 py-2.5 text-[13px] font-[500] text-[#4b5563] transition-colors hover:bg-[#e4e8ec]"
         >
           취소
         </button>

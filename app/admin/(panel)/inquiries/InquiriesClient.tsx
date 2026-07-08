@@ -157,7 +157,7 @@ function ReplyModal({
           onChange={(e) => setReply(e.target.value)}
           placeholder="답변을 작성하세요…"
           rows={6}
-          className="w-full resize-y rounded-[9px] border border-[#e2e5e9] bg-white px-3 py-2.5 text-[13.5px] leading-relaxed text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:border-[#1e3a5f]"
+          className="admin-field w-full resize-y rounded-[9px] bg-[#f4f6f8] px-3 py-2.5 text-[13.5px] leading-relaxed text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:bg-[#eaeef2]"
         />
       </label>
 
@@ -165,7 +165,7 @@ function ReplyModal({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-[9px] border border-[#e2e5e9] bg-white px-4 py-2.5 text-[13px] font-[500] text-[#4b5563] transition-colors hover:bg-[#f7f8f9]"
+          className="rounded-[9px] bg-[#eef1f4] px-4 py-2.5 text-[13px] font-[500] text-[#4b5563] transition-colors hover:bg-[#e4e8ec]"
         >
           취소
         </button>

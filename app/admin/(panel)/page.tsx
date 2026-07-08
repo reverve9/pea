@@ -17,7 +17,7 @@ export default function AdminDashboardPage() {
         {STATS.map((s) => (
           <div
             key={s.label}
-            className="rounded-[12px] border border-[#eceef1] bg-white px-5 py-4"
+            className="rounded-[12px] bg-white px-5 py-4 shadow-[0_1px_2px_rgba(15,27,46,0.04),0_3px_10px_rgba(15,27,46,0.05)]"
           >
             <p className="text-[12.5px] font-[300] text-[#9ca3af]">{s.label}</p>
             <p
@@ -30,7 +30,7 @@ export default function AdminDashboardPage() {
         ))}
       </div>
 
-      <div className="mt-6 flex min-h-[220px] items-center justify-center rounded-[12px] border border-[#eceef1] bg-white">
+      <div className="mt-6 flex min-h-[220px] items-center justify-center rounded-[12px] bg-white shadow-[0_1px_2px_rgba(15,27,46,0.04),0_3px_10px_rgba(15,27,46,0.05)]">
         <p className="text-[13px] font-[300] text-[#9ca3af]">
           집계·최근 활동은 후속 단계에서 연동됩니다.
         </p>

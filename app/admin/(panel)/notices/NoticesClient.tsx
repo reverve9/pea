@@ -165,7 +165,7 @@ function NoticeEditor({
           <select
             value={form.category}
             onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as NoticeCategory }))}
-            className="w-full rounded-[9px] border border-[#e2e5e9] bg-white px-3 py-2.5 text-[13.5px] text-[#1f2937] outline-none focus:border-[#1e3a5f]"
+            className="admin-select admin-field w-full rounded-[9px] bg-[#f4f6f8] px-3 py-2.5 text-[13.5px] text-[#1f2937] outline-none focus:bg-[#eaeef2]"
           >
             {CATEGORY_ORDER.map((c) => (
               <option key={c} value={c}>{NOTICE_CATEGORY[c].label}</option>
@@ -178,7 +178,7 @@ function NoticeEditor({
             value={form.title}
             onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
             placeholder="공지 제목"
-            className="w-full rounded-[9px] border border-[#e2e5e9] bg-white px-3 py-2.5 text-[13.5px] text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:border-[#1e3a5f]"
+            className="admin-field w-full rounded-[9px] bg-[#f4f6f8] px-3 py-2.5 text-[13.5px] text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:bg-[#eaeef2]"
           />
         </Field>
 
@@ -188,7 +188,7 @@ function NoticeEditor({
             onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
             placeholder="공지 내용 (줄바꿈·마크다운 지원)"
             rows={8}
-            className="w-full resize-y rounded-[9px] border border-[#e2e5e9] bg-white px-3 py-2.5 text-[13.5px] leading-relaxed text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:border-[#1e3a5f]"
+            className="admin-field w-full resize-y rounded-[9px] bg-[#f4f6f8] px-3 py-2.5 text-[13.5px] leading-relaxed text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:bg-[#eaeef2]"
           />
         </Field>
 
@@ -210,7 +210,7 @@ function NoticeEditor({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-[9px] border border-[#e2e5e9] bg-white px-4 py-2.5 text-[13px] font-[500] text-[#4b5563] transition-colors hover:bg-[#f7f8f9]"
+          className="rounded-[9px] bg-[#eef1f4] px-4 py-2.5 text-[13px] font-[500] text-[#4b5563] transition-colors hover:bg-[#e4e8ec]"
         >
           취소
         </button>

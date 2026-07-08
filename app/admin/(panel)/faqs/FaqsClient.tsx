@@ -149,7 +149,7 @@ function FaqEditor({
             value={form.question}
             onChange={(e) => setForm((f) => ({ ...f, question: e.target.value }))}
             placeholder="자주 묻는 질문"
-            className="w-full rounded-[9px] border border-[#e2e5e9] bg-white px-3 py-2.5 text-[13.5px] text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:border-[#1e3a5f]"
+            className="admin-field w-full rounded-[9px] bg-[#f4f6f8] px-3 py-2.5 text-[13.5px] text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:bg-[#eaeef2]"
           />
         </label>
 
@@ -160,7 +160,7 @@ function FaqEditor({
             onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
             placeholder="답변 내용 (줄바꿈 지원)"
             rows={7}
-            className="w-full resize-y rounded-[9px] border border-[#e2e5e9] bg-white px-3 py-2.5 text-[13.5px] leading-relaxed text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:border-[#1e3a5f]"
+            className="admin-field w-full resize-y rounded-[9px] bg-[#f4f6f8] px-3 py-2.5 text-[13.5px] leading-relaxed text-[#1f2937] outline-none placeholder:text-[#b0b6be] focus:bg-[#eaeef2]"
           />
         </label>
 
@@ -171,7 +171,7 @@ function FaqEditor({
               type="number"
               value={form.sort_order}
               onChange={(e) => setForm((f) => ({ ...f, sort_order: parseInt(e.target.value, 10) || 0 }))}
-              className="w-28 rounded-[9px] border border-[#e2e5e9] bg-white px-3 py-2.5 text-[13.5px] tabular-nums text-[#1f2937] outline-none focus:border-[#1e3a5f]"
+              className="admin-field w-28 rounded-[9px] bg-[#f4f6f8] px-3 py-2.5 text-[13.5px] tabular-nums text-[#1f2937] outline-none focus:bg-[#eaeef2]"
             />
           </label>
           <label className="flex cursor-pointer items-center gap-2 pb-2.5 text-[13px] font-[400] text-[#374151]">
@@ -190,7 +190,7 @@ function FaqEditor({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-[9px] border border-[#e2e5e9] bg-white px-4 py-2.5 text-[13px] font-[500] text-[#4b5563] transition-colors hover:bg-[#f7f8f9]"
+          className="rounded-[9px] bg-[#eef1f4] px-4 py-2.5 text-[13px] font-[500] text-[#4b5563] transition-colors hover:bg-[#e4e8ec]"
         >
           취소
         </button>
