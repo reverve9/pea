@@ -118,12 +118,14 @@ export interface ApplicationAdmin {
   kind: 'jikmu' | 'jayul'
   program_sport: string | null // 프로그램(종목) 필터용 — course.sport
   track_label: string
+  session_label: string // 회차명(sessions.label) — 목록에서 며칠 예약건인지 식별
   period: string
   room_type: 'group' | 'private' | null
   room_spec: string | null
   pkg_size: number | null
   total_amount: number
   status: ApplicationStatus
+  is_waitlisted: boolean // 소프트 정원 초과 대기분 — 어드민 승인(정원 편입)/거절 대상
   payment_claimed_at: string | null
   payment_claim_name: string | null
   companion_memo: string | null

@@ -64,7 +64,7 @@ export async function getAllApplications(): Promise<ApplicationAdmin[]> {
   const { data, error } = await supabaseAdmin
     .from('applications')
     .select(
-      'id, application_no, applicant_name, phone, payer_name, room_type, room_spec, pkg_size, total_amount, status, payment_claimed_at, payment_claim_name, companion_memo, special_notes, referral_source, marketing_opt_in, admin_memo, created_at, session:sessions(schedule_type, starts_on, ends_on, nights, course:courses(sport)), participants(id, name, gender, phone, lesson_level, rentals, birth_front, birth_back_enc, is_leader, line_amount, sort_order)',
+      'id, application_no, applicant_name, phone, payer_name, room_type, room_spec, pkg_size, total_amount, status, is_waitlisted, payment_claimed_at, payment_claim_name, companion_memo, special_notes, referral_source, marketing_opt_in, admin_memo, created_at, session:sessions(label, schedule_type, starts_on, ends_on, nights, course:courses(sport)), participants(id, name, gender, phone, lesson_level, rentals, birth_front, birth_back_enc, is_leader, line_amount, sort_order)',
     )
     .order('created_at', { ascending: false })
   if (error) {
@@ -96,6 +96,7 @@ export async function getAllApplications(): Promise<ApplicationAdmin[]> {
     pkg_size: number | null
     total_amount: number
     status: ApplicationStatus
+    is_waitlisted: boolean
     payment_claimed_at: string | null
     payment_claim_name: string | null
     companion_memo: string | null
@@ -106,6 +107,7 @@ export async function getAllApplications(): Promise<ApplicationAdmin[]> {
     created_at: string
     session:
       | {
+          label: string
           schedule_type: ScheduleType
           starts_on: string
           ends_on: string
@@ -146,12 +148,14 @@ export async function getAllApplications(): Promise<ApplicationAdmin[]> {
       kind: isJikmu ? 'jikmu' : 'jayul',
       program_sport: course?.sport ?? null,
       track_label: isJikmu ? '직무연수' : `자율패키지 · ${SCHEDULE_TYPE[st].label}`,
+      session_label: r.session?.label ?? '',
       period: r.session ? formatPeriod(r.session.starts_on, r.session.ends_on, r.session.nights) : '',
       room_type: r.room_type,
       room_spec: r.room_spec,
       pkg_size: r.pkg_size,
       total_amount: r.total_amount,
       status: r.status,
+      is_waitlisted: r.is_waitlisted ?? false,
       payment_claimed_at: r.payment_claimed_at,
       payment_claim_name: r.payment_claim_name,
       companion_memo: r.companion_memo,

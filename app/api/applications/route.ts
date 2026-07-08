@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { encryptSecret } from '@/lib/serverCrypto'
 import { computeJikmu, computeJayul } from '@/lib/pricing'
+import { getSessionOccupancy } from '@/lib/capacity'
 import { applicationPrefix } from '@/lib/programs'
 import type { PriceItem } from '@/lib/types'
 import type { JikmuPayload, JayulPayload } from '@/lib/applicationTypes'
@@ -80,10 +81,10 @@ export async function POST(req: Request) {
   if (!parsed.success) return fail('입력값이 올바르지 않습니다.')
   const payload = parsed.data
 
-  // 1) 세션 확인 — 존재·유형 일치 + 발번 연도(연수 시작연도) + 종목(course.sport, 발번 접두어용).
+  // 1) 세션 확인 — 존재·유형 일치 + 발번 연도(연수 시작연도) + 종목(course.sport, 발번 접두어용) + 정원.
   const { data: session, error: sErr } = await supabaseAdmin
     .from('sessions')
-    .select('id, schedule_type, starts_on, course:courses(sport)')
+    .select('id, schedule_type, starts_on, capacity, course:courses(sport)')
     .eq('id', payload.sessionId)
     .maybeSingle()
   if (sErr) return fail('일정 조회 중 오류가 발생했습니다.', 500)
@@ -114,6 +115,13 @@ export async function POST(req: Request) {
   })
   if (nErr || typeof appNo !== 'string') return fail('신청번호 발급 중 오류가 발생했습니다.', 500)
 
+  // 3.5) 소프트 정원 — 현재 점유 인원 + 이번 신청 인원 > capacity 면 '대기'로 접수(거절 아님).
+  //   인원: 자율=headcount, 직무=1(대표). 소프트라 동시성 락 없음(경합 시 대기 몇 건 더 생길 뿐).
+  const thisSeats = payload.kind === 'jikmu' ? 1 : (payload as JayulPayload).headcount
+  const occ = (await getSessionOccupancy([payload.sessionId])).get(payload.sessionId)
+  const occupied = occ?.occupied ?? 0
+  const isWaitlisted = occupied + thisSeats > session.capacity
+
   // 4) applications insert.
   const now = new Date().toISOString()
   const isJikmu = payload.kind === 'jikmu'
@@ -129,6 +137,7 @@ export async function POST(req: Request) {
     total_amount: breakdown.total,
     price_breakdown: breakdown,
     status: 'pending' as const,
+    is_waitlisted: isWaitlisted,
     companion_memo: isJikmu && (payload as JikmuPayload).hasCompanion
       ? `${(payload as JikmuPayload).companion} / ${(payload as JikmuPayload).companionPhone}`.trim()
       : null,
@@ -165,7 +174,7 @@ export async function POST(req: Request) {
     return fail('참가자 정보 저장 중 오류가 발생했습니다.', 500)
   }
 
-  return NextResponse.json({ application_no: appNo })
+  return NextResponse.json({ application_no: appNo, waitlisted: isWaitlisted })
 }
 
 // 참가자 행 구성 — 직무=대표 1명, 자율=대표 + 참가자 빈 슬롯(상세는 신청 후 채움).

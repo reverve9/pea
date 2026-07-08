@@ -30,6 +30,24 @@ export async function setApplicationStatus(id: string, status: ApplicationStatus
   }
 }
 
+// 소프트 정원 대기 처리 — 승인=대기 해제(is_waitlisted=false, 정원 편입) / 거절은 setApplicationStatus(id,'cancelled') 사용.
+// 소프트 정책상 승인 시 정원 재확인 없음(어드민 최종 판단). status 는 건드리지 않는다.
+export async function setApplicationWaitlist(id: string, waitlisted: boolean): Promise<ActionResult> {
+  try {
+    await requireAdmin()
+    const { error } = await supabaseAdmin
+      .from('applications')
+      .update({ is_waitlisted: waitlisted, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    if (error) throw error
+    revalidatePath('/admin/applications')
+    return { ok: true }
+  } catch (e) {
+    console.error('[applications] setWaitlist:', e)
+    return { ok: false, error: '대기 처리에 실패했습니다.' }
+  }
+}
+
 // 입금완료 신고 해제(반려) — payment_claimed_at·payment_claim_name 비우기.
 // 허위/오클릭 정리 + 사용자 재요청 락아웃 해소([[payment-claim-policy]]). status 는 건드리지 않는다.
 export async function releasePaymentClaim(id: string): Promise<ActionResult> {

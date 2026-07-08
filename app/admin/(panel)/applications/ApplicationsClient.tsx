@@ -14,6 +14,7 @@ import type { ParticipantDetailInput } from '@/lib/participantDetail'
 import type { ApplicationAdmin, ApplicationStatus, InsuranceRosterEntry, ParticipantAdmin } from '@/lib/types'
 import {
   setApplicationStatus,
+  setApplicationWaitlist,
   releasePaymentClaim,
   saveAdminMemo,
   revealInsuranceRoster,
@@ -41,6 +42,23 @@ const STATUS_OPTIONS: { key: 'all' | ApplicationStatus; label: string }[] = [
   { key: 'refunded', label: '환불완료' },
 ]
 
+// 배정 필터 — 정원 내(배정) vs 정원 초과(예비). '입금대기' 상태와 용어 혼동 피하려 '대기'→'예비'.
+type AssignFilter = 'all' | 'in' | 'wait'
+const ASSIGN_OPTIONS: { key: AssignFilter; label: string }[] = [
+  { key: 'all', label: '배정 전체' },
+  { key: 'in', label: '정원' },
+  { key: 'wait', label: '예비' },
+]
+
+// 예비(정원초과) 배지 — 상태 배지(soft tint pill)와 확실히 구분. 예외·주의 성격이라 solid 채움 + 경고 아이콘 + 백색 텍스트.
+function WaitlistBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-[4px] bg-[#d97116] px-2 py-0.5 text-[11px] font-[600] leading-none text-white">
+      <AlertTriangle size={11} strokeWidth={2.4} /> 예비
+    </span>
+  )
+}
+
 export default function ApplicationsClient({ applications }: { applications: ApplicationAdmin[] }) {
   const router = useRouter()
   const [detail, setDetail] = useState<ApplicationAdmin | null>(null)
@@ -49,15 +67,18 @@ export default function ApplicationsClient({ applications }: { applications: App
   const [program, setProgram] = useState('all')
   const [kind, setKind] = useState<'all' | 'jikmu' | 'jayul'>('all')
   const [status, setStatus] = useState<'all' | ApplicationStatus>('all')
+  const [assign, setAssign] = useState<AssignFilter>('all')
   const [query, setQuery] = useState('')
 
   const activeProgram = PROGRAMS.find((p) => p.key === program)
   const q = query.trim().replace(/\s/g, '')
-  const filterActive = program !== 'all' || kind !== 'all' || status !== 'all' || q !== ''
+  const filterActive = program !== 'all' || kind !== 'all' || status !== 'all' || assign !== 'all' || q !== ''
   const filtered = applications.filter((a) => {
     if (activeProgram && a.program_sport !== activeProgram.sport) return false
     if (kind !== 'all' && a.kind !== kind) return false
     if (status !== 'all' && a.status !== status) return false
+    if (assign === 'wait' && !a.is_waitlisted) return false
+    if (assign === 'in' && a.is_waitlisted) return false
     if (q) {
       const hay = `${a.applicant_name}${a.phone}`.replace(/\s/g, '')
       if (!hay.includes(q)) return false
@@ -99,6 +120,19 @@ export default function ApplicationsClient({ applications }: { applications: App
       cell: (a) => a.track_label,
     },
     {
+      key: 'session',
+      header: '회차 · 일정',
+      tdClassName: 'px-2',
+      cell: (a) => (
+        <div className="leading-tight">
+          <div className="text-[12.5px] font-[400] text-[#374151]">{a.session_label || '—'}</div>
+          {a.period && (
+            <div className="mt-0.5 text-[11.5px] font-[300] tabular-nums text-[#9ca3af]">{a.period}</div>
+          )}
+        </div>
+      ),
+    },
+    {
       key: 'amount',
       header: '금액',
       align: 'right',
@@ -113,6 +147,16 @@ export default function ApplicationsClient({ applications }: { applications: App
           {APPLICATION_STATUS[a.status].label}
         </Badge>
       ),
+    },
+    {
+      key: 'assign',
+      header: '배정',
+      cell: (a) =>
+        a.is_waitlisted ? (
+          <WaitlistBadge />
+        ) : (
+          <span className="text-[12px] font-[300] text-[#9ca3af]">정원</span>
+        ),
     },
     {
       key: 'claim',
@@ -188,6 +232,13 @@ export default function ApplicationsClient({ applications }: { applications: App
             </option>
           ))}
         </select>
+        <select className={selectClass} value={assign} onChange={(e) => setAssign(e.target.value as AssignFilter)}>
+          {ASSIGN_OPTIONS.map((o) => (
+            <option key={o.key} value={o.key}>
+              {o.label}
+            </option>
+          ))}
+        </select>
         <div className="relative">
           <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#9ca3af]" />
           <input
@@ -222,7 +273,7 @@ export default function ApplicationsClient({ applications }: { applications: App
         toolbar={toolbar}
         emptyLabel={emptyLabel}
         rowClassName={(a) => (a.needs_review ? 'bg-[#fffaf0]' : '')}
-        resetKey={`${program}|${kind}|${status}|${q}`}
+        resetKey={`${program}|${kind}|${status}|${assign}|${q}`}
         total={applications.length}
         filterActive={filterActive}
       />
@@ -311,6 +362,7 @@ function DetailModal({
           <Badge color={APPLICATION_STATUS[app.status].color} size="sm">
             {APPLICATION_STATUS[app.status].label}
           </Badge>
+          {app.is_waitlisted && <WaitlistBadge />}
           <span className="text-[12.5px] font-[300] text-[#6b7280]">{app.track_label}</span>
         </div>
         <p className="mt-2 text-[13px] font-[300] text-[#374151]">
@@ -324,6 +376,40 @@ function DetailModal({
           결제금액 {formatKRW(app.total_amount)}
         </p>
       </div>
+
+      {/* 소프트 정원 예비 — 정원 초과 접수분. 승인=정원 편입 / 거절=취소 */}
+      {app.is_waitlisted && (
+        <div className="mt-3 rounded-[10px] border border-[#f0d9a8] bg-[#fffaf0] p-4">
+          <p className="text-[12px] font-[500] text-[#8a4b00]">정원 초과 · 예비</p>
+          <p className="mt-1.5 text-[13px] font-[300] text-[#374151]">
+            회차 정원을 초과해 예비로 접수된 신청입니다. 승인 시 정원에 편입되고, 거절 시 취소 처리됩니다.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                if (!confirm('이 대기 건을 승인해 정원에 편입할까요?')) return
+                runAndRefresh(() => setApplicationWaitlist(app.id, false))
+              }}
+              className="rounded-[8px] bg-[#1e3a5f] px-3.5 py-2 text-[12.5px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+            >
+              승인 → 정원 편입
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                if (!confirm('이 대기 건을 거절(취소)할까요? 되돌리기 어려운 처리입니다.')) return
+                runAndRefresh(() => setApplicationStatus(app.id, 'cancelled'))
+              }}
+              className="rounded-[8px] border border-[#e2c9c3] bg-white px-3.5 py-2 text-[12.5px] font-[500] text-[#8f3a2a] transition-colors hover:bg-[#fbf3f1] disabled:opacity-40"
+            >
+              거절 (취소)
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 입금 확인요청 대조 */}
       {app.payment_claimed_at && (
