@@ -94,6 +94,7 @@ export interface MyApplicationRow {
   payer_name: string | null // 신청 시 입금자명(payerDiffers) — 입금확인요청 프리필용
   headcount: number
   total_amount: number
+  due_amount: number // 추가결제 부족분(수정 증액). >0 이면 '입금대기(추가)' 표시
   status: 'pending' | 'paid' | 'completed' | 'cancelled' | 'refunded'
   payment_claimed: boolean // 입금 확인 요청(신고) 여부
   created_at: string

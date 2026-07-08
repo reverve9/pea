@@ -11,9 +11,22 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const base = { token: z.string().min(1), applicationId: z.string().uuid() }
+// 수정요청 정형화 — 자유텍스트 대신 변경 항목 배열(current/requested). [[requests-reorg-modification-restructure]]
+const changeSchema = z.object({
+  target: z.enum(['participant', 'application']),
+  participant_id: z.string().uuid().nullable(),
+  participant_name: z.string().max(100),
+  field: z.enum([
+    'name', 'phone', 'birth_front', 'gender', 'lesson_level', 'equipment',
+    'rental_apparel', 'rental_protector', 'rental_goggle', 'rental_glove',
+  ]),
+  label: z.string().max(40),
+  current: z.string().max(200),
+  requested: z.string().max(200),
+})
 const schema = z.discriminatedUnion('type', [
   z.object({ ...base, type: z.literal('refund'), reason: z.string().trim().max(1000), refundAccount: z.string().trim().min(1).max(200) }),
-  z.object({ ...base, type: z.literal('modification'), content: z.string().trim().min(1).max(2000) }),
+  z.object({ ...base, type: z.literal('modification'), changes: z.array(changeSchema).min(1).max(30), userNote: z.string().trim().max(1000).optional() }),
   z.object({ ...base, type: z.literal('payment'), payerName: z.string().trim().min(1).max(100) }),
 ])
 
@@ -51,7 +64,8 @@ export async function POST(req: Request) {
     const { error } = await supabaseAdmin.from('modification_requests').insert({
       application_id: body.applicationId,
       phone: claims.phone,
-      content: body.content.trim(),
+      changes: body.changes,
+      user_note: body.userNote?.trim() || null,
       is_secret: true,
     })
     if (error) {

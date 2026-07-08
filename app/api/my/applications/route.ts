@@ -23,7 +23,7 @@ export async function POST(req: Request) {
 
   const { data, error } = await supabaseAdmin
     .from('applications')
-    .select('id, application_no, applicant_name, payer_name, total_amount, status, payment_claimed_at, created_at, session:sessions(schedule_type, starts_on, ends_on, nights), participants(id)')
+    .select('id, application_no, applicant_name, payer_name, total_amount, due_amount, status, payment_claimed_at, created_at, session:sessions(schedule_type, starts_on, ends_on, nights), participants(id)')
     .eq('phone', claims.phone)
     .eq('applicant_name', claims.name)
     .order('created_at', { ascending: false })
@@ -38,6 +38,7 @@ export async function POST(req: Request) {
     applicant_name: string
     payer_name: string | null
     total_amount: number
+    due_amount: number | null
     status: MyApplicationRow['status']
     payment_claimed_at: string | null
     created_at: string
@@ -58,6 +59,7 @@ export async function POST(req: Request) {
       payer_name: r.payer_name,
       headcount: r.participants?.length ?? 1,
       total_amount: r.total_amount,
+      due_amount: r.due_amount ?? 0,
       status: r.status,
       payment_claimed: r.payment_claimed_at != null,
       created_at: r.created_at.slice(0, 10).replaceAll('-', '/'),

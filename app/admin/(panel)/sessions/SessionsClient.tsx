@@ -9,7 +9,7 @@ import AdminDateField from '@/components/admin/AdminDateField'
 import AdminListHeader, { AdminHeaderButton } from '@/components/admin/AdminListHeader'
 import { SCHEDULE_TYPE, formatPeriod, formatKRW } from '@/lib/display'
 import type { SessionAdmin, CourseOption, ScheduleType, PriceItemAdmin, PriceCategory, SessionPriceOverride } from '@/lib/types'
-import { createSession, updateSession, deleteSession, syncSessionOverrides, savePriceItems, type SessionInput } from './actions'
+import { createSession, updateSession, deleteSession, completeSessionApplications, syncSessionOverrides, savePriceItems, type SessionInput } from './actions'
 import BaseGrid, { initBaseAmounts, basePatches, baseHasInvalid, baseDirtyCount } from './BaseGrid'
 
 const TYPE_ORDER: ScheduleType[] = ['jikmu', 'weekday_2n', 'weekend_2n', 'weekend_1n']
@@ -116,6 +116,7 @@ export default function SessionsClient({
           </Badge>
         </td>
         <td className="px-5 py-3.5 text-right">
+          <CompleteButton session={s} onDone={() => router.refresh()} />
           <button
             type="button"
             onClick={() => setEditing(s)}
@@ -281,6 +282,36 @@ function BaseModal({
         </button>
       </div>
     </AdminModal>
+  )
+}
+
+// 회차 일괄 이수처리 — 항상 노출, 종료일(ends_on) 지난 회차에만 활성화. 그 회차 입금확인(paid) 신청을 일괄 연수완료.
+function CompleteButton({ session, onDone }: { session: SessionAdmin; onDone: () => void }) {
+  const [pending, startTransition] = useTransition()
+  const today = new Date().toISOString().slice(0, 10)
+  const ended = session.ends_on < today
+  return (
+    <>
+      <button
+        type="button"
+        disabled={pending || !ended}
+        title={ended ? undefined : '회차 종료 후 일괄 이수처리할 수 있습니다.'}
+        onClick={() => {
+          if (!confirm(`[${session.label}] 종료된 회차입니다. 입금확인 신청을 일괄 연수완료 처리할까요?\n(입금대기·취소·환불 건은 제외됩니다. 노쇼는 신청관리에서 개별 되돌릴 수 있습니다.)`)) return
+          startTransition(async () => {
+            const res = await completeSessionApplications(session.id)
+            if (res.ok) {
+              alert(`${res.count ?? 0}건을 연수완료 처리했습니다.`)
+              onDone()
+            } else alert(res.error)
+          })
+        }}
+        className="text-[13px] font-[400] text-[#1e6b4f] hover:underline disabled:cursor-not-allowed disabled:text-[#c7ccd2] disabled:no-underline"
+      >
+        일괄완료
+      </button>
+      <span className="px-1.5 text-[#e5e7eb]">|</span>
+    </>
   )
 }
 

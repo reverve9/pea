@@ -19,7 +19,6 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     items: [
       { href: '/admin', label: '대시보드', icon: 'LayoutDashboard' },
       { href: '/admin/applications', label: '신청 관리', icon: 'ClipboardList' },
-      { href: '/admin/requests', label: '요청 관리', icon: 'Inbox' },
       { href: '/admin/inquiries', label: '문의 관리', icon: 'MessageSquare' },
       { href: '/admin/certificates', label: '증명서 발급', icon: 'Award' },
       { href: '/admin/settlements', label: '정산 관리', icon: 'Calculator' },

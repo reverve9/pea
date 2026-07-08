@@ -136,7 +136,8 @@ export interface ApplicationAdmin {
   room_spec: string | null
   pkg_size: number | null
   total_amount: number
-  refunded_amount: number // 환불 확정액(관리자 수기 설정). status=refunded 일 때만 유효
+  refunded_amount: number // 환불 확정액(관리자 수기 설정). status=refunded 또는 부분환불 시 유효
+  due_amount: number // 추가결제 부족분(수정 증액). >0 이면 마이페이지 '입금대기(추가)' 표시
   status: ApplicationStatus
   is_waitlisted: boolean // 소프트 정원 초과 대기분 — 어드민 승인(정원 편입)/거절 대상
   payment_claimed_at: string | null
@@ -188,27 +189,57 @@ export interface InsuranceRosterEntry {
   birth_back: string // 복호된 7자리
 }
 
-// ── 요청 관리(어드민) — 환불/수정 게시판형 ──
+// ── 요청(어드민) — 신청관리 세그먼트로 흡수(요청관리 메뉴 해체) ──
 export type RefundStatus = 'requested' | 'confirmed' | 'completed'
+export type RefundOrigin = 'user' | 'modification' // 고객 환불신청 / 수정 감액 자동생성
 export interface RefundRequestAdmin {
   id: string
+  application_id: string | null
   application_no: string | null // 연결된 신청(삭제 시 SET NULL)
   applicant_name: string | null
   phone: string
   reason: string | null
   refund_account: string | null
+  amount: number | null // 요청/예상 환불액. 수정 감액 자동생성 시 차액
+  origin: RefundOrigin
   status: RefundStatus
   admin_memo: string | null
   created_at: string
 }
 
-export type ModificationStatus = 'pending' | 'confirmed' | 'done' | 'rejected'
+// 수정요청 정형화 — 변경 항목(다중참가자 대응). 자유텍스트 폐기.
+export type ModificationField =
+  | 'name'
+  | 'phone'
+  | 'birth_front'
+  | 'gender'
+  | 'lesson_level'
+  | 'equipment'
+  | 'rental_apparel'
+  | 'rental_protector'
+  | 'rental_goggle'
+  | 'rental_glove'
+
+export interface ModificationChange {
+  target: 'participant' | 'application'
+  participant_id: string | null
+  participant_name: string // 표시용 스냅샷
+  field: ModificationField
+  label: string // 표시 라벨(예: '연락처')
+  current: string // 요청 시점 현재값 스냅샷
+  requested: string // 변경 희망값
+}
+
+export type ModificationStatus = 'pending' | 'completed' | 'rejected'
 export interface ModificationRequestAdmin {
   id: string
+  application_id: string | null
   application_no: string | null
   applicant_name: string | null
   phone: string
-  content: string | null
+  changes: ModificationChange[]
+  user_note: string | null // 고객 특이사항(보조 자유텍스트)
+  internal_note: string | null // 어드민 내부메모(고객 미표시)
   is_secret: boolean
   status: ModificationStatus
   admin_reply: string | null

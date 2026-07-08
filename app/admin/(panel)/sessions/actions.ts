@@ -158,3 +158,26 @@ export async function deleteSession(id: string): Promise<ActionResult> {
     return { ok: false, error: '삭제에 실패했습니다.' }
   }
 }
+
+// 회차 일괄 이수처리 — 종료된 차수의 입금확인(paid) 신청을 한 번에 연수완료로. 개별 완료 반복 부담 해소.
+//  · 대상 = 이 회차 status='paid'만(pending·cancelled·refunded·이미 completed 제외). 노쇼는 신청관리에서 개별 되돌림.
+//  · deposit_confirmed_at 은 건드리지 않는다(정산 기준일 보존, completed 전환 규칙 동일).
+export async function completeSessionApplications(sessionId: string): Promise<ActionResult & { count?: number }> {
+  try {
+    await requireAdmin()
+    const { data, error } = await supabaseAdmin
+      .from('applications')
+      .update({ status: 'completed', updated_at: new Date().toISOString() })
+      .eq('session_id', sessionId)
+      .eq('status', 'paid')
+      .select('id')
+    if (error) throw error
+    revalidatePath('/admin/sessions')
+    revalidatePath('/admin/applications')
+    revalidatePath('/admin/certificates')
+    return { ok: true, count: data?.length ?? 0 }
+  } catch (e) {
+    console.error('[sessions] completeSessionApplications:', e)
+    return { ok: false, error: '일괄 이수처리에 실패했습니다.' }
+  }
+}

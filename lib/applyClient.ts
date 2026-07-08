@@ -1,5 +1,6 @@
 // 폼 → 제출 파이프라인(/api/applications) 호출 헬퍼. 클라 전용(fetch).
 import type { ApplyPayload, ApplyResult, MyParticipantInput, MyRosterParticipant, RosterSummary, RosterResult, RentalAssignmentInput } from './applicationTypes'
+import type { ModificationChange } from './types'
 
 export async function submitApplication(payload: ApplyPayload): Promise<ApplyResult> {
   const res = await fetch('/api/applications', {
@@ -15,7 +16,7 @@ export async function submitApplication(payload: ApplyPayload): Promise<ApplyRes
 // 마이페이지 액션 — 환불신청 / 수정요청. 토큰으로 소유권 검증 후 접수(/api/my/requests).
 export type MyRequestBody =
   | { token: string; applicationId: string; type: 'refund'; reason: string; refundAccount: string }
-  | { token: string; applicationId: string; type: 'modification'; content: string }
+  | { token: string; applicationId: string; type: 'modification'; changes: ModificationChange[]; userNote?: string }
   | { token: string; applicationId: string; type: 'payment'; payerName: string }
 
 export async function submitMyRequest(body: MyRequestBody): Promise<void> {

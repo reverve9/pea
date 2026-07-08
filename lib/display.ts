@@ -43,12 +43,25 @@ export const REFUND_STATUS: Record<RefundStatus, { label: string; color: BadgeCo
   completed: { label: '환불완료', color: 'emerald' },
 }
 
-// 수정 요청 status → 라벨 + 배지색 (계획안 ⑤: 신청대기/수정확인/수정완료/수정반려).
+// 수정 요청 status → 라벨 + 배지색 (3단 단순화: 대기/완료/반려).
 export const MODIFICATION_STATUS: Record<ModificationStatus, { label: string; color: BadgeColor }> = {
-  pending: { label: '신청대기', color: 'amber' },
-  confirmed: { label: '수정확인', color: 'navy' },
-  done: { label: '수정완료', color: 'emerald' },
-  rejected: { label: '수정반려', color: 'slate' },
+  pending: { label: '처리대기', color: 'amber' },
+  completed: { label: '처리완료', color: 'emerald' },
+  rejected: { label: '반려', color: 'slate' },
+}
+
+// 수정요청 정형 필드 라벨 — changes 원소 label 생성/표시 공용.
+export const MODIFICATION_FIELD_LABEL: Record<string, string> = {
+  name: '성함',
+  phone: '연락처',
+  birth_front: '생년월일',
+  gender: '성별',
+  lesson_level: '기초강습',
+  equipment: '용품세트',
+  rental_apparel: '렌탈·의류',
+  rental_protector: '렌탈·보호대',
+  rental_goggle: '렌탈·고글',
+  rental_glove: '렌탈·장갑',
 }
 
 // 원화 포맷: 303000 → "303,000원"

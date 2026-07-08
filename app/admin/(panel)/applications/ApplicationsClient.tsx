@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, ChevronRight, Download, Link2, Search } from 'lucide-react'
+import { AlertTriangle, ChevronRight, Download, Link2, Search, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/common/Badge'
 import AdminModal from '@/components/admin/AdminModal'
 import AdminList, { type AdminListColumn } from '@/components/admin/AdminList'
@@ -14,7 +14,14 @@ import { lessonLevelLabel, equipmentLabel, JAYUL_LESSONS, EQUIPMENT_TYPES } from
 import { APPAREL_SIZES, GEAR_SIZES } from '@/lib/rentalOptions'
 import { PROGRAMS, OPEN_PROGRAMS } from '@/lib/programs'
 import type { ParticipantDetailInput } from '@/lib/participantDetail'
-import type { ApplicationAdmin, ApplicationStatus, InsuranceRosterEntry, ParticipantAdmin } from '@/lib/types'
+import type {
+  ApplicationAdmin,
+  ApplicationStatus,
+  InsuranceRosterEntry,
+  ParticipantAdmin,
+  RefundRequestAdmin,
+  ModificationRequestAdmin,
+} from '@/lib/types'
 import {
   setApplicationStatus,
   setApplicationRefund,
@@ -24,6 +31,11 @@ import {
   revealInsuranceRoster,
   updateParticipantDetail,
   issueFillLink,
+  deleteApplication,
+  applyModification,
+  setModificationStatus,
+  confirmRefundFromRequest,
+  confirmDuePayment,
 } from './actions'
 
 // 정상 생애주기(순방향 진행) vs 예외/종료(오프램프) — 같은 층위 아님.
@@ -63,26 +75,82 @@ function WaitlistBadge() {
   )
 }
 
-export default function ApplicationsClient({ applications }: { applications: ApplicationAdmin[] }) {
+// 신청관리 = 단일 목록. 환불·수정요청은 별도 세그먼트 없이 목록 배지·필터 + 상세에서 확인·처리.
+export default function ApplicationsClient({
+  applications,
+  refunds,
+  modifications,
+}: {
+  applications: ApplicationAdmin[]
+  refunds: RefundRequestAdmin[]
+  modifications: ModificationRequestAdmin[]
+}) {
+  return <ApplicationsPanel applications={applications} refunds={refunds} modifications={modifications} />
+}
+
+// 신청 목록에 걸린 대기 요청 표시용 — 앱별 pending 환불/수정 플래그. 환불은 origin으로 부분/전액 구분.
+type ReqFlag = { refundOrigin: 'user' | 'modification' | null; mod: boolean }
+type ReqFilter = 'all' | 'mod' | 'refund'
+const REQ_OPTIONS: { key: ReqFilter; label: string }[] = [
+  { key: 'all', label: '요청 전체' },
+  { key: 'mod', label: '수정요청' },
+  { key: 'refund', label: '환불요청' },
+]
+
+function ApplicationsPanel({
+  applications,
+  refunds,
+  modifications,
+}: {
+  applications: ApplicationAdmin[]
+  refunds: RefundRequestAdmin[]
+  modifications: ModificationRequestAdmin[]
+}) {
   const router = useRouter()
   const [detail, setDetail] = useState<ApplicationAdmin | null>(null)
+
+  // 앱별 대기 요청(환불 requested / 수정 pending) 플래그. 이미 fetch한 배열에서 파생(추가 쿼리 없음).
+  const reqFlags = new Map<string, ReqFlag>()
+  for (const r of refunds) {
+    if (r.status === 'requested' && r.application_id) {
+      const f = reqFlags.get(r.application_id) ?? { refundOrigin: null, mod: false }
+      f.refundOrigin = r.origin
+      reqFlags.set(r.application_id, f)
+    }
+  }
+  for (const m of modifications) {
+    if (m.status === 'pending' && m.application_id) {
+      const f = reqFlags.get(m.application_id) ?? { refundOrigin: null, mod: false }
+      f.mod = true
+      reqFlags.set(m.application_id, f)
+    }
+  }
+  const flagOf = (id: string): ReqFlag => reqFlags.get(id) ?? { refundOrigin: null, mod: false }
 
   // 필터 상태 — 프로그램(종목)·유형·상태·검색(이름/연락처, 실시간)
   const [program, setProgram] = useState('all')
   const [kind, setKind] = useState<'all' | 'jikmu' | 'jayul'>('all')
   const [status, setStatus] = useState<'all' | ApplicationStatus>('all')
   const [assign, setAssign] = useState<AssignFilter>('all')
+  const [req, setReq] = useState<ReqFilter>('all')
   const [query, setQuery] = useState('')
 
   const activeProgram = PROGRAMS.find((p) => p.key === program)
   const q = query.trim().replace(/\s/g, '')
-  const filterActive = program !== 'all' || kind !== 'all' || status !== 'all' || assign !== 'all' || q !== ''
+  const filterActive = program !== 'all' || kind !== 'all' || status !== 'all' || assign !== 'all' || req !== 'all' || q !== ''
   const filtered = applications.filter((a) => {
     if (activeProgram && a.program_sport !== activeProgram.sport) return false
     if (kind !== 'all' && a.kind !== kind) return false
-    if (status !== 'all' && a.status !== status) return false
+    // 입금대기 = 미입금(pending) + 추가입금 대기(paid/completed + due>0) 모두. 다른 상태 필터는 due>0 제외(추가입금대기로 분류).
+    if (status === 'pending') {
+      if (!(a.status === 'pending' || a.due_amount > 0)) return false
+    } else if (status !== 'all') {
+      if (a.status !== status || a.due_amount > 0) return false
+    }
     if (assign === 'wait' && !a.is_waitlisted) return false
     if (assign === 'in' && a.is_waitlisted) return false
+    if (req === 'mod' && !flagOf(a.id).mod) return false
+    if (req === 'refund' && !flagOf(a.id).refundOrigin) return false
     if (q) {
       const hay = `${a.applicant_name}${a.phone}`.replace(/\s/g, '')
       if (!hay.includes(q)) return false
@@ -146,11 +214,15 @@ export default function ApplicationsClient({ applications }: { applications: App
     {
       key: 'status',
       header: '상태',
-      cell: (a) => (
-        <Badge color={APPLICATION_STATUS[a.status].color} size="sm">
-          {APPLICATION_STATUS[a.status].label}
-        </Badge>
-      ),
+      // 추가입금 부족분(due>0)은 입금확인(paid)에서만 발생 → 단일 '추가입금 대기'로 표시(입금확인+추가입금 병기 아님).
+      cell: (a) =>
+        a.due_amount > 0 ? (
+          <Badge color="orange" size="sm">추가입금 대기</Badge>
+        ) : (
+          <Badge color={APPLICATION_STATUS[a.status].color} size="sm">
+            {APPLICATION_STATUS[a.status].label}
+          </Badge>
+        ),
     },
     {
       key: 'assign',
@@ -178,6 +250,21 @@ export default function ApplicationsClient({ applications }: { applications: App
         ) : (
           <span className="text-[12px] text-[#d1d5db]">—</span>
         ),
+    },
+    {
+      key: 'req',
+      header: '요청',
+      cell: (a) => {
+        const f = flagOf(a.id)
+        if (!f.mod && !f.refundOrigin) return <span className="text-[12px] text-[#d1d5db]">—</span>
+        return (
+          <span className="inline-flex items-center gap-1">
+            {f.mod && <Badge color="navy" size="sm">수정</Badge>}
+            {f.refundOrigin === 'modification' && <Badge color="amber" size="sm">부분환불</Badge>}
+            {f.refundOrigin === 'user' && <Badge color="amber" size="sm">환불</Badge>}
+          </span>
+        )
+      },
     },
     {
       key: 'manage',
@@ -226,6 +313,13 @@ export default function ApplicationsClient({ applications }: { applications: App
         </select>
         <select className={selectClass} value={assign} onChange={(e) => setAssign(e.target.value as AssignFilter)}>
           {ASSIGN_OPTIONS.map((o) => (
+            <option key={o.key} value={o.key}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <select className={selectClass} value={req} onChange={(e) => setReq(e.target.value as ReqFilter)}>
+          {REQ_OPTIONS.map((o) => (
             <option key={o.key} value={o.key}>
               {o.label}
             </option>
@@ -318,7 +412,7 @@ export default function ApplicationsClient({ applications }: { applications: App
         exportButton={exportButton}
         emptyLabel={emptyLabel}
         rowClassName={(a) => (a.needs_review ? 'bg-[#fffaf0]' : '')}
-        resetKey={`${program}|${kind}|${status}|${assign}|${q}`}
+        resetKey={`${program}|${kind}|${status}|${assign}|${req}|${q}`}
         total={applications.length}
         filterActive={filterActive}
       />
@@ -326,6 +420,8 @@ export default function ApplicationsClient({ applications }: { applications: App
       {detail && (
         <DetailModal
           app={detail}
+          pendingMods={modifications.filter((m) => m.status === 'pending' && m.application_id === detail.id)}
+          pendingRefunds={refunds.filter((r) => r.status !== 'completed' && r.application_id === detail.id)}
           onClose={() => setDetail(null)}
           onChanged={() => router.refresh()}
         />
@@ -334,13 +430,74 @@ export default function ApplicationsClient({ applications }: { applications: App
   )
 }
 
+// 상세 모달 내 환불요청 인라인 처리 — 금액 입력 → refunded_amount 반영 + 요청 완료.
+function RefundInline({
+  r,
+  appId,
+  pending,
+  runAndRefresh,
+}: {
+  r: RefundRequestAdmin
+  appId: string
+  pending: boolean
+  runAndRefresh: (fn: () => Promise<{ ok: boolean; error?: string }>) => void
+}) {
+  const [amount, setAmount] = useState(String(r.amount ?? ''))
+  const [markRefunded, setMarkRefunded] = useState(r.origin !== 'modification')
+  const confirmRefund = () => {
+    const amt = parseInt(amount, 10)
+    if (!Number.isInteger(amt) || amt < 0) return alert('환불 금액을 확인해 주세요.')
+    runAndRefresh(() => confirmRefundFromRequest(r.id, appId, amt, markRefunded))
+  }
+  return (
+    <div className="mb-2 rounded-[10px] bg-[#fdf4e3] p-3">
+      <div className="flex items-center gap-1.5">
+        <Badge color="amber" size="sm">{r.origin === 'modification' ? '부분환불요청' : '환불요청'}</Badge>
+        {r.origin === 'modification' && (
+          <span className="rounded-[4px] bg-[#eef2f7] px-1.5 py-0.5 text-[11px] font-[500] text-[#3f6a99]">수정연동</span>
+        )}
+        <span className="text-[11.5px] font-[300] text-[#8a6d3b]">{formatDate(r.created_at.slice(0, 10))}</span>
+      </div>
+      <div className="mt-1.5 space-y-0.5 text-[12.5px] font-[300] text-[#6b5836]">
+        {r.reason && <p>사유: {r.reason}</p>}
+        <p>환불계좌: {r.refund_account || '(미입력 — 고객 확인 필요)'}</p>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <input
+          value={amount}
+          onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))}
+          inputMode="numeric"
+          placeholder="환불 금액"
+          className="admin-field w-32 rounded-[8px] bg-white px-2.5 py-1.5 text-[12.5px] tabular-nums text-[#1f2937] outline-none focus:bg-[#f3f5f8]"
+        />
+        <label className="flex cursor-pointer items-center gap-1.5 text-[11.5px] font-[400] text-[#6b5836]">
+          <input type="checkbox" checked={markRefunded} onChange={(e) => setMarkRefunded(e.target.checked)} className="h-3.5 w-3.5 accent-[#1e3a5f]" />
+          전액(환불완료 전환)
+        </label>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={confirmRefund}
+          className="ml-auto rounded-[8px] bg-[#1e3a5f] px-3.5 py-2 text-[12.5px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+        >
+          환불 확정
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── 상세 모달 ──
 function DetailModal({
   app,
+  pendingMods,
+  pendingRefunds,
   onClose,
   onChanged,
 }: {
   app: ApplicationAdmin
+  pendingMods: ModificationRequestAdmin[]
+  pendingRefunds: RefundRequestAdmin[]
   onClose: () => void
   onChanged: () => void
 }) {
@@ -426,22 +583,22 @@ function DetailModal({
 
       {/* 소프트 정원 예비 — 정원 초과 접수분. 승인=정원 편입 / 거절=취소 */}
       {app.is_waitlisted && (
-        <div className="mt-3 rounded-[10px] bg-[#fdf4e3] p-4">
-          <p className="text-[12px] font-[500] text-[#8a4b00]">정원 초과 · 예비</p>
+        <div className="mt-3 rounded-[10px] bg-[#fdeadb] p-4">
+          <p className="text-[12px] font-[500] text-[#b4551a]">정원 초과 · 예비</p>
           <p className="mt-1.5 text-[13px] font-[300] text-[#374151]">
-            회차 정원을 초과해 예비로 접수된 신청입니다. 승인 시 정원에 편입되고, 거절 시 취소 처리됩니다.
+            회차 정원을 초과해 예비로 접수된 신청입니다. 승인 시 정식 접수되고, 거절 시 취소 처리됩니다.
           </p>
           <div className="mt-3 flex gap-2">
             <button
               type="button"
               disabled={pending}
               onClick={() => {
-                if (!confirm('이 대기 건을 승인해 정원에 편입할까요?')) return
+                if (!confirm('이 예비 건을 승인해 신청 접수할까요?')) return
                 runAndRefresh(() => setApplicationWaitlist(app.id, false))
               }}
               className="rounded-[8px] bg-[#1e3a5f] px-3.5 py-2 text-[12.5px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
             >
-              승인 → 정원 편입
+              승인 → 신청 접수
             </button>
             <button
               type="button"
@@ -458,50 +615,53 @@ function DetailModal({
         </div>
       )}
 
-      {/* 입금 확인요청 대조 */}
+      {/* 입금 확인요청 — 컴팩트 한 줄(대조용 입금자명+불일치). 상태변경은 아래 스테퍼 '입금확인'으로 → 배지 자동 소거. */}
       {app.payment_claimed_at && (
-        <div className="mt-3 rounded-[10px] bg-[#fdf4e3] p-4">
-          <p className="text-[12px] font-[500] text-[#8a4b00]">입금 확인요청</p>
-          <p className="mt-1.5 text-[13px] font-[300] text-[#374151]">
-            요청시각 {formatDate(app.payment_claimed_at.slice(0, 10))}
-          </p>
-          <p className="mt-1 text-[13px] font-[300] text-[#374151]">
+        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[8px] bg-[#fdf4e3] px-3 py-2 text-[12.5px]">
+          <Badge color="amber" size="sm">입금확인요청</Badge>
+          <span className="font-[300] text-[#6b5836]">
             입금자명{' '}
             <span className={`font-[500] ${app.payer_mismatch ? 'text-[#c0392b]' : 'text-[#1f2937]'}`}>
               {app.payment_claim_name ?? '(미입력)'}
             </span>
-            {app.payer_mismatch && (
-              <span className="ml-1.5 inline-flex items-center gap-1 text-[11.5px] font-[400] text-[#c0392b]">
-                <AlertTriangle size={12} /> 신청자명({app.applicant_name})과 다름 — 통장 대조 확인
-              </span>
-            )}
-          </p>
-          <div className="mt-3 flex gap-2">
-            {app.status === 'pending' && (
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => {
-                  if (!confirm('통장에서 입금을 확인했습니까? 상태를 "입금확인"으로 바꿉니다.')) return
-                  runAndRefresh(() => setApplicationStatus(app.id, 'paid'))
-                }}
-                className="rounded-[8px] bg-[#1e3a5f] px-3.5 py-2 text-[12.5px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-              >
-                입금 확인 → 입금확인 처리
-              </button>
-            )}
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => {
-                if (!confirm('입금 확인요청을 해제할까요? 신청자가 다시 요청할 수 있게 됩니다.')) return
-                runAndRefresh(() => releasePaymentClaim(app.id))
-              }}
-              className="rounded-[8px] bg-[#f6e9e5] px-3.5 py-2 text-[12.5px] font-[500] text-[#8f3a2a] transition-colors hover:bg-[#efddd7] disabled:opacity-40"
-            >
-              확인요청 해제
-            </button>
-          </div>
+          </span>
+          {app.payer_mismatch && (
+            <span className="inline-flex items-center gap-1 text-[11.5px] font-[400] text-[#c0392b]">
+              <AlertTriangle size={12} /> 신청자명 불일치
+            </span>
+          )}
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => {
+              if (!confirm('입금 확인요청을 해제할까요? 신청자가 다시 요청할 수 있게 됩니다.')) return
+              runAndRefresh(() => releasePaymentClaim(app.id))
+            }}
+            className="ml-auto text-[11.5px] font-[400] text-[#a86a5c] underline-offset-2 hover:underline disabled:opacity-40"
+          >
+            해제
+          </button>
+        </div>
+      )}
+
+      {/* 추가입금 대기 — 수정 증액으로 생긴 부족분. 단순 입금대기와 구분(이미 base 입금확인된 건). */}
+      {app.due_amount > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-[8px] bg-[#f4ebe4] px-3 py-2 text-[12.5px]">
+          <Badge color="orange" size="sm">추가입금 대기</Badge>
+          <span className="font-[300] text-[#6b5340]">
+            부족분 <span className="font-[600] tabular-nums text-[#b0561f]">{formatKRW(app.due_amount)}</span> — 수정 반영으로 발생
+          </span>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => {
+              if (!confirm(`추가입금 ${formatKRW(app.due_amount)}을 확인했습니까? 확인 시 추가입금 대기가 해제됩니다.`)) return
+              runAndRefresh(() => confirmDuePayment(app.id))
+            }}
+            className="ml-auto rounded-[7px] bg-[#1e3a5f] px-3 py-1.5 text-[12px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+          >
+            추가입금 확인
+          </button>
         </div>
       )}
 
@@ -663,6 +823,62 @@ function DetailModal({
         </div>
       )}
 
+      {/* 들어온 요청 — 이 신청에 걸린 대기 수정/환불요청을 상세에서 바로 확인·처리 */}
+      {(pendingMods.length > 0 || pendingRefunds.length > 0) && (
+        <div className="mt-5">
+          <p className="mb-2 text-[12.5px] font-[500] text-[#4b5563]">들어온 요청</p>
+
+          {pendingMods.map((m) => (
+            <div key={m.id} className="mb-2 rounded-[10px] bg-[#eef2f7] p-3">
+              <div className="flex items-center gap-1.5">
+                <Badge color="navy" size="sm">수정요청</Badge>
+                <span className="text-[11.5px] font-[300] text-[#6b7280]">{formatDate(m.created_at.slice(0, 10))}</span>
+              </div>
+              <div className="mt-2 space-y-1">
+                {m.changes.length === 0 ? (
+                  <p className="text-[12px] font-[300] text-[#9ca3af]">구조화된 변경 항목이 없습니다.</p>
+                ) : (
+                  m.changes.map((c, i) => (
+                    <div key={i} className="text-[12.5px]">
+                      <span className="text-[11.5px] font-[500] text-[#6b7280]">{c.participant_name} · {c.label}</span>{' '}
+                      <span className="tabular-nums text-[#9ca3af] line-through">{c.current || '(없음)'}</span>
+                      <span className="text-[#9ca3af]"> → </span>
+                      <span className="font-[500] tabular-nums text-[#1e3a5f]">{c.requested || '(없음)'}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+              {m.user_note && <p className="mt-1.5 text-[12px] font-[300] text-[#8a4b00]">특이사항: {m.user_note}</p>}
+              <div className="mt-2.5 flex gap-2">
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => {
+                    if (!confirm('요청 내용을 신청에 반영하고 처리완료로 전환할까요? 요금이 바뀌면 환불요청/추가입금이 자동 처리됩니다.')) return
+                    runAndRefresh(() => applyModification(m.id, ''))
+                  }}
+                  className="rounded-[8px] bg-[#1e3a5f] px-3.5 py-2 text-[12.5px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+                >
+                  반영 · 처리완료
+                </button>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => runAndRefresh(() => setModificationStatus(m.id, 'rejected'))}
+                  className="rounded-[8px] bg-[#f6e9e5] px-3.5 py-2 text-[12.5px] font-[500] text-[#8f3a2a] transition-colors hover:bg-[#efddd7] disabled:opacity-40"
+                >
+                  반려
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {pendingRefunds.map((r) => (
+            <RefundInline key={r.id} r={r} appId={app.id} pending={pending} runAndRefresh={runAndRefresh} />
+          ))}
+        </div>
+      )}
+
       {/* 관리자 메모 */}
       <label className="mt-4 block">
         <span className="mb-1.5 block text-[12.5px] font-[500] text-[#4b5563]">
@@ -692,6 +908,28 @@ function DetailModal({
           className="rounded-[9px] bg-[#1e3a5f] px-5 py-2.5 text-[13px] font-[500] text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {pending ? '저장 중…' : '메모 저장'}
+        </button>
+      </div>
+
+      {/* 위험구역 — 물리 삭제(되돌릴 수 없음). 취소(cancelled)와 다름: 통계·정산에서도 완전 제거. */}
+      <div className="mt-6 flex items-center justify-between gap-3 rounded-[10px] bg-[#faf0ee] px-4 py-3">
+        <div>
+          <p className="text-[12.5px] font-[500] text-[#8f3a2a]">신청 삭제</p>
+          <p className="mt-0.5 text-[11.5px] font-[300] leading-[1.5] text-[#a86a5c]">
+            되돌릴 수 없습니다. 참가자·연동 요청 기록이 함께 삭제되고 통계·정산에서 제외됩니다. (단순 취소는 위 ‘취소’를 사용)
+          </p>
+        </div>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => {
+            if (!confirm(`[${app.application_no}] ${app.applicant_name} 신청을 완전히 삭제할까요?\n\n되돌릴 수 없습니다. 참가자 정보와 연동 요청 기록까지 사라집니다.`)) return
+            if (!confirm('정말 삭제합니다. 이 작업은 취소할 수 없습니다. 계속할까요?')) return
+            runAndRefresh(() => deleteApplication(app.id))
+          }}
+          className="flex shrink-0 items-center gap-1.5 rounded-[8px] bg-[#8f3a2a] px-3.5 py-2 text-[12.5px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+        >
+          <Trash2 size={13} /> 삭제
         </button>
       </div>
     </AdminModal>

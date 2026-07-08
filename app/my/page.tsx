@@ -16,7 +16,8 @@ import { getSiteContent } from '@/lib/queries'
 import { submitMyRequest, fetchMyRoster, submitMyParticipant, requestMyFillLink, assignParticipantOptions } from '@/lib/applyClient'
 import ParticipantFillSlot from '@/components/features/ParticipantFillSlot'
 import { RENTAL_OPTIONS, type RentalOptionKey } from '@/lib/rentalOptions'
-import type { SiteContent } from '@/lib/types'
+import { JAYUL_LESSONS, EQUIPMENT_TYPES, lessonLevelLabel, equipmentLabel } from '@/lib/lessonOptions'
+import type { SiteContent, ModificationField, ModificationChange } from '@/lib/types'
 import type { MyApplicationRow, MyRosterParticipant, RentalQty, RentalAssignmentInput } from '@/lib/applicationTypes'
 
 // §3-4 마이페이지 — 전화 조회 게이트 → 신청목록 마스터-디테일(셸 패턴2). [[jayul-apply-form-spec]]
@@ -30,6 +31,14 @@ const STATUS: Record<ApplicationStatus, { label: string; color: BadgeColor }> = 
   completed: { label: '연수 완료', color: 'emerald' },
   cancelled: { label: '취소', color: 'slate' },
   refunded: { label: '환불 완료', color: 'slate' },
+}
+
+// 표시 상태 — 추가입금 부족분(due)이 있으면 base 입금확인이어도 '입금대기(추가)'로 구분.
+function statusView(app: MyApplicationRow): { label: string; color: BadgeColor } {
+  if (app.due_amount > 0 && (app.status === 'paid' || app.status === 'completed')) {
+    return { label: '입금대기(추가)', color: 'orange' }
+  }
+  return STATUS[app.status]
 }
 
 const won = (n: number) => n.toLocaleString('ko-KR') + '원'
@@ -106,7 +115,7 @@ function AuthGate({ onVerified, error, loading }: { onVerified: (v: Auth) => voi
 
 // 신청 카드(마스터) — 버튼 래핑은 MasterDetailList 가 처리, 여기선 시각만.
 function ApplicationCard(app: MyApplicationRow, selected: boolean) {
-  const st = STATUS[app.status]
+  const st = statusView(app)
   return (
     <WhiteBox className={`p-4 transition-shadow ${selected ? 'ring-2 ring-[#1e3a5f]/30' : ''}`}>
       <div className="flex items-center justify-between gap-2">
@@ -351,14 +360,191 @@ function CompanionFill({ applicationId, token }: { applicationId: string; token:
   )
 }
 
+// 수정요청 정형 폼 — 참가자별 항목 현재값→변경값(자유텍스트 폐기). 렌탈=직무만(자율 렌탈은 배정 매트릭스).
+// 요금 영향(직무 렌탈)은 어드민 반영 시 부분환불/추가결제로 자동 라우팅. 회차 변경은 대상 아님(취소 후 재신청).
+type ModFieldDef = { field: ModificationField; label: string; input: 'text' | 'gender' | 'lesson' | 'equipment' | 'rental'; only?: 'jikmu' | 'jayul' }
+const MOD_FIELDS: ModFieldDef[] = [
+  { field: 'name', label: '성함', input: 'text' },
+  { field: 'phone', label: '연락처', input: 'text' },
+  { field: 'birth_front', label: '생년월일(6자리)', input: 'text' },
+  { field: 'gender', label: '성별', input: 'gender' },
+  { field: 'lesson_level', label: '기초강습', input: 'lesson', only: 'jayul' },
+  { field: 'equipment', label: '용품세트', input: 'equipment', only: 'jayul' },
+  { field: 'rental_apparel', label: '렌탈·의류', input: 'rental', only: 'jikmu' },
+  { field: 'rental_protector', label: '렌탈·보호대', input: 'rental', only: 'jikmu' },
+  { field: 'rental_goggle', label: '렌탈·고글', input: 'rental', only: 'jikmu' },
+  { field: 'rental_glove', label: '렌탈·장갑', input: 'rental', only: 'jikmu' },
+]
+
+function rawCurrent(p: MyRosterParticipant, f: ModificationField): string {
+  switch (f) {
+    case 'name': return p.name ?? ''
+    case 'phone': return p.phone ?? ''
+    case 'birth_front': return p.birth_front ?? ''
+    case 'gender': return p.gender ?? ''
+    case 'lesson_level': return p.lesson_level ?? ''
+    case 'equipment': return p.equipment ?? ''
+    case 'rental_apparel': return p.apparel ? 'true' : 'false'
+    case 'rental_protector': return p.protector ? 'true' : 'false'
+    case 'rental_goggle': return p.goggle ? 'true' : 'false'
+    case 'rental_glove': return p.glove ? 'true' : 'false'
+    default: return ''
+  }
+}
+function readableValue(f: ModificationField, v: string): string {
+  if (f === 'gender') return v === 'male' ? '남' : v === 'female' ? '여' : '(미지정)'
+  if (f === 'lesson_level') return v ? lessonLevelLabel(v) : '(미지정)'
+  if (f === 'equipment') return v ? equipmentLabel(v) : '(미지정)'
+  if (f.startsWith('rental_')) return v === 'true' ? '신청' : '미신청'
+  return v || '(미입력)'
+}
+
+function ModificationForm({ app, token, onDone }: { app: MyApplicationRow; token: string; onDone: () => void }) {
+  const [roster, setRoster] = useState<MyRosterParticipant[] | null>(null)
+  const [loadErr, setLoadErr] = useState<string | null>(null)
+  const [pid, setPid] = useState('')
+  const [edits, setEdits] = useState<Record<string, string>>({}) // `${pid}::${field}` = requested
+  const [note, setNote] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    fetchMyRoster(token, app.id)
+      .then((r) => { if (!alive) return; setRoster(r.roster); setPid(r.roster[0]?.id ?? '') })
+      .catch((e) => alive && setLoadErr(e instanceof Error ? e.message : '참가자 정보를 불러오지 못했습니다.'))
+    return () => { alive = false }
+  }, [app.id, token])
+
+  const fields = MOD_FIELDS.filter((f) => !f.only || f.only === app.kind)
+  const part = roster?.find((p) => p.id === pid) ?? null
+  const keyOf = (f: ModificationField) => `${pid}::${f}`
+  const toggle = (f: ModificationField) =>
+    setEdits((e) => {
+      const k = keyOf(f)
+      const next = { ...e }
+      if (k in next) delete next[k]
+      else next[k] = part ? rawCurrent(part, f) : ''
+      return next
+    })
+  const setVal = (f: ModificationField, v: string) => setEdits((e) => ({ ...e, [keyOf(f)]: v }))
+
+  const submit = async () => {
+    setError(null)
+    if (!roster) return
+    const changes: ModificationChange[] = []
+    for (const [k, requested] of Object.entries(edits)) {
+      const [ppid, field] = k.split('::') as [string, ModificationField]
+      const p = roster.find((x) => x.id === ppid)
+      if (!p) continue
+      const current = rawCurrent(p, field)
+      if (requested === current) continue
+      const def = MOD_FIELDS.find((d) => d.field === field)
+      changes.push({ target: 'participant', participant_id: ppid, participant_name: p.name, field, label: def?.label ?? field, current, requested })
+    }
+    if (!changes.length) { setError('변경할 항목을 선택하고 값을 바꿔 주세요.'); return }
+    setSubmitting(true)
+    try {
+      await submitMyRequest({ token, applicationId: app.id, type: 'modification', changes, userNote: note.trim() || undefined })
+      onDone()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '요청 처리 중 오류가 발생했습니다.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="mt-3 rounded-[10px] border border-[#e5eaef] bg-white p-4">
+      <Text variant="label" className="text-[#374151]">정보 수정 요청</Text>
+      <Text variant="caption" as="p" className="mt-1 text-[#9ca3af]">변경할 항목만 체크해 새 값을 입력하세요. 담당자 확인 후 반영됩니다. (회차 변경은 취소 후 재신청)</Text>
+
+      {loadErr && <p className="mt-2 rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{loadErr}</p>}
+      {!roster && !loadErr && <p className="mt-3 font-score text-[13px] text-[#9ca3af]">참가자 정보를 불러오는 중…</p>}
+
+      {roster && part && (
+        <>
+          {roster.length > 1 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {roster.map((p, i) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setPid(p.id)}
+                  className={`rounded-[8px] px-3 py-1.5 font-score text-[13px] transition-colors ${pid === p.id ? 'bg-[#1e3a5f] text-white' : 'bg-[#eef1f4] text-[#4b5563]'}`}
+                >
+                  {p.is_leader ? '대표' : `참가자 ${i}`} · {p.name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-3 space-y-2">
+            {fields.map((def) => {
+              const on = keyOf(def.field) in edits
+              const requested = edits[keyOf(def.field)] ?? ''
+              return (
+                <div key={def.field} className="rounded-[9px] bg-[#f7f9fb] px-3 py-2.5">
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input type="checkbox" checked={on} onChange={() => toggle(def.field)} className="h-4 w-4 accent-[#1e3a5f]" />
+                    <span className="font-score text-[13.5px] font-[500] text-[#374151]">{def.label}</span>
+                    <span className="ml-auto font-score text-[12px] text-[#9ca3af]">현재: {readableValue(def.field, rawCurrent(part, def.field))}</span>
+                  </label>
+                  {on && (
+                    <div className="mt-2">
+                      {def.input === 'text' && (
+                        <input value={requested} onChange={(e) => setVal(def.field, e.target.value)} className={fieldCls} placeholder="변경할 값" />
+                      )}
+                      {def.input === 'gender' && (
+                        <select value={requested} onChange={(e) => setVal(def.field, e.target.value)} className={fieldCls}>
+                          <option value="">선택</option>
+                          <option value="male">남</option>
+                          <option value="female">여</option>
+                        </select>
+                      )}
+                      {def.input === 'lesson' && (
+                        <select value={requested} onChange={(e) => setVal(def.field, e.target.value)} className={fieldCls}>
+                          <option value="">선택 안 함</option>
+                          {JAYUL_LESSONS.map((l) => <option key={l.key} value={l.key}>{l.label}</option>)}
+                        </select>
+                      )}
+                      {def.input === 'equipment' && (
+                        <select value={requested} onChange={(e) => setVal(def.field, e.target.value)} className={fieldCls}>
+                          <option value="">선택 안 함</option>
+                          {EQUIPMENT_TYPES.map((eo) => <option key={eo.key} value={eo.key}>{eo.label}</option>)}
+                        </select>
+                      )}
+                      {def.input === 'rental' && (
+                        <select value={requested} onChange={(e) => setVal(def.field, e.target.value)} className={fieldCls}>
+                          <option value="false">미신청</option>
+                          <option value="true">신청</option>
+                        </select>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="추가 요청·특이사항 (선택)" className={`${fieldCls} mt-3 resize-y`} />
+          {error && <p className="mt-2 rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{error}</p>}
+          <Button variant="primary" size="md" onClick={submit} disabled={submitting} className="mt-2 w-full">
+            {submitting ? '접수 중…' : '수정 요청 접수'}
+          </Button>
+        </>
+      )}
+    </div>
+  )
+}
+
 // 신청 상세(디테일) — 데스크탑 우측 페인 / 모바일 모달 공용. refundBody = site_contents refund_policy(어드민 편집).
 // 수정요청·환불신청 = 토큰으로 소유권 검증 후 접수(/api/my/requests). 증명서는 준비 중.
 function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; refundBody: string | null; token: string }) {
-  const st = STATUS[app.status]
+  const st = statusView(app)
   const [open, setOpen] = useState<null | 'modification' | 'refund' | 'payment'>(null)
   const [refundAccount, setRefundAccount] = useState('')
   const [reason, setReason] = useState('')
-  const [content, setContent] = useState('')
   const [paymentName, setPaymentName] = useState(app.payer_name ?? app.applicant_name)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -376,14 +562,11 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
     setOpen((o) => (o === k ? null : k))
   }
 
-  const submit = async (type: 'modification' | 'refund' | 'payment') => {
+  // 환불·입금확인만 여기서 처리. 수정요청은 정형 폼(ModificationForm)이 자체 제출.
+  const submit = async (type: 'refund' | 'payment') => {
     setError(null)
     if (type === 'refund' && !refundAccount.trim()) {
       setError('환불 받으실 계좌를 입력해 주세요.')
-      return
-    }
-    if (type === 'modification' && !content.trim()) {
-      setError('수정할 내용을 입력해 주세요.')
       return
     }
     if (type === 'payment' && !paymentName.trim()) {
@@ -395,15 +578,12 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
       const body =
         type === 'refund'
           ? ({ token, applicationId: app.id, type, reason, refundAccount } as const)
-          : type === 'modification'
-            ? ({ token, applicationId: app.id, type, content } as const)
-            : ({ token, applicationId: app.id, type, payerName: paymentName } as const)
+          : ({ token, applicationId: app.id, type, payerName: paymentName } as const)
       await submitMyRequest(body)
       setDone((d) => ({ ...d, [type]: true }))
       setOpen(null)
       setRefundAccount('')
       setReason('')
-      setContent('')
     } catch (e) {
       setError(e instanceof Error ? e.message : '요청 처리 중 오류가 발생했습니다.')
     } finally {
@@ -432,11 +612,20 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
         </div>
       </dl>
 
-      {/* 입금 확인 완료 — paid 건. 배지만으론 약해 명시적 확인 노트로 안심시킴. */}
-      {app.status === 'paid' && (
+      {/* 입금 확인 완료 — paid 건(추가입금 없을 때만). 배지만으론 약해 명시적 확인 노트로 안심시킴. */}
+      {app.status === 'paid' && app.due_amount === 0 && (
         <div className="mt-4 flex items-start gap-2 rounded-[10px] border border-[#cfe6d5] bg-[#eaf4ec] px-4 py-3">
           <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-[#2f803a]" />
           <Text variant="sub" className="text-[#2f803a]"><b>입금이 확인되었습니다.</b> 접수가 확정되었습니다.</Text>
+        </div>
+      )}
+
+      {/* 추가입금 대기 — 옵션 변경으로 요금이 늘어 부족분 입금이 필요. 단순 입금대기와 구분. */}
+      {app.due_amount > 0 && (
+        <div className="mt-4 rounded-[10px] border border-[#e6cfa8] bg-[#fbf3e6] px-4 py-3">
+          <Text variant="sub" className="text-[#8a5a1a]">
+            <b>추가 입금이 필요합니다.</b> 옵션 변경으로 요금이 {won(app.due_amount)} 늘었습니다. 아래 계좌로 부족분을 입금해 주세요. 담당자 확인 후 처리됩니다.
+          </Text>
         </div>
       )}
 
@@ -482,17 +671,16 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
         <Button variant="primary" size="sm" disabled><FileText size={13} className="mr-1" />증명서</Button>
       </div>
 
-      {/* 수정 요청 폼 */}
+      {/* 수정 요청 — 정형 폼(항목별 현재값→변경값). 차수 변경은 대상 아님(취소 후 재신청). */}
       {open === 'modification' && (
-        <div className="mt-3 rounded-[10px] border border-[#e5eaef] bg-white p-4">
-          <Text variant="label" className="text-[#374151]">수정 요청</Text>
-          <Text variant="caption" as="p" className="mt-1 text-[#9ca3af]">변경이 필요한 내용을 적어주세요. (예: 렌탈 사이즈 M→L, 참가자 연락처 변경 등) 담당자 확인 후 반영됩니다.</Text>
-          <textarea className={`${fieldCls} mt-2 min-h-[90px] resize-y`} value={content} onChange={(e) => setContent(e.target.value)} placeholder="기존 내용 → 변경할 내용" />
-          {error && <p className="mt-2 rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{error}</p>}
-          <Button variant="primary" size="md" onClick={() => submit('modification')} disabled={submitting} className="mt-2 w-full">
-            {submitting ? '접수 중…' : '수정 요청 접수'}
-          </Button>
-        </div>
+        <ModificationForm
+          app={app}
+          token={token}
+          onDone={() => {
+            setDone((d) => ({ ...d, modification: true }))
+            setOpen(null)
+          }}
+        />
       )}
 
       {/* 환불 신청 폼 */}
