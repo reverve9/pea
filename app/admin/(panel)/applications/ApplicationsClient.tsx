@@ -139,11 +139,13 @@ function ApplicationsPanel({
   const [assign, setAssign] = useState<AssignFilter>('all')
   const [req, setReq] = useState<ReqFilter>('all')
   const [query, setQuery] = useState('')
+  const [reviewOnly, setReviewOnly] = useState(false) // 입금 확인요청(needs_review) 대기건만 소집(배너 토글)
 
   const activeProgram = PROGRAMS.find((p) => p.key === program)
   const q = query.trim().replace(/\s/g, '')
-  const filterActive = program !== 'all' || kind !== 'all' || status !== 'all' || assign !== 'all' || req !== 'all' || q !== ''
+  const filterActive = program !== 'all' || kind !== 'all' || status !== 'all' || assign !== 'all' || req !== 'all' || reviewOnly || q !== ''
   const filtered = applications.filter((a) => {
+    if (reviewOnly && !a.needs_review) return false
     if (activeProgram && a.program_sport !== activeProgram.sport) return false
     if (kind !== 'all' && a.kind !== kind) return false
     // 입금대기 = 미입금(pending) + 추가입금 대기(paid/completed + due>0) 모두. 다른 상태 필터는 due>0 제외(추가입금대기로 분류).
@@ -164,6 +166,10 @@ function ApplicationsPanel({
   })
 
   const reviewCount = applications.filter((a) => a.needs_review).length
+  // 대기건을 다 처리하면(0건) 대기전용 필터 자동 해제 → 빈 목록에 갇히지 않음.
+  useEffect(() => {
+    if (reviewCount === 0 && reviewOnly) setReviewOnly(false)
+  }, [reviewCount, reviewOnly])
 
   const columns: AdminListColumn<ApplicationAdmin>[] = [
     {
@@ -402,9 +408,22 @@ function ApplicationsPanel({
   return (
     <>
       {reviewCount > 0 && (
-        <p className="mb-3 text-[13px] font-[400] text-[#8a4b00]">
-          입금 확인요청 {reviewCount}건 — 통장 대조 후 처리해 주세요.
-        </p>
+        <button
+          type="button"
+          onClick={() => setReviewOnly((v) => !v)}
+          className={`mb-3 flex w-full items-center gap-2.5 rounded-[10px] px-4 py-3 text-left transition-colors ${
+            reviewOnly ? 'bg-[#8a4b00] text-white' : 'bg-[#fdf1dc] text-[#8a4b00] hover:bg-[#fbe8c8]'
+          }`}
+        >
+          <AlertTriangle size={16} className="shrink-0" />
+          <span className="text-[13.5px] font-[600]">입금 확인요청 {reviewCount}건</span>
+          <span className={`text-[12.5px] font-[300] ${reviewOnly ? 'text-white/80' : 'text-[#a5763a]'}`}>
+            통장 대조 후 처리해 주세요
+          </span>
+          <span className="ml-auto shrink-0 text-[12px] font-[500]">
+            {reviewOnly ? '전체 보기 ✕' : '대기건만 모아보기 →'}
+          </span>
+        </button>
       )}
 
       {programTabs}
@@ -416,8 +435,7 @@ function ApplicationsPanel({
         toolbar={toolbar}
         exportButton={exportButton}
         emptyLabel={emptyLabel}
-        rowClassName={(a) => (a.needs_review ? 'bg-[#fffaf0]' : '')}
-        resetKey={`${program}|${kind}|${status}|${assign}|${req}|${q}`}
+        resetKey={`${program}|${kind}|${status}|${assign}|${req}|${reviewOnly}|${q}`}
         total={applications.length}
         filterActive={filterActive}
       />
