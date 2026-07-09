@@ -36,11 +36,12 @@ export const NOTICE_CATEGORY: Record<NoticeCategory, { label: string; color: Bad
   result: { label: '결과발표', color: 'emerald' },
 }
 
-// 환불 요청 status → 라벨 + 배지색 (계획안 ②: 신청대기/신청확인/환불완료). 스키마엔 '반려' 없음.
+// 환불 요청 status → 라벨 + 배지색 (신청대기/신청확인/환불완료/거절).
 export const REFUND_STATUS: Record<RefundStatus, { label: string; color: BadgeColor }> = {
   requested: { label: '신청대기', color: 'amber' },
   confirmed: { label: '신청확인', color: 'navy' },
   completed: { label: '환불완료', color: 'emerald' },
+  rejected: { label: '거절', color: 'slate' },
 }
 
 // 수정 요청 status → 라벨 + 배지색 (3단 단순화: 대기/완료/반려).

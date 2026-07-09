@@ -170,6 +170,7 @@ export async function getAllApplications(): Promise<ApplicationAdmin[]> {
       track_label: isJikmu ? '직무연수' : `자율패키지 · ${SCHEDULE_TYPE[st].label}`,
       session_label: r.session?.label ?? '',
       period: r.session ? formatPeriod(r.session.starts_on, r.session.ends_on, r.session.nights) : '',
+      starts_on: r.session?.starts_on ?? '',
       room_type: r.room_type,
       room_spec: r.room_spec,
       pkg_size: r.pkg_size,

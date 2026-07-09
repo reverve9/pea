@@ -298,7 +298,7 @@ export async function revealInsuranceRoster(applicationId: string): Promise<Rost
 // 요청 처리 — 요청관리 해체로 신청관리에 흡수(환불요청·수정요청)
 // ══════════════════════════════════════════════════════════════
 
-const REFUND_STATUSES: RefundStatus[] = ['requested', 'confirmed', 'completed']
+const REFUND_STATUSES: RefundStatus[] = ['requested', 'confirmed', 'completed', 'rejected']
 const MOD_STATUSES: ModificationStatus[] = ['pending', 'completed', 'rejected']
 
 // ── 환불요청 ──
@@ -394,6 +394,24 @@ export async function revertRefund(reqId: string, appId: string): Promise<Action
   } catch (e) {
     console.error('[applications] revertRefund:', e)
     return { ok: false, error: '되돌리기에 실패했습니다.' }
+  }
+}
+
+// 환불요청 거절 — 고객 환불요청을 반려. 환불액·신청 상태는 건드리지 않고 요청만 rejected 로 닫는다.
+//   (0원 확정으로 우회하던 문제 해소 — 거절은 환불 이력을 남기지 않음.)
+export async function rejectRefundRequest(reqId: string): Promise<ActionResult> {
+  try {
+    await requireAdmin()
+    const { error } = await supabaseAdmin
+      .from('refund_requests')
+      .update({ status: 'rejected', updated_at: new Date().toISOString() })
+      .eq('id', reqId)
+    if (error) throw error
+    revalidatePath('/admin/applications')
+    return { ok: true }
+  } catch (e) {
+    console.error('[applications] rejectRefundRequest:', e)
+    return { ok: false, error: '환불요청 거절에 실패했습니다.' }
   }
 }
 

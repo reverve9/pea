@@ -13,6 +13,8 @@ import { LoadingState } from '@/components/common/StateView'
 import { MasterDetailProvider, MasterDetailList, MasterDetailDetail } from '@/components/shell/MasterDetail'
 import { useQuery } from '@/lib/useQuery'
 import { getSiteContent } from '@/lib/queries'
+import { formatDate } from '@/lib/display'
+import { isDetailFillClosed, detailFillDeadline } from '@/lib/fillDeadline'
 import { submitMyRequest, fetchMyRoster, submitMyParticipant, requestMyFillLink, assignParticipantOptions } from '@/lib/applyClient'
 import ParticipantFillSlot from '@/components/features/ParticipantFillSlot'
 import { RENTAL_OPTIONS, type RentalOptionKey } from '@/lib/rentalOptions'
@@ -155,7 +157,9 @@ const fieldCls =
 type OptSel = { apparel: boolean; protector: boolean; goggle: boolean; glove: boolean; insuranceWanted: boolean }
 const NAVY = '#1e3a5f'
 
-function CompanionFill({ applicationId, token }: { applicationId: string; token: string }) {
+function CompanionFill({ applicationId, token, startsOn }: { applicationId: string; token: string; startsOn: string }) {
+  const fillClosed = startsOn ? isDetailFillClosed(startsOn) : false
+  const fillDeadlineLabel = startsOn ? formatDate(detailFillDeadline(startsOn)) : ''
   const [roster, setRoster] = useState<MyRosterParticipant[] | null>(null)
   const [rentalQty, setRentalQty] = useState<RentalQty | null>(null)
   const [assign, setAssign] = useState<Record<string, OptSel>>({})
@@ -273,6 +277,13 @@ function CompanionFill({ applicationId, token }: { applicationId: string; token:
       <Text variant="caption" as="p" className="mt-1 text-[#9ca3af]">
         참가자 성함 · 생년월일 · 강습 · 대여장비를 대표가 대신 입력하거나, 참가자별 입력 링크를 복사해 각자에게 전달하면 본인이 직접 입력할 수 있습니다. 각 링크는 본인 정보만 수정 가능합니다.
         <br />가능하면 <b>입금 전에 모두 입력</b>해 주세요. 입금 완료 후에는 수정요청을 통해 변경하실 수 있습니다.
+        {fillDeadlineLabel && (
+          <span className={fillClosed ? 'text-[#b4483a]' : 'text-[#8a6d3b]'}>
+            {fillClosed
+              ? ` 참가자 정보 입력 마감(${fillDeadlineLabel})이 지났습니다. 변경은 아래 수정요청으로 접수해 주세요.`
+              : ` 렌탈 준비를 위해 참가자 정보는 ${fillDeadlineLabel}까지 입력해 주세요.`}
+          </span>
+        )}
       </Text>
 
       {/* 렌탈·보험 배정 — 옵션 귀속·보험은 대표가 결정(잠금). 렌탈이 없어도 다인원이면 보험 배정을 위해 노출. */}
@@ -741,7 +752,7 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
           입금완료 후엔 헷갈림 방지 위해 잠그고 수정요청 채널로. [[cash-receipt-spec]] */}
       {app.kind === 'jayul' &&
         (app.status === 'pending' ? (
-          <CompanionFill applicationId={app.id} token={token} />
+          <CompanionFill applicationId={app.id} token={token} startsOn={app.starts_on} />
         ) : (
           <div className="mt-4 rounded-[10px] border border-[#e5eaef] bg-[#f7f9fb] p-4">
             <Text variant="label" className="text-[#374151]">참가자 정보</Text>

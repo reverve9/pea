@@ -134,6 +134,7 @@ export interface ApplicationAdmin {
   track_label: string
   session_label: string // 회차명(sessions.label) — 목록에서 며칠 예약건인지 식별
   period: string
+  starts_on: string // 연수 시작일 'YYYY-MM-DD' — 참가자 입력 마감(시작−10일) 계산용
   room_type: 'group' | 'private' | null
   room_spec: string | null
   pkg_size: number | null
@@ -194,7 +195,7 @@ export interface InsuranceRosterEntry {
 }
 
 // ── 요청(어드민) — 신청관리 세그먼트로 흡수(요청관리 메뉴 해체) ──
-export type RefundStatus = 'requested' | 'confirmed' | 'completed'
+export type RefundStatus = 'requested' | 'confirmed' | 'completed' | 'rejected'
 export type RefundOrigin = 'user' | 'modification' | 'admin' // 고객 환불신청 / 수정 감액 자동생성 / 관리자 직접
 export interface RefundRequestAdmin {
   id: string

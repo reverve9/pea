@@ -9,8 +9,9 @@ import AdminList, { type AdminListColumn } from '@/components/admin/AdminList'
 import AdminTabs from '@/components/admin/AdminTabs'
 import { adminSelectClass } from '@/components/admin/AdminToolbar'
 import { formatDate, formatKRW, APPLICATION_STATUS } from '@/lib/display'
+import { isDetailFillClosed, detailFillDeadline } from '@/lib/fillDeadline'
 import { exportToExcel } from '@/lib/excel'
-import { lessonLevelLabel, lessonSportLabel, equipmentLabel, JAYUL_LESSONS, EQUIPMENT_TYPES } from '@/lib/lessonOptions'
+import { lessonLevelLabel, lessonSportLabel, equipmentLabel, JAYUL_LESSONS, EQUIPMENT_TYPES, LESSON_CLASSES, LESSON_SPORTS } from '@/lib/lessonOptions'
 import { APPAREL_SIZES, GEAR_SIZES } from '@/lib/rentalOptions'
 import { PROGRAMS, OPEN_PROGRAMS } from '@/lib/programs'
 import type { ParticipantDetailInput } from '@/lib/participantDetail'
@@ -36,6 +37,7 @@ import {
   applyModification,
   setModificationStatus,
   confirmRefundFromRequest,
+  rejectRefundRequest,
   confirmDuePayment,
   revertModification,
   revertRefund,
@@ -452,7 +454,7 @@ function ApplicationsPanel({
         <DetailModal
           app={detail}
           pendingMods={modifications.filter((m) => m.status === 'pending' && m.application_id === detail.id)}
-          pendingRefunds={refunds.filter((r) => r.status !== 'completed' && r.application_id === detail.id)}
+          pendingRefunds={refunds.filter((r) => r.status !== 'completed' && r.status !== 'rejected' && r.application_id === detail.id)}
           processedMods={modifications.filter((m) => m.status !== 'pending' && m.application_id === detail.id)}
           processedRefunds={refunds.filter((r) => r.status === 'completed' && r.application_id === detail.id)}
           onClose={() => setDetail(null)}
@@ -488,6 +490,10 @@ function RefundInline({
     if (needsAccount && !account.trim()) return alert('환불 계좌를 입력해 주세요 (고객에게 확인 후 기록).')
     if (!confirm(`환불 ${formatKRW(amt)}${markRefunded ? ' (전액 · 환불완료 전환)' : ' (부분환불)'}을 확정할까요? 정산에 반영됩니다.`)) return
     runAndRefresh(() => confirmRefundFromRequest(r.id, appId, amt, markRefunded, account.trim() || undefined))
+  }
+  const rejectRefund = () => {
+    if (!confirm('이 환불요청을 거절할까요? 환불액은 반영되지 않고 요청만 종료됩니다.')) return
+    runAndRefresh(() => rejectRefundRequest(r.id))
   }
   return (
     <div className="mb-2 rounded-[10px] bg-[#fdf4e3] p-3">
@@ -530,8 +536,16 @@ function RefundInline({
         <button
           type="button"
           disabled={pending}
+          onClick={rejectRefund}
+          className="ml-auto rounded-[8px] bg-[#f0ddb8] px-3 py-2 text-[12.5px] font-[500] text-[#8a6d3b] transition-colors hover:bg-[#e9d0a0] disabled:opacity-40"
+        >
+          거절
+        </button>
+        <button
+          type="button"
+          disabled={pending}
           onClick={confirmRefund}
-          className="ml-auto rounded-[8px] bg-[#1e3a5f] px-3.5 py-2 text-[12.5px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+          className="rounded-[8px] bg-[#1e3a5f] px-3.5 py-2 text-[12.5px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
         >
           환불 확정
         </button>
@@ -1141,6 +1155,7 @@ function DetailModal({
       <ParticipantEditModal
         part={editingPart}
         kind={app.kind}
+        startsOn={app.starts_on}
         pending={pending}
         onClose={() => setEditingPart(null)}
         onSubmit={(input) => runAndRefresh(() => updateParticipantDetail(editingPart.id, input))}
@@ -1155,16 +1170,20 @@ function DetailModal({
 function ParticipantEditModal({
   part,
   kind,
+  startsOn,
   pending,
   onClose,
   onSubmit,
 }: {
   part: ParticipantAdmin
   kind: 'jikmu' | 'jayul'
+  startsOn: string
   pending: boolean
   onClose: () => void
   onSubmit: (input: ParticipantDetailInput) => void
 }) {
+  // 입력 마감(연수 시작 − 10일) 이후엔 직접수정 잠금 → 수정요청. 마감 후엔 정보확인만.
+  const closed = startsOn ? isDetailFillClosed(startsOn) : false
   const rentals = part.rentals
   const [name, setName] = useState(part.name ?? '')
   const [phone, setPhone] = useState(part.phone ?? '')
@@ -1187,20 +1206,25 @@ function ParticipantEditModal({
   const labelClass = 'mb-1.5 block text-[12.5px] font-[500] text-[#4b5563]'
 
   const submit = () => {
-    const input: ParticipantDetailInput = { birthFront, gender, birthBack }
+    // 성함·연락처·강습·렌탈은 직무/자율 공통 편집. 용품세트·보험희망 플래그는 자율 전용 필드.
+    const input: ParticipantDetailInput = {
+      birthFront,
+      gender,
+      birthBack,
+      name,
+      phone,
+      lessonClass,
+      apparel,
+      protector,
+      goggle,
+      glove,
+      apparelSize,
+      protectorSize,
+      gloveSize,
+    }
     if (isJayul) {
-      input.name = name
-      input.phone = phone
-      input.lessonClass = lessonClass
       input.equipment = equipment
-      input.apparel = apparel
-      input.protector = protector
-      input.goggle = goggle
-      input.glove = glove
       input.insuranceWanted = insuranceWanted
-      input.apparelSize = apparelSize
-      input.protectorSize = protectorSize
-      input.gloveSize = gloveSize
     }
     onSubmit(input)
   }
@@ -1209,28 +1233,33 @@ function ParticipantEditModal({
     <AdminModal title={`참가자 정보 · ${part.name}`} onClose={onClose} maxWidth={420}>
       <p className="mb-4 text-[12.5px] font-[300] text-[#6b7280]">
         신청 후 추가로 받은 정보를 입력합니다. 주민번호 뒷자리는 보험 가입 시에만 필요하며 서버에서 암호화되어 저장됩니다.
+        렌탈·강습을 바꿔도 결제금액은 이 편집으로 변경되지 않습니다(요금 변동은 수정요청).
       </p>
 
-      {isJayul && (
-        <div className="grid grid-cols-2 gap-3">
-          <label className="block">
-            <span className={labelClass}>성함</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="성함" className={inputClass} />
-          </label>
-          <label className="block">
-            <span className={labelClass}>연락처</span>
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              inputMode="tel"
-              placeholder="010-0000-0000"
-              className={inputClass}
-            />
-          </label>
+      {closed && (
+        <div className="mb-4 rounded-[10px] bg-[#fdf4e3] p-3 text-[12.5px] font-[400] text-[#8a6d3b]">
+          입력 마감({startsOn && formatDate(detailFillDeadline(startsOn))})이 지나 직접수정할 수 없습니다. 정보 확인만 가능하며, 변경이 필요하면 <b className="font-[600]">수정요청</b>으로 처리해 주세요.
         </div>
       )}
 
-      <label className={isJayul ? 'mt-3 block' : 'block'}>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block">
+          <span className={labelClass}>성함</span>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="성함" className={inputClass} />
+        </label>
+        <label className="block">
+          <span className={labelClass}>연락처</span>
+          <input
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            inputMode="tel"
+            placeholder="010-0000-0000"
+            className={inputClass}
+          />
+        </label>
+      </div>
+
+      <label className="mt-3 block">
         <span className={labelClass}>생년월일 (YYMMDD)</span>
         <input
           value={birthFront}
@@ -1250,95 +1279,105 @@ function ParticipantEditModal({
         </select>
       </label>
 
-      {isJayul && (
-        <>
-          <label className="mt-3 block">
-            <span className={labelClass}>기초강습</span>
-            <select value={lessonClass} onChange={(e) => setLessonClass(e.target.value)} className={inputClass}>
-              <option value="">선택 안 함</option>
-              {JAYUL_LESSONS.map((l) => (
+      <label className="mt-3 block">
+        <span className={labelClass}>강습</span>
+        <select value={lessonClass} onChange={(e) => setLessonClass(e.target.value)} className={inputClass}>
+          <option value="">선택 안 함</option>
+          {isJayul
+            ? JAYUL_LESSONS.map((l) => (
                 <option key={l.key} value={l.key}>
                   {l.label}
                 </option>
+              ))
+            : LESSON_SPORTS.map((sp) => (
+                <optgroup key={sp.key} label={sp.label}>
+                  {LESSON_CLASSES[sp.key].map((c) => (
+                    <option key={c.key} value={c.key}>
+                      {c.label}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
-            </select>
-          </label>
+        </select>
+      </label>
 
-          <label className="mt-3 block">
-            <span className={labelClass}>용품세트(대여장비)</span>
-            <select value={equipment} onChange={(e) => setEquipment(e.target.value)} className={inputClass}>
-              <option value="">선택 안 함</option>
-              {EQUIPMENT_TYPES.map((e) => (
-                <option key={e.key} value={e.key}>
-                  {e.label}
-                </option>
-              ))}
-            </select>
-          </label>
+      {isJayul && (
+        <label className="mt-3 block">
+          <span className={labelClass}>용품세트(대여장비)</span>
+          <select value={equipment} onChange={(e) => setEquipment(e.target.value)} className={inputClass}>
+            <option value="">선택 안 함</option>
+            {EQUIPMENT_TYPES.map((e) => (
+              <option key={e.key} value={e.key}>
+                {e.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
-          {/* 렌탈 옵션 귀속 — 어드민 보정(대표 배정과 동일 필드). 사이즈는 켠 항목만 노출. */}
-          <div className="mt-3">
-            <span className={labelClass}>렌탈 옵션 · 보험</span>
-            <div className="flex flex-wrap gap-1.5">
-              {([
-                { label: '의류', on: apparel, toggle: () => setApparel((v) => !v) },
-                { label: '보호대', on: protector, toggle: () => setProtector((v) => !v) },
-                { label: '고글', on: goggle, toggle: () => setGoggle((v) => !v) },
-                { label: '장갑', on: glove, toggle: () => setGlove((v) => !v) },
-                { label: '보험', on: insuranceWanted, toggle: () => setInsuranceWanted((v) => !v) },
-              ] as const).map((t) => (
-                <button
-                  key={t.label}
-                  type="button"
-                  onClick={t.toggle}
-                  className={`rounded-[7px] px-2.5 py-1 text-[12.5px] transition-colors ${
-                    t.on ? 'bg-[#1e3a5f] text-white' : 'bg-[#eef1f4] text-[#6b7280] hover:bg-[#e4e8ec]'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          </div>
+      {/* 렌탈 옵션 — 직무/자율 공통 보정. 보험 희망 토글은 자율 전용. 사이즈는 켠 항목만 노출. */}
+      <div className="mt-3">
+        <span className={labelClass}>렌탈 옵션{isJayul ? ' · 보험' : ''}</span>
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            { label: '의류', on: apparel, toggle: () => setApparel((v) => !v) },
+            { label: '보호대', on: protector, toggle: () => setProtector((v) => !v) },
+            { label: '고글', on: goggle, toggle: () => setGoggle((v) => !v) },
+            { label: '장갑', on: glove, toggle: () => setGlove((v) => !v) },
+            ...(isJayul
+              ? [{ label: '보험', on: insuranceWanted, toggle: () => setInsuranceWanted((v) => !v) }]
+              : []),
+          ].map((t) => (
+            <button
+              key={t.label}
+              type="button"
+              onClick={t.toggle}
+              className={`rounded-[7px] px-2.5 py-1 text-[12.5px] transition-colors ${
+                t.on ? 'bg-[#1e3a5f] text-white' : 'bg-[#eef1f4] text-[#6b7280] hover:bg-[#e4e8ec]'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
-          {(apparel || protector || glove) && (
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              {apparel && (
-                <label className="block">
-                  <span className={labelClass}>의류 사이즈</span>
-                  <select value={apparelSize} onChange={(e) => setApparelSize(e.target.value)} className={inputClass}>
-                    <option value="">선택</option>
-                    {APPAREL_SIZES.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              {protector && (
-                <label className="block">
-                  <span className={labelClass}>보호대 사이즈</span>
-                  <select value={protectorSize} onChange={(e) => setProtectorSize(e.target.value)} className={inputClass}>
-                    <option value="">선택</option>
-                    {GEAR_SIZES.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              {glove && (
-                <label className="block">
-                  <span className={labelClass}>장갑 사이즈</span>
-                  <select value={gloveSize} onChange={(e) => setGloveSize(e.target.value)} className={inputClass}>
-                    <option value="">선택</option>
-                    {GEAR_SIZES.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </label>
-              )}
-            </div>
+      {(apparel || protector || glove) && (
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {apparel && (
+            <label className="block">
+              <span className={labelClass}>의류 사이즈</span>
+              <select value={apparelSize} onChange={(e) => setApparelSize(e.target.value)} className={inputClass}>
+                <option value="">선택</option>
+                {APPAREL_SIZES.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </label>
           )}
-        </>
+          {protector && (
+            <label className="block">
+              <span className={labelClass}>보호대 사이즈</span>
+              <select value={protectorSize} onChange={(e) => setProtectorSize(e.target.value)} className={inputClass}>
+                <option value="">선택</option>
+                {GEAR_SIZES.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          {glove && (
+            <label className="block">
+              <span className={labelClass}>장갑 사이즈</span>
+              <select value={gloveSize} onChange={(e) => setGloveSize(e.target.value)} className={inputClass}>
+                <option value="">선택</option>
+                {GEAR_SIZES.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
       )}
 
       <label className="mt-3 block">
@@ -1367,11 +1406,11 @@ function ParticipantEditModal({
         </button>
         <button
           type="button"
-          disabled={pending}
+          disabled={pending || closed}
           onClick={submit}
           className="rounded-[9px] bg-[#1e3a5f] px-5 py-2.5 text-[13px] font-[500] text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {pending ? '저장 중…' : '저장'}
+          {pending ? '저장 중…' : closed ? '마감됨' : '저장'}
         </button>
       </div>
     </AdminModal>

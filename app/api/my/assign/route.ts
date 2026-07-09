@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { verifyMyToken } from '@/lib/serverCrypto'
 import { extractRentalQty } from '@/lib/pricing'
 import { RENTAL_OPTIONS } from '@/lib/rentalOptions'
+import { isDetailFillClosed } from '@/lib/fillDeadline'
 
 // 대표 렌탈 배정 — 자율패키지에서 구매한 렌탈 수량을 참가자별로 귀속(옵션 여부 + 보험).
 // 정합성: 옵션별 배정 합계는 구매 수량을 초과할 수 없다(초과 시 저장 차단). 사이즈는 참가자가 별도 입력.
@@ -47,13 +48,24 @@ export async function POST(req: Request) {
   // 소유권 확인 + 구매 수량 로드.
   const { data: app, error: aErr } = await supabaseAdmin
     .from('applications')
-    .select('id, price_breakdown')
+    .select('id, price_breakdown, session:sessions(starts_on)')
     .eq('id', b.applicationId)
     .eq('phone', claims.phone)
     .eq('applicant_name', claims.name)
     .maybeSingle()
   if (aErr) return NextResponse.json({ error: '처리 중 오류가 발생했습니다.' }, { status: 500 })
   if (!app) return NextResponse.json({ error: '대상 신청 내역을 찾을 수 없습니다.' }, { status: 404 })
+
+  // 입력 마감(연수 시작 − 10일) 이후엔 배정 잠금 → 수정요청으로.
+  const sessRaw = (app as { session?: unknown }).session
+  const sess = Array.isArray(sessRaw) ? sessRaw[0] : sessRaw
+  const startsOn = (sess as { starts_on?: string } | null)?.starts_on
+  if (startsOn && isDetailFillClosed(startsOn)) {
+    return NextResponse.json(
+      { error: '참가자 정보 입력 마감(연수 시작 10일 전)이 지났습니다. 변경은 수정요청을 이용해 주세요.' },
+      { status: 409 },
+    )
+  }
 
   const qty = extractRentalQty(app.price_breakdown as { meta?: Record<string, unknown> } | null)
 

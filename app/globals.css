@@ -1,19 +1,12 @@
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
-@import url('https://fonts.googleapis.com/css2?family=Do+Hyeon&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@100;200;300;400;500;600;700;800;900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@100;200;300;400;500;600;700;800;900&display=swap');
+/* Raleway — 영문 오버레이 전용(font-raleway, 8곳). 실사용 웨이트만: 200~700(100/800/900 미사용). */
+@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@200;300;400;500;600;700&display=swap');
+/* 제거(사용 0건): Do Hyeon / Poppins / Montserrat — 렌더 블로킹 @import 3건 삭제. */
 /* Pretendard — body 기본 폰트로 선언돼 있으나 실제 로드가 없어 시스템 폴백이던 것을 실 로드(동적 서브셋). */
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.css');
 @import 'tailwindcss';
 
-/* 에스코어드림 폰트 1-9 전체 */
-@font-face {
-  font-family: 'S-CoreDream';
-  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/S-CoreDream-1Thin.woff') format('woff');
-  font-weight: 100;
-  font-display: swap;
-}
+/* 에스코어드림 — 실사용 웨이트만(200~700). 미사용 100/800/900 제거. */
 @font-face {
   font-family: 'S-CoreDream';
   src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/S-CoreDream-2ExtraLight.woff') format('woff');
@@ -48,18 +41,6 @@
   font-family: 'S-CoreDream';
   src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/S-CoreDream-7ExtraBold.woff') format('woff');
   font-weight: 700;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'S-CoreDream';
-  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/S-CoreDream-8Heavy.woff') format('woff');
-  font-weight: 800;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'S-CoreDream';
-  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/S-CoreDream-9Black.woff') format('woff');
-  font-weight: 900;
   font-display: swap;
 }
 
@@ -123,9 +104,6 @@ body {
 
 /* 폰트 클래스 */
 .font-score { font-family: 'S-CoreDream', sans-serif; }
-.font-dohyeon { font-family: 'Do Hyeon', sans-serif; }
-.font-poppins { font-family: 'Poppins', sans-serif; }
-.font-montserrat { font-family: 'Montserrat', sans-serif; }
 .font-raleway { font-family: 'Raleway', sans-serif; }
 .font-pretendard { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; }
 

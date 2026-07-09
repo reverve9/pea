@@ -94,6 +94,7 @@ export interface MyApplicationRow {
   kind: ApplyKind
   track_label: string
   period: string
+  starts_on: string // 연수 시작일 'YYYY-MM-DD' — 참가자 입력 마감(시작−10일) 계산용
   applicant_name: string
   payer_name: string | null // 신청 시 입금자명(payerDiffers) — 입금확인요청 프리필용
   headcount: number
@@ -174,6 +175,7 @@ export interface RentalAssignmentInput {
 export interface RosterSummary {
   track_label: string
   period: string
+  starts_on: string // 연수 시작일 'YYYY-MM-DD' — 셀프필 입력 마감 계산·안내용
   applicant_name: string
 }
 

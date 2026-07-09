@@ -80,6 +80,7 @@ export async function getRosterSummary(applicationId: string): Promise<RosterSum
   return {
     track_label: isJikmu ? '직무연수' : `자율패키지 · ${SCHEDULE_TYPE[st].label}`,
     period: row.session ? formatPeriod(row.session.starts_on, row.session.ends_on, row.session.nights) : '',
+    starts_on: row.session?.starts_on ?? '',
     applicant_name: row.applicant_name,
   }
 }

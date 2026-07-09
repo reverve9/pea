@@ -73,6 +73,7 @@ export async function POST(req: Request) {
       kind: isJikmu ? 'jikmu' : 'jayul',
       track_label: isJikmu ? '직무연수' : `자율패키지 · ${SCHEDULE_TYPE[st].label}`,
       period: r.session ? formatPeriod(r.session.starts_on, r.session.ends_on, r.session.nights) : '',
+      starts_on: r.session?.starts_on ?? '',
       applicant_name: r.applicant_name,
       payer_name: r.payer_name,
       headcount: r.participants?.length ?? 1,
