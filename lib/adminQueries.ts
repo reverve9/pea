@@ -76,7 +76,7 @@ export async function getAllApplications(): Promise<ApplicationAdmin[]> {
   const { data, error } = await supabaseAdmin
     .from('applications')
     .select(
-      'id, application_no, applicant_name, phone, payer_name, room_type, room_spec, pkg_size, total_amount, refunded_amount, due_amount, due_claimed_at, due_settled_amount, status, is_waitlisted, payment_claimed_at, payment_claim_name, companion_memo, special_notes, referral_source, marketing_opt_in, admin_memo, created_at, session:sessions(label, schedule_type, starts_on, ends_on, nights, course:courses(sport)), participants(id, name, gender, phone, lesson_level, rentals, birth_front, birth_back_enc, is_leader, line_amount, sort_order)',
+      'id, application_no, applicant_name, phone, school_name, region, payer_name, room_type, room_spec, pkg_size, total_amount, refunded_amount, due_amount, due_claimed_at, due_settled_amount, status, is_waitlisted, payment_claimed_at, payment_claim_name, companion_memo, special_notes, referral_source, marketing_opt_in, admin_memo, created_at, session:sessions(label, schedule_type, starts_on, ends_on, nights, course:courses(sport)), participants(id, name, gender, phone, lesson_level, rentals, birth_front, birth_back_enc, is_leader, line_amount, sort_order)',
     )
     .order('created_at', { ascending: false })
   if (error) {
@@ -102,6 +102,8 @@ export async function getAllApplications(): Promise<ApplicationAdmin[]> {
     application_no: string
     applicant_name: string
     phone: string
+    school_name: string | null
+    region: string | null
     payer_name: string | null
     room_type: 'group' | 'private' | null
     room_spec: string | null
@@ -160,6 +162,8 @@ export async function getAllApplications(): Promise<ApplicationAdmin[]> {
       application_no: r.application_no,
       applicant_name: r.applicant_name,
       phone: r.phone,
+      school_name: r.school_name,
+      region: r.region,
       payer_name: r.payer_name,
       kind: isJikmu ? 'jikmu' : 'jayul',
       program_sport: course?.sport ?? null,

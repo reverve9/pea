@@ -10,7 +10,7 @@ import AdminTabs from '@/components/admin/AdminTabs'
 import { adminSelectClass } from '@/components/admin/AdminToolbar'
 import { formatDate, formatKRW, APPLICATION_STATUS } from '@/lib/display'
 import { exportToExcel } from '@/lib/excel'
-import { lessonLevelLabel, equipmentLabel, JAYUL_LESSONS, EQUIPMENT_TYPES } from '@/lib/lessonOptions'
+import { lessonLevelLabel, lessonSportLabel, equipmentLabel, JAYUL_LESSONS, EQUIPMENT_TYPES } from '@/lib/lessonOptions'
 import { APPAREL_SIZES, GEAR_SIZES } from '@/lib/rentalOptions'
 import { PROGRAMS, OPEN_PROGRAMS } from '@/lib/programs'
 import type { ParticipantDetailInput } from '@/lib/participantDetail'
@@ -358,18 +358,21 @@ function ApplicationsPanel({
     exportToExcel(
       filtered.map((a) => ({
         no: a.application_no,
-        created: formatDate(a.created_at),
+        created: formatDate(a.created_at.slice(0, 10)),
         status: APPLICATION_STATUS[a.status].label,
         assign: a.is_waitlisted ? '예비' : '정원',
         track: a.track_label,
-        sport: a.program_sport ?? '',
+        sport: lessonSportLabel(a.participants.find((p) => p.is_leader)?.lesson_level) || (a.program_sport ?? ''),
         session: a.session_label,
         period: a.period,
         applicant: a.applicant_name,
         phone: a.phone,
+        school: a.school_name ?? '',
+        region: a.region ?? '',
         payer: a.payer_name ?? '',
         headcount: a.headcount,
         amount: a.total_amount,
+        notes: a.special_notes ?? '',
         claim: a.payment_claimed_at ? (a.payment_claim_name ?? '요청') : '',
         memo: a.admin_memo ?? '',
       })),
@@ -384,9 +387,12 @@ function ApplicationsPanel({
         { key: 'period', label: '기간' },
         { key: 'applicant', label: '신청자' },
         { key: 'phone', label: '연락처' },
+        { key: 'school', label: '소속' },
+        { key: 'region', label: '지역' },
         { key: 'payer', label: '입금자명' },
         { key: 'headcount', label: '인원' },
         { key: 'amount', label: '금액' },
+        { key: 'notes', label: '요청사항' },
         { key: 'claim', label: '입금확인요청' },
         { key: 'memo', label: '관리자메모' },
       ],
@@ -705,6 +711,11 @@ function DetailModal({
         <p className="mt-1 text-[14px] font-[500] text-[#1f2937]">
           {app.applicant_name} · <span className="tabular-nums font-[300]">{app.phone}</span>
         </p>
+        {(app.school_name || app.region) && (
+          <p className="mt-1 text-[12.5px] font-[300] text-[#6b7280]">
+            {[app.school_name, app.region].filter(Boolean).join(' · ')}
+          </p>
+        )}
         <p className="mt-1 text-[13px] font-[400] tabular-nums text-[#1f2937]">
           결제금액 {formatKRW(app.total_amount)}
         </p>

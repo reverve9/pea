@@ -126,6 +126,8 @@ export interface ApplicationAdmin {
   application_no: string
   applicant_name: string
   phone: string
+  school_name: string | null // 신청 대표자 소속
+  region: string | null // 신청 대표자 지역(REGIONS 라벨)
   payer_name: string | null
   kind: 'jikmu' | 'jayul'
   program_sport: string | null // 프로그램(종목) 필터용 — course.sport

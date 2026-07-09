@@ -65,6 +65,16 @@ export function lessonLevelLabel(levelKey: string | null | undefined): string {
   return levelKey
 }
 
+// lesson_level(key) → 강습 종목 라벨(스키/스노보드/프리라이딩). 종목만 필요할 때(엑셀 '종목' 등).
+//   key 가 종목을 인코딩: ski_*/jayul_ski→스키, board_*/jayul_board→스노보드, jayul_freeride→프리라이딩.
+export function lessonSportLabel(levelKey: string | null | undefined): string {
+  if (!levelKey) return ''
+  if (levelKey === 'jayul_freeride') return '프리라이딩'
+  if (levelKey.startsWith('ski') || levelKey === 'jayul_ski') return '스키'
+  if (levelKey.startsWith('board') || levelKey === 'jayul_board') return '스노보드'
+  return ''
+}
+
 // 대여 장비 key → 라벨. 빈값 '—'.
 export function equipmentLabel(key: string | null | undefined): string {
   if (!key) return '—'
