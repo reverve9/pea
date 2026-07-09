@@ -177,7 +177,7 @@ export default function ApplyPage() {
       </div>
       {/* 모바일 히어로 — 데스크탑 우 페인과 동일(프로그램·연수안내와 통일). 데스크탑은 우 페인이 담당 → md:hidden */}
       <div className="md:hidden px-4 pt-6">
-        <DuotoneHero eyebrow="SKI & SNOWBOARD" title="원하는 일정과 유형을 골라 신청하세요" imgs={['/application/hero.jpg']} tint={0} ratioClass="aspect-[5/2]" />
+        <DuotoneHero eyebrow="SKI & SNOWBOARD" title={<>신청할 프로그램과 연수과정별 유형을 선택하세요<br />유형에 따라 회차와 인원을 지정해 신청하실 수 있습니다</>} imgs={['/application/hero.jpg']} tint={0} mobile />
       </div>
       {/* 좌우 여백 데스크탑 px-8 — 커뮤니티 리스트(정본)와 정렬. 모바일은 px-4 유지. */}
       <section className="px-4 md:px-8">

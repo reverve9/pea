@@ -212,7 +212,8 @@ export default function ScheduleCalendar({
 
   return (
     // 달력 자체가 카드박스(개요 카드와 동일 톤).
-    <div className="overflow-hidden rounded-[10px] border border-[#e5eaef] bg-[#f2f5f9]">
+    // 부양 카드 그림자 = MasterCard SHADOW_FLAT 정본값과 동일(흰-위-흰 분리, 테두리 대신 그림자).
+    <div className="overflow-hidden rounded-[10px] bg-white shadow-[0_2px_6px_rgba(0,0,0,0.07),0_16px_36px_-12px_rgba(0,0,0,0.30)]">
       {/* 월 탭 — 세션 있는 달만. 직접 점프. showMonthTabs=false(데스크탑)면 좌 마스터가 제어하므로 정적 헤더로. */}
       {showMonthTabs ? (
         <div className="flex items-center gap-2 border-b border-[#e5eaef] px-3 py-1.5">

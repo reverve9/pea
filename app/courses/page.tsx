@@ -89,7 +89,7 @@ export default function CoursesPage() {
               <>
                 {/* 모바일 히어로 — 데스크탑 우 페인과 동일(프로그램·신청과 통일) */}
                 <div className="px-4 pt-6">
-                  <DuotoneHero eyebrow="SKI & SNOWBOARD" title="연수 일정과 유형을 확인하세요" imgs={['/courses/hero.jpg']} tint={0} ratioClass="aspect-[5/2]" />
+                  <DuotoneHero eyebrow="SKI & SNOWBOARD" title={<>개설된 연수의 일정과 유형을 한눈에 안내합니다<br />신청 전 회차와 유형을 확인하세요</>} imgs={['/courses/hero.jpg']} tint={0} mobile />
                 </div>
                 <section className="px-4 mb-20">
                   <CourseOverview />

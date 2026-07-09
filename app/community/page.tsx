@@ -104,7 +104,7 @@ export default function CommunityPage() {
       </div>
       {/* 모바일 히어로 — 데스크탑 우 페인과 동일(전 페이지 통일). 데스크탑은 우 페인이 담당 → md:hidden */}
       <div className="md:hidden px-4 pt-6">
-        <DuotoneHero eyebrow="SKI & SNOWBOARD" title="공지와 자주 묻는 질문을 확인하세요" imgs={['/community/hero.jpg']} tint={0} ratioClass="aspect-[5/2]" />
+        <DuotoneHero eyebrow="SKI & SNOWBOARD" title={<>공지사항과 자주 묻는 질문을 확인하세요<br />궁금한 점은 1:1 문의로 남겨주실 수 있습니다</>} imgs={['/community/hero.jpg']} tint={0} mobile />
       </div>
       {notices.loading ? (
         <LoadingState />

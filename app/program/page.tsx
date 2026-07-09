@@ -44,7 +44,7 @@ const PROGRAM_DETAIL: Record<
       </>
     ),
     heroEyebrow: 'SKI & SNOWBOARD',
-    heroTitle: '커리큘럼과 반 편성을 확인하세요',
+    heroTitle: '종목을 선택해 커리큘럼을 확인하세요',
     // 히어로 = 단일 합성(2:1). 홈 개념대로 스노보드=네이비 톤(좌)·스키=그린 톤(우)을 사선 블렌드로 베이크.
     // 없으면 네이비 그라디언트 폴백. 재베이크: _DEV/bake_hero.py (소스=_DEV/참고이미지/그라데이션 · 출력=public/program).
     heroImgs: ['/program/hero.jpg'],
@@ -238,7 +238,23 @@ function ProgramDetail({ programKey, mobileHero }: { programKey: string; mobileH
       {d && (
         <>
           {/* 모바일(mobileHero)=2.5:1 / 데스크탑=현행 7:2. 오버레이 국영문은 양쪽 유지(타이틀 역할). */}
-          <DuotoneHero eyebrow={d.heroEyebrow} title={d.heroTitle} imgs={d.heroImgs} tint={d.heroTint} ratioClass={mobileHero ? 'aspect-[5/2]' : undefined} />
+          <DuotoneHero
+            mobile={mobileHero}
+            eyebrow={d.heroEyebrow}
+            // 모바일 = 데스크탑 좌측 페인 인트로와 동일 2줄(모바일엔 인트로 문단이 hidden). 데스크탑 히어로 = 액션 1줄.
+            title={
+              mobileHero ? (
+                <>
+                  체육교육회가 운영하는 연수 프로그램을 소개합니다<br />
+                  종목을 선택해 커리큘럼을 확인하세요
+                </>
+              ) : (
+                d.heroTitle
+              )
+            }
+            imgs={d.heroImgs}
+            tint={d.heroTint}
+          />
           <p className="mb-20 font-score text-[clamp(0.875rem,3.3cqi,1rem)] font-[300] leading-[1.9] text-[#4b5563]">
             {d.intro}
           </p>
@@ -276,7 +292,7 @@ export default function ProgramPage() {
             {/* 페이지 도입 — 종목(층1) 선택 안내. */}
             <p className="px-4 pt-1 pb-8 text-center font-score text-[clamp(0.9375rem,3.4cqi,1.0625rem)] font-[300] leading-[1.85] text-[#4b5563]">
               체육교육회가 운영하는 <span className="font-[500] text-[#1e3a5f]">연수 프로그램</span>을 소개합니다.<br />
-              종목을 선택해 세부 커리큘럼을 확인하세요.
+              종목을 선택해 커리큘럼을 확인하세요.
             </p>
           </div>
 
