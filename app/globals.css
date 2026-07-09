@@ -6,6 +6,9 @@
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.css');
 @import 'tailwindcss';
 
+/* PWA 설치(standalone) 실행 전용 변형 — 모바일 내비 하단(설치)/상단(브라우저) CSS 토글용. JS 감지 없이 첫 페인트부터 정확. */
+@custom-variant standalone (@media (display-mode: standalone));
+
 /* 에스코어드림 — 실사용 웨이트만(200~700). 미사용 100/800/900 제거. */
 @font-face {
   font-family: 'S-CoreDream';

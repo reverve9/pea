@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import PWAHeader from './PWAHeader'
 import PWASubHeader from './PWASubHeader'
 import PWANavBar from './PWANavBar'
+import PWATopNavMobile from './PWATopNavMobile'
 import PWATopNav from './PWATopNav'
 import SlimFooter from './SlimFooter'
 import PwaInstallBanner from './PwaInstallBanner'
@@ -45,15 +46,18 @@ export default function PWANavigation({ children }: { children: React.ReactNode 
         </div>
       )
     }
+    // 상단(브라우저)·하단(설치 PWA) 내비를 둘 다 렌더하고 display-mode로 CSS 토글([[no JS 깜빡임]]).
+    // 브라우저: 헤더(static, 스크롤 아웃) + 상단 칩 내비. 설치 PWA: 헤더(sticky) + 하단 플로팅 칩 내비.
     return (
       <div className="relative flex flex-col min-h-screen">
         <PWAHeader variant="mobile" />
-        <main className="flex-1 min-h-0 overflow-y-auto pb-28">
+        <PWATopNavMobile className="standalone:hidden" />
+        <main className="flex-1 min-h-0 overflow-y-auto pb-8 standalone:pb-28">
           <PwaInstallBanner />
           {children}
           {showSlimFooter && <SlimFooter />}
         </main>
-        <PWANavBar />
+        <PWANavBar className="hidden standalone:block" />
       </div>
     )
   }

@@ -17,7 +17,7 @@ export default function PWAHeader({ variant = 'mobile' }: PWAHeaderProps) {
   return (
     <header
       className={`bg-gradient-to-r from-[#394053] via-[#49526B] to-[#A2AED0] text-white px-4 h-[80px] flex items-center justify-between ${
-        isDesktop ? 'pt-[12px]' : 'sticky top-0 z-50'
+        isDesktop ? 'pt-[12px]' : 'standalone:sticky standalone:top-0 z-50'
       }`}
     >
       <Link href="/" className="flex items-center min-w-0" aria-label="체육교육회 홈">
