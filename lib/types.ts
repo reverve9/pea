@@ -130,8 +130,10 @@ export interface ApplicationAdmin {
   region: string | null // 신청 대표자 지역(REGIONS 라벨)
   payer_name: string | null
   kind: 'jikmu' | 'jayul'
+  schedule_type: ScheduleType // 일정구분(sessions.schedule_type) — 유형/일정구분/회차 캐스케이드 필터용
   program_sport: string | null // 프로그램(종목) 필터용 — course.sport
   track_label: string
+  session_id: string | null // 회차 필터·집계 키(sessions.id). label은 유형 간 중복 가능 → id로 매칭
   session_label: string // 회차명(sessions.label) — 목록에서 며칠 예약건인지 식별
   period: string
   starts_on: string // 연수 시작일 'YYYY-MM-DD' — 참가자 입력 마감(시작−10일) 계산용

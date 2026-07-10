@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState, useTransition } from 'react'
+import React, { useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle, ChevronRight, Download, Link2, Search, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/common/Badge'
@@ -8,7 +8,7 @@ import AdminModal from '@/components/admin/AdminModal'
 import AdminList, { type AdminListColumn } from '@/components/admin/AdminList'
 import AdminTabs from '@/components/admin/AdminTabs'
 import { adminSelectClass } from '@/components/admin/AdminToolbar'
-import { formatDate, formatKRW, APPLICATION_STATUS } from '@/lib/display'
+import { formatDate, formatKRW, APPLICATION_STATUS, SCHEDULE_TYPE } from '@/lib/display'
 import { isDetailFillClosed, detailFillDeadline } from '@/lib/fillDeadline'
 import { exportToExcel } from '@/lib/excel'
 import { lessonLevelLabel, lessonSportLabel, equipmentLabel, JAYUL_LESSONS, EQUIPMENT_TYPES, LESSON_CLASSES, LESSON_SPORTS } from '@/lib/lessonOptions'
@@ -23,6 +23,7 @@ import type {
   RefundRequestAdmin,
   RefundOrigin,
   ModificationRequestAdmin,
+  ScheduleType,
 } from '@/lib/types'
 import {
   setApplicationStatus,
@@ -56,6 +57,8 @@ const KIND_OPTIONS: { key: 'all' | 'jikmu' | 'jayul'; label: string }[] = [
   { key: 'jikmu', label: '직무연수' },
   { key: 'jayul', label: '자율패키지' },
 ]
+// 일정구분(schedule_type) 표시 순서 — 연수관리(SessionsClient)와 동일. 필터 옵션은 신청 데이터에 존재하는 값만 이 순서로 노출.
+const SCHEDULE_ORDER: ScheduleType[] = ['jikmu', 'weekday_2n', 'weekend_2n', 'weekend_1n']
 const STATUS_OPTIONS: { key: 'all' | ApplicationStatus; label: string }[] = [
   { key: 'all', label: '상태 전체' },
   { key: 'pending', label: '입금대기' },
@@ -134,9 +137,11 @@ function ApplicationsPanel({
   }
   const flagOf = (id: string): ReqFlag => reqFlags.get(id) ?? { refundOrigin: null, mod: false }
 
-  // 필터 상태 — 프로그램(종목)·유형·상태·검색(이름/연락처, 실시간)
+  // 필터 상태 — 프로그램(종목)·유형/일정구분/회차(캐스케이드)·상태·검색(이름/연락처, 실시간)
   const [program, setProgram] = useState('all')
   const [kind, setKind] = useState<'all' | 'jikmu' | 'jayul'>('all')
+  const [schedule, setSchedule] = useState<'all' | ScheduleType>('all') // 일정구분
+  const [session, setSession] = useState<string>('all') // 회차(session_id)
   const [status, setStatus] = useState<'all' | ApplicationStatus>('all')
   const [assign, setAssign] = useState<AssignFilter>('all')
   const [req, setReq] = useState<ReqFilter>('all')
@@ -145,11 +150,51 @@ function ApplicationsPanel({
 
   const activeProgram = PROGRAMS.find((p) => p.key === program)
   const q = query.trim().replace(/\s/g, '')
-  const filterActive = program !== 'all' || kind !== 'all' || status !== 'all' || assign !== 'all' || req !== 'all' || reviewOnly || q !== ''
+
+  // 유형 → 일정구분 → 회차 캐스케이드 옵션 — 신청 데이터에 실제 존재하는 값만(빈 결과 옵션 방지).
+  // 회차 라벨은 유형 간 중복 가능 → session_id를 키로. 상위 선택(유형/일정구분)으로 하위 옵션을 좁힌다.
+  const scheduleOptions = useMemo(() => {
+    const seen = new Set<ScheduleType>()
+    for (const a of applications) {
+      if (!a.session_id) continue
+      if (kind !== 'all' && a.kind !== kind) continue
+      seen.add(a.schedule_type)
+    }
+    return SCHEDULE_ORDER.filter((st) => seen.has(st))
+  }, [applications, kind])
+
+  const sessionOptions = useMemo(() => {
+    const seen = new Map<string, { label: string; starts_on: string }>()
+    for (const a of applications) {
+      if (!a.session_id) continue
+      if (kind !== 'all' && a.kind !== kind) continue
+      if (schedule !== 'all' && a.schedule_type !== schedule) continue
+      if (!seen.has(a.session_id)) seen.set(a.session_id, { label: a.session_label, starts_on: a.starts_on })
+    }
+    return [...seen.entries()]
+      .map(([id, v]) => ({ id, label: v.label, starts_on: v.starts_on }))
+      .sort((x, y) => x.starts_on.localeCompare(y.starts_on))
+  }, [applications, kind, schedule])
+
+  // 캐스케이드 리셋 — 상위 변경 시 하위 선택 무효화(존재하지 않는 옵션에 갇히지 않도록).
+  const changeKind = (v: 'all' | 'jikmu' | 'jayul') => {
+    setKind(v)
+    setSchedule('all')
+    setSession('all')
+  }
+  const changeSchedule = (v: 'all' | ScheduleType) => {
+    setSchedule(v)
+    setSession('all')
+  }
+
+  const filterActive =
+    program !== 'all' || kind !== 'all' || schedule !== 'all' || session !== 'all' || status !== 'all' || assign !== 'all' || req !== 'all' || reviewOnly || q !== ''
   const filtered = applications.filter((a) => {
     if (reviewOnly && !a.needs_review) return false
     if (activeProgram && a.program_sport !== activeProgram.sport) return false
     if (kind !== 'all' && a.kind !== kind) return false
+    if (schedule !== 'all' && a.schedule_type !== schedule) return false
+    if (session !== 'all' && a.session_id !== session) return false
     // 입금대기 = 미입금(pending) + 추가입금 대기(paid/completed + due>0) 모두. 다른 상태 필터는 due>0 제외(추가입금대기로 분류).
     if (status === 'pending') {
       if (!(a.status === 'pending' || a.due_amount > 0)) return false
@@ -202,7 +247,21 @@ function ApplicationsPanel({
       key: 'type',
       header: '유형',
       tdClassName: 'px-2 text-[12.5px] font-[300] text-[#6b7280]',
-      cell: (a) => a.track_label,
+      cell: (a) => (a.kind === 'jikmu' ? '직무연수' : '자율패키지'),
+    },
+    {
+      key: 'schedule',
+      header: '일정구분',
+      tdClassName: 'px-2',
+      // 직무연수는 일정구분이 유형과 동일(단일) → 배지 중복 대신 '—'. 자율만 주중/주말 배지.
+      cell: (a) =>
+        a.kind === 'jikmu' ? (
+          <span className="text-[12px] text-[#d1d5db]">—</span>
+        ) : (
+          <Badge color={SCHEDULE_TYPE[a.schedule_type].color} size="sm">
+            {SCHEDULE_TYPE[a.schedule_type].label}
+          </Badge>
+        ),
     },
     {
       key: 'session',
@@ -309,11 +368,27 @@ function ApplicationsPanel({
 
   const toolbar = (
     <div className="flex flex-wrap items-center gap-2">
-      {/* 유형 · 상태 · 검색(실시간) */}
-      <select className={selectClass} value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
+      {/* 유형 → 일정구분 → 회차(캐스케이드) · 상태 · 검색(실시간) */}
+      <select className={selectClass} value={kind} onChange={(e) => changeKind(e.target.value as typeof kind)}>
           {KIND_OPTIONS.map((o) => (
             <option key={o.key} value={o.key}>
               {o.label}
+            </option>
+          ))}
+        </select>
+        <select className={selectClass} value={schedule} onChange={(e) => changeSchedule(e.target.value as typeof schedule)}>
+          <option value="all">일정구분 전체</option>
+          {scheduleOptions.map((st) => (
+            <option key={st} value={st}>
+              {SCHEDULE_TYPE[st].label}
+            </option>
+          ))}
+        </select>
+        <select className={selectClass} value={session} onChange={(e) => setSession(e.target.value)}>
+          <option value="all">회차 전체</option>
+          {sessionOptions.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.label}
             </option>
           ))}
         </select>

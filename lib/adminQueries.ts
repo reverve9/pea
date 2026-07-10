@@ -76,7 +76,7 @@ export async function getAllApplications(): Promise<ApplicationAdmin[]> {
   const { data, error } = await supabaseAdmin
     .from('applications')
     .select(
-      'id, application_no, applicant_name, phone, school_name, region, payer_name, room_type, room_spec, pkg_size, total_amount, refunded_amount, due_amount, due_claimed_at, due_settled_amount, status, is_waitlisted, payment_claimed_at, payment_claim_name, companion_memo, special_notes, referral_source, marketing_opt_in, admin_memo, created_at, session:sessions(label, schedule_type, starts_on, ends_on, nights, course:courses(sport)), participants(id, name, gender, phone, lesson_level, rentals, birth_front, birth_back_enc, is_leader, line_amount, sort_order)',
+      'id, application_no, applicant_name, phone, school_name, region, payer_name, session_id, room_type, room_spec, pkg_size, total_amount, refunded_amount, due_amount, due_claimed_at, due_settled_amount, status, is_waitlisted, payment_claimed_at, payment_claim_name, companion_memo, special_notes, referral_source, marketing_opt_in, admin_memo, created_at, session:sessions(label, schedule_type, starts_on, ends_on, nights, course:courses(sport)), participants(id, name, gender, phone, lesson_level, rentals, birth_front, birth_back_enc, is_leader, line_amount, sort_order)',
     )
     .order('created_at', { ascending: false })
   if (error) {
@@ -105,6 +105,7 @@ export async function getAllApplications(): Promise<ApplicationAdmin[]> {
     school_name: string | null
     region: string | null
     payer_name: string | null
+    session_id: string | null
     room_type: 'group' | 'private' | null
     room_spec: string | null
     pkg_size: number | null
@@ -166,8 +167,10 @@ export async function getAllApplications(): Promise<ApplicationAdmin[]> {
       region: r.region,
       payer_name: r.payer_name,
       kind: isJikmu ? 'jikmu' : 'jayul',
+      schedule_type: st,
       program_sport: course?.sport ?? null,
       track_label: isJikmu ? '직무연수' : `자율패키지 · ${SCHEDULE_TYPE[st].label}`,
+      session_id: r.session_id,
       session_label: r.session?.label ?? '',
       period: r.session ? formatPeriod(r.session.starts_on, r.session.ends_on, r.session.nights) : '',
       starts_on: r.session?.starts_on ?? '',
