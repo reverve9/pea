@@ -45,7 +45,7 @@ export default function PWATopNavMobile({ className = '' }: { className?: string
     >
       {/* 바 — 테두리 대신 소프트 언더섀도로 분리([[no-borders-rule]]) */}
       <div className="bg-white/95 backdrop-blur-sm shadow-[0_2px_8px_rgba(15,27,46,0.06)]">
-        <div className="flex items-center justify-around px-2 py-2">
+        <div className="flex items-center justify-around px-2 py-3.5">
           {NAV_ITEMS.map((item) => (
             <NavItemChip key={item.href} item={item} active={isNavActive(pathname, item.href)} />
           ))}

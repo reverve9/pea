@@ -17,13 +17,13 @@ export default function NavItemChip({ item, active }: { item: NavItem; active: b
         active ? 'scale-[1.15]' : 'hover:scale-[1.1]'
       }`}
     >
-      {/* 아이콘 칩 — 비활성 연틴트 / 활성 솔리드 네이비(하단내비 활성색 통일) */}
+      {/* 아이콘 칩 — 원형, 비활성 연틴트 / 활성 솔리드 네이비(하단내비 활성색 통일) */}
       <span
-        className={`grid h-9 w-9 place-items-center rounded-xl transition-colors duration-200 ${
+        className={`grid h-7 w-7 place-items-center rounded-full transition-colors duration-200 ${
           active ? 'bg-[#1e3a5f] text-white' : 'bg-[#1e3a5f]/[0.06] text-[#94a3b8]'
         }`}
       >
-        <Icon size={20} strokeWidth={1.5} />
+        <Icon size={16} strokeWidth={1.5} />
       </span>
       {/* 국문 라벨 — 활성 네이비 / 비활성 회색 */}
       <span
