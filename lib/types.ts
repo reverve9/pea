@@ -126,8 +126,6 @@ export interface ApplicationAdmin {
   application_no: string
   applicant_name: string
   phone: string
-  school_name: string | null // 신청 대표자 소속
-  region: string | null // 신청 대표자 지역(REGIONS 라벨)
   payer_name: string | null
   kind: 'jikmu' | 'jayul'
   schedule_type: ScheduleType // 일정구분(sessions.schedule_type) — 유형/일정구분/회차 캐스케이드 필터용

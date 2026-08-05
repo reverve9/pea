@@ -444,8 +444,6 @@ function ApplicationsPanel({
         period: a.period,
         applicant: a.applicant_name,
         phone: a.phone,
-        school: a.school_name ?? '',
-        region: a.region ?? '',
         payer: a.payer_name ?? '',
         headcount: a.headcount,
         amount: a.total_amount,
@@ -464,8 +462,6 @@ function ApplicationsPanel({
         { key: 'period', label: '기간' },
         { key: 'applicant', label: '신청자' },
         { key: 'phone', label: '연락처' },
-        { key: 'school', label: '소속' },
-        { key: 'region', label: '지역' },
         { key: 'payer', label: '입금자명' },
         { key: 'headcount', label: '인원' },
         { key: 'amount', label: '금액' },
@@ -800,11 +796,6 @@ function DetailModal({
         <p className="mt-1 text-[14px] font-[500] text-[#1f2937]">
           {app.applicant_name} · <span className="tabular-nums font-[300]">{app.phone}</span>
         </p>
-        {(app.school_name || app.region) && (
-          <p className="mt-1 text-[12.5px] font-[300] text-[#6b7280]">
-            {[app.school_name, app.region].filter(Boolean).join(' · ')}
-          </p>
-        )}
         <p className="mt-1 text-[13px] font-[400] tabular-nums text-[#1f2937]">
           결제금액 {formatKRW(app.total_amount)}
         </p>

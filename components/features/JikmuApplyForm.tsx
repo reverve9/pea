@@ -50,8 +50,6 @@ interface JikmuForm {
   birthFront: string
   insurance: boolean
   birthBack: string
-  schoolName: string
-  region: string
   lessonSport: '' | LessonSport
   lessonClass: string // LESSON_CLASSES 반 key
   roomType: '' | 'group' | 'private'
@@ -77,7 +75,7 @@ interface JikmuForm {
 
 const EMPTY: JikmuForm = {
   sessionId: '', name: '', gender: '', phone: '', birthFront: '',
-  insurance: false, birthBack: '', schoolName: '', region: '',
+  insurance: false, birthBack: '',
   lessonSport: '', lessonClass: '', roomType: 'group', roomSpec: '',
   rentals: { apparel: false, goggle: false, protector: false, glove: false },
   apparelSize: '', protectorSize: '', gloveSize: '',
@@ -274,8 +272,6 @@ export default function JikmuApplyForm() {
       : !a.gender ? '성별을 선택해 주세요.'
       : a.phone.length < 10 ? '연락처를 정확히 입력해 주세요.'
       : a.birthFront.length !== 6 ? '생년월일 6자리를 입력해 주세요.'
-      : !a.schoolName.trim() ? '소속을 입력해 주세요.'
-      : !a.region ? '지역을 선택해 주세요.'
       : !a.lessonSport ? '종목을 선택해 주세요.'
       : !a.lessonClass ? '희망 강습 수준을 선택해 주세요.'
       : a.roomType === 'private' && !a.roomSpec ? '개별객실 평형·인실을 선택해 주세요.'
@@ -292,7 +288,7 @@ export default function JikmuApplyForm() {
     const payload: JikmuPayload = {
       kind: 'jikmu',
       sessionId: a.sessionId,
-      applicant: { name: a.name.trim(), gender: a.gender, phone: a.phone, birthFront: a.birthFront, schoolName: a.schoolName.trim(), region: a.region },
+      applicant: { name: a.name.trim(), gender: a.gender, phone: a.phone, birthFront: a.birthFront },
       insurance: a.insurance,
       birthBack: a.insurance ? a.birthBack : '',
       lessonSport: a.lessonSport,
@@ -371,7 +367,6 @@ export default function JikmuApplyForm() {
         accent={NAVY}
         personLabel="참가자 "
         namePlaceholder="본인 성함"
-        schoolPlaceholder="소속교 기입"
         birthExtra={
           <>
             <label className="mt-2.5 flex items-center gap-2">
@@ -408,7 +403,17 @@ export default function JikmuApplyForm() {
         </Field>
 
         {form.lessonSport && (
-          <Field label="희망 강습 수준" required hint="조 편성 참고용입니다. 비용에는 영향이 없습니다.">
+          <Field
+            label="희망 강습 수준"
+            required
+            hint={
+              <>
+                스키·스노보드 둘 다 진행합니다. 조 편성 참고용이며 비용에는 영향이 없습니다.
+                <br />
+                강습 정원 : 최대 8명
+              </>
+            }
+          >
             <div className="space-y-2">
               {LESSON_CLASSES[form.lessonSport].map((c) => (
                 <OptionRow key={c.key} top selected={form.lessonClass === c.key} onClick={() => set('lessonClass', c.key)}>
@@ -430,7 +435,7 @@ export default function JikmuApplyForm() {
         <Field label="동반인" hint="같은 방·같은 강습조로 배정받고 싶은 동반 참가자가 있으면 체크해 주세요. 동반인도 별도로 신청해야 하며, 동명이인 구분·매칭을 위해 성함과 연락처가 필요합니다.">
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={form.hasCompanion} onChange={(e) => toggleCompanion(e.target.checked)} className="h-4 w-4 accent-[#1e3a5f]" />
-            <Text variant="sub" className="text-[#4b5563]">동반인이 있습니다</Text>
+            <Text variant="sub" className="text-[#4b5563]">동일한 프로그램을 신청한 동반인이 있습니다</Text>
           </label>
           {form.hasCompanion && (
             <div className="mt-2 grid grid-cols-2 gap-2">
@@ -456,17 +461,29 @@ export default function JikmuApplyForm() {
             <OptionRow selected={form.roomType === 'private'} onClick={() => set('roomType', 'private')}>개별객실</OptionRow>
           </div>
           {form.roomType === 'private' && (
-            <select
-              className={`${selectCls} mt-2`}
-              value={form.roomSpec}
-              onChange={(e) => set('roomSpec', e.target.value)}
-              style={selectTint(NAVY, !!form.roomSpec)}
-            >
-              <option value="">평형 · 인실 선택</option>
-              {roomOptions.map((r) => (
-                <option key={r.item_key} value={r.item_key}>{r.label} (+{won(r.amount)})</option>
-              ))}
-            </select>
+            <>
+              <select
+                className={`${selectCls} mt-2`}
+                value={form.roomSpec}
+                onChange={(e) => set('roomSpec', e.target.value)}
+                style={selectTint(NAVY, !!form.roomSpec)}
+              >
+                <option value="">평형 · 인실 선택</option>
+                {roomOptions.map((r) => (
+                  <option key={r.item_key} value={r.item_key}>{r.label} (+{won(r.amount)})</option>
+                ))}
+              </select>
+              {/* 중복납부 방지 안내 — 개별객실 선택 시에만. 1객실 추가금을 대표 1인이 납부하고
+                  나머지 동반인은 '동반인 대표 납부(+0원)' 항목을 고르는 규칙을 선택 직후에 각인. */}
+              <div className="mt-2.5 rounded-[10px] border border-[#dce4ed] bg-[#f6f9fc] p-3.5">
+                <p className="text-[13px] font-[600] text-[#1e3a5f]">개별객실 추가금 납부 안내</p>
+                <ul className="mt-1.5 space-y-1 text-[12.5px] font-[300] leading-relaxed text-[#4b5563]">
+                  <li>· 추가금액은 <b className="font-[500]">1객실 당 1회</b>만 납부하면 됩니다.</li>
+                  <li>· 추가금액을 대표 납부하시는 참가자는 개별객실 타입을 확인하시어, 추가금액을 확인하시면 됩니다.</li>
+                  <li>· 추가금액 중복 납부를 방지하기 위해, 납부자 외 동반인은 <b className="font-[500]">‘동반인 대표 납부(+0원)’</b>을 선택해 주세요.</li>
+                </ul>
+              </div>
+            </>
           )}
         </Field>
 

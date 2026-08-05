@@ -23,8 +23,6 @@ const applicant = z.object({
   gender: z.enum(['male', 'female']).or(z.literal('')),
   phone,
   birthFront: birth6,
-  schoolName: z.string().trim().min(1),
-  region: z.string().trim().min(1),
 })
 
 const jikmuSchema = z.object({
@@ -140,8 +138,6 @@ export async function POST(req: Request) {
     session_id: payload.sessionId,
     phone: payload.applicant.phone,
     applicant_name: payload.applicant.name.trim(),
-    school_name: payload.applicant.schoolName.trim() || null,
-    region: payload.applicant.region || null,
     payer_name: payload.payerDiffers && payload.payerName.trim() ? payload.payerName.trim() : null,
     room_type: isJikmu ? (payload as JikmuPayload).roomType : null,
     room_spec: isJikmu && (payload as JikmuPayload).roomType === 'private' ? (payload as JikmuPayload).roomSpec || null : null,

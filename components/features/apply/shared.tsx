@@ -20,12 +20,6 @@ export const selectCls =
 // select(드랍다운) 선택 상태 = 옵션 버튼과 동일 통일: bg 틴트 + accent 텍스트(테두리는 중립 고정). on = 값 선택됨.
 export const selectTint = (accent: string, on: boolean) => ({ background: on ? accent + '12' : '#ffffff', color: on ? accent : '#1f2937' })
 
-export const REGIONS = [
-  '서울특별시', '부산광역시', '대구광역시', '인천광역시', '광주광역시', '대전광역시', '울산광역시',
-  '세종특별자치시', '경기도', '강원특별자치도', '충청북도', '충청남도', '전북특별자치도', '전라남도',
-  '경상북도', '경상남도', '제주특별자치도',
-]
-
 // 알게 된 경로(계획안 14번) — 필수X·중복선택.
 export const ROUTE_OPTIONS = ['체육교육회 홈페이지', '교육청 연수원 게시글', '학교 내 공문', '지인 소개', '과거 참가자']
 
@@ -298,21 +292,19 @@ export function CashReceiptSelect({
 }
 
 // 신청자 기본정보 공통 필드셋 — 직무(참가자)·자율(대표). 두 폼 구조 동일, 문구·접두어만 prop 분기.
-// name/gender/phone/birthFront/schoolName/region 6필드는 두 폼 구조 공유(아래 ApplicantCore).
+// name/gender/phone/birthFront 4필드는 두 폼 구조 공유(아래 ApplicantCore).
 // 직무 전용 보험 토글·주민번호 뒷자리는 birthExtra 로 주입(도메인 로직은 각 폼 유지).
 export interface ApplicantCore {
   name: string
   gender: '' | 'male' | 'female'
   phone: string
   birthFront: string
-  schoolName: string
-  region: string
 }
 // patch 객체 방식 — 각 폼의 Partial<Form> 세터가 구조적으로 그대로 할당됨(캐스팅 불필요). setSaved 초기화도 폼 세터가 담당.
 export type ApplicantPatch = (patch: Partial<ApplicantCore>) => void
 
 export function ApplicantFields({
-  value, onChange, accent, personLabel = '', namePlaceholder, phoneHint, schoolPlaceholder, birthExtra,
+  value, onChange, accent, personLabel = '', namePlaceholder, phoneHint, birthExtra,
 }: {
   value: ApplicantCore
   onChange: ApplicantPatch
@@ -320,7 +312,6 @@ export function ApplicantFields({
   personLabel?: string // '참가자 '(직무) / ''(자율) — 성함·성별·연락처·생년월일 라벨 접두어
   namePlaceholder: string
   phoneHint?: React.ReactNode
-  schoolPlaceholder: string
   birthExtra?: React.ReactNode // 생년월일 입력 아래 추가 노드(직무 보험 토글 등)
 }) {
   return (
@@ -357,17 +348,6 @@ export function ApplicantFields({
         {birthExtra}
       </Field>
 
-      <Field label="소속" required>
-        <div className="grid grid-cols-2 gap-2">
-          <input className={inputCls} value={value.schoolName} onChange={(e) => onChange({ schoolName: e.target.value })} placeholder={schoolPlaceholder} />
-          <select className={selectCls} value={value.region} onChange={(e) => onChange({ region: e.target.value })} style={selectTint(accent, !!value.region)}>
-            <option value="">지역 선택</option>
-            {REGIONS.map((r) => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </select>
-        </div>
-      </Field>
     </>
   )
 }

@@ -54,8 +54,6 @@ interface JayulForm {
   gender: '' | 'male' | 'female'
   phone: string
   birthFront: string
-  schoolName: string
-  region: string
   lessonClass: string // 대표 기초강습(jayul_ski/jayul_board/jayul_freeride)
   equipment: '' | 'ski' | 'board' // 대표 대여 장비 세트
   rentals: Record<RentalKey, number> // 항목별 수량(비용만). 사이즈·귀속은 신청 후 대표 배정
@@ -74,7 +72,7 @@ interface JayulForm {
 
 const EMPTY: JayulForm = {
   variant: '', sessionId: '', headcount: 1, name: '', gender: '', phone: '', birthFront: '',
-  schoolName: '', region: '', lessonClass: '', equipment: '',
+  lessonClass: '', equipment: '',
   rentals: { apparel: 0, goggle: 0, protector: 0, glove: 0 },
   repInsurance: false,
   note: '',
@@ -269,8 +267,6 @@ export default function JayulApplyForm() {
       : !a.gender ? '성별을 선택해 주세요.'
       : a.phone.length < 10 ? '연락처를 정확히 입력해 주세요.'
       : a.birthFront.length !== 6 ? '생년월일 6자리를 입력해 주세요.'
-      : !a.schoolName.trim() ? '소속을 입력해 주세요.'
-      : !a.region ? '지역을 선택해 주세요.'
       : !a.lessonClass ? '기초 단체 강습을 선택해 주세요.'
       : !a.equipment ? '대여 장비를 선택해 주세요.'
       : a.cashReceiptType === 'business' && a.cashReceiptBizno.length !== 10 ? '현금영수증 지출증빙용 사업자등록번호 10자리를 입력해 주세요.'
@@ -287,7 +283,7 @@ export default function JayulApplyForm() {
       sessionId: a.sessionId,
       variant: a.variant,
       headcount: a.headcount,
-      applicant: { name: a.name.trim(), gender: a.gender, phone: a.phone, birthFront: a.birthFront, schoolName: a.schoolName.trim(), region: a.region },
+      applicant: { name: a.name.trim(), gender: a.gender, phone: a.phone, birthFront: a.birthFront },
       lessonClass: a.lessonClass,
       equipment: a.equipment,
       rentals: a.rentals,
@@ -386,7 +382,6 @@ export default function JayulApplyForm() {
           accent={GREEN}
           namePlaceholder="대표 신청자 성함"
           phoneHint="신청 관련 안내가 이 번호로 전달됩니다."
-          schoolPlaceholder="소속 기입"
         />
       </div>
 

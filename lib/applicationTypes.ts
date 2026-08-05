@@ -12,8 +12,6 @@ export interface ApplicantInput {
   gender: '' | Gender
   phone: string
   birthFront: string // YYMMDD
-  schoolName: string
-  region: string
 }
 
 export interface JikmuPayload {
