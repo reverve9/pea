@@ -19,10 +19,11 @@ import type { SessionWithCourse, ScheduleType } from '@/lib/types'
 
 // 타입별 색 — 4유형 차별성·가독성 우선(쿨→웜으로 확실히 분리). 직무=네이비(CourseTypes 통일·앵커).
 // export — 좌 월별 마스터(ScheduleMonthMaster)가 같은 색 언어(타입 칩) 재사용.
+// 키 순서 = 하단 범례 노출 순서(Object.keys 순회) — 자율 3종은 주말2박 · 주중2박 · 주말1박(오너 지정).
 export const SCHEDULE_HEX: Record<ScheduleType, string> = {
   jikmu: '#1e3a5f', // 직무연수 — 네이비(플래그십, 가장 진함)
-  weekday_2n: '#2f8fa8', // 주중 2박 — 틸(시안 계열, 네이비와 확실히 구분)
   weekend_2n: '#549a4e', // 주말 2박 — 그린
+  weekday_2n: '#2f8fa8', // 주중 2박 — 틸(시안 계열, 네이비와 확실히 구분)
   weekend_1n: '#d18a3c', // 주말 1박 — 앰버
 }
 

@@ -80,3 +80,31 @@ export function equipmentLabel(key: string | null | undefined): string {
   if (!key) return '—'
   return EQUIPMENT_TYPES.find((e) => e.key === key)?.label ?? key
 }
+
+// 개별(추가) 강습 시간대 — 자율패키지 전용. 박수에 따라 선택 가능한 슬롯이 다르다.
+//   1박 = 1일차 야간 / 2일차 오전 (2슬롯)
+//   2박 = 위 + 2일차 오후 · 2일차 야간 · 3일차 오전 (5슬롯)
+// 수량만큼 슬롯을 고르며 같은 슬롯 중복 선택 가능(인원별 배정은 신청 후 처리).
+export const PRIVATE_LESSON_MAX = 5
+export interface LessonSlot {
+  key: string
+  label: string
+}
+const SLOT_D1_NIGHT: LessonSlot = { key: 'd1_night', label: '1일차 야간' }
+const SLOT_D2_MORNING: LessonSlot = { key: 'd2_morning', label: '2일차 오전' }
+export const LESSON_SLOTS_1N: LessonSlot[] = [SLOT_D1_NIGHT, SLOT_D2_MORNING]
+export const LESSON_SLOTS_2N: LessonSlot[] = [
+  SLOT_D1_NIGHT,
+  SLOT_D2_MORNING,
+  { key: 'd2_afternoon', label: '2일차 오후' },
+  { key: 'd2_night', label: '2일차 야간' },
+  { key: 'd3_morning', label: '3일차 오전' },
+]
+// 변형(schedule_type) → 선택 가능한 슬롯. 주말1박만 2슬롯, 나머지(2박)는 5슬롯.
+export function lessonSlotsFor(variant: string): LessonSlot[] {
+  return variant === 'weekend_1n' ? LESSON_SLOTS_1N : LESSON_SLOTS_2N
+}
+// 슬롯 key → 라벨(어드민·요약 표시용). 매칭 실패 시 원본.
+export function lessonSlotLabel(key: string): string {
+  return LESSON_SLOTS_2N.find((s) => s.key === key)?.label ?? key
+}

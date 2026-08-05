@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { verifyMyToken } from '@/lib/serverCrypto'
+import { updateParticipantDetail } from '@/lib/participantDetail'
 
 // 마이페이지 신청건 액션 — 환불신청(refund) / 수정요청(modification).
 // 토큰으로 본인확인 후, 대상 신청이 그 사람 소유(phone+name)인지 검증하고 insert.
@@ -19,6 +20,8 @@ const changeSchema = z.object({
   field: z.enum([
     'name', 'phone', 'birth_front', 'gender', 'lesson_level', 'equipment',
     'rental_apparel', 'rental_protector', 'rental_goggle', 'rental_glove',
+    'rental_apparel_size', 'rental_protector_size', 'rental_glove_size',
+    'insurance',
   ]),
   label: z.string().max(40),
   current: z.string().max(200),
@@ -26,7 +29,15 @@ const changeSchema = z.object({
 })
 const schema = z.discriminatedUnion('type', [
   z.object({ ...base, type: z.literal('refund'), reason: z.string().trim().max(1000), refundAccount: z.string().trim().min(1).max(200) }),
-  z.object({ ...base, type: z.literal('modification'), changes: z.array(changeSchema).min(1).max(30), userNote: z.string().trim().max(1000).optional() }),
+  z.object({
+    ...base,
+    type: z.literal('modification'),
+    changes: z.array(changeSchema).min(1).max(30),
+    userNote: z.string().trim().max(1000).optional(),
+    // 보험 '희망' 전환 시에만 동봉. 평문은 여기서 소비하고 즉시 암호화 저장 — 요청 레코드에는 남기지 않는다.
+    birthBack: z.string().regex(/^\d{7}$/).optional(),
+    birthBackParticipantId: z.string().uuid().optional(),
+  }),
   z.object({ ...base, type: z.literal('payment'), payerName: z.string().trim().min(1).max(100) }),
   z.object({ ...base, type: z.literal('due_payment') }), // 추가입금(수정 증액) 완료 신고 — 금액은 서버 due_amount 기준
 ])
@@ -62,6 +73,42 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: '환불 신청 저장 중 오류가 발생했습니다.' }, { status: 500 })
     }
   } else if (body.type === 'modification') {
+    // 보험 '희망' 전환은 뒷자리 없이는 성립하지 않는다 — 이미 등록된 참가자가 아니면 서버에서 거절.
+    // (클라이언트 검증만으로는 우회 가능 → 보험 미가입인데 가입으로 처리되는 사고 방지)
+    const insChange = body.changes.find((c) => c.field === 'insurance' && c.requested === 'true')
+    if (insChange?.participant_id) {
+      const hasBirthBack = body.birthBack != null && body.birthBackParticipantId === insChange.participant_id
+      if (!hasBirthBack) {
+        const { data: p } = await supabaseAdmin
+          .from('participants')
+          .select('birth_back_enc')
+          .eq('id', insChange.participant_id)
+          .eq('application_id', body.applicationId)
+          .maybeSingle()
+        if (!p?.birth_back_enc) {
+          return NextResponse.json(
+            { error: '보험 가입을 위해 주민번호 뒷자리 7자리를 입력해 주세요.' },
+            { status: 400 },
+          )
+        }
+      }
+    }
+
+    // 보험 뒷자리 — 신청폼과 동일하게 write-only 암호문으로만 적재(participants.birth_back_enc).
+    // changes(jsonb)는 어드민 화면에 그대로 노출되므로 뒷자리는 절대 넣지 않는다.
+    // 승인 전 선반영이지만 대상은 복호 불가한 암호문 1개뿐 — 요금·명부 필드는 어드민 반영 시에만 바뀐다.
+    if (body.birthBack && body.birthBackParticipantId) {
+      const { data: part, error: pErr } = await supabaseAdmin
+        .from('participants')
+        .select('id')
+        .eq('id', body.birthBackParticipantId)
+        .eq('application_id', body.applicationId)
+        .maybeSingle()
+      if (pErr) return NextResponse.json({ error: '처리 중 오류가 발생했습니다.' }, { status: 500 })
+      if (!part) return NextResponse.json({ error: '대상 참가자를 찾을 수 없습니다.' }, { status: 404 })
+      const res = await updateParticipantDetail(body.birthBackParticipantId, { birthBack: body.birthBack })
+      if (!res.ok) return NextResponse.json({ error: res.error }, { status: 400 })
+    }
     const { error } = await supabaseAdmin.from('modification_requests').insert({
       application_id: body.applicationId,
       phone: claims.phone,

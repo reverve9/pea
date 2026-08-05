@@ -57,7 +57,7 @@ export default function PriceTable({ items }: { items: PriceItem[] }) {
     items.filter((i) => i.category === cat).sort((a, b) => a.sort_order - b.sort_order)
 
   const pkg = byCategory('pkg_price')
-  const pkgBuckets = ['주중 2박', '주말 2박', '주말 1박'].map((bucket) => ({
+  const pkgBuckets = ['주말 2박', '주중 2박', '주말 1박'].map((bucket) => ({
     bucket,
     rows: pkg.filter((i) => pkgBucket(i.item_key) === bucket),
   }))

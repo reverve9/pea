@@ -7,7 +7,7 @@ import type { PriceItemAdmin, ScheduleType } from '@/lib/types'
 
 // 기본 요금(price_items) 2열 그리드 — 묶음 3그룹(직무연수/자율패키지/렌탈). 요금 모달 하단·기본요금 모달 공용.
 // 금액만 편집(노출 여부는 일정 관리 소관). 상태(amounts)·저장은 부모가 소유하고 이 컴포넌트는 표현만.
-const PKG_VARIANTS: ScheduleType[] = ['weekday_2n', 'weekend_2n', 'weekend_1n']
+const PKG_VARIANTS: ScheduleType[] = ['weekend_2n', 'weekday_2n', 'weekend_1n']
 const variantOf = (itemKey: string) => itemKey.replace(/^pkg_/, '').replace(/_\d+$/, '')
 
 const isRowDirty = (it: PriceItemAdmin, raw: string | undefined) => {

@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { verifyMyToken } from '@/lib/serverCrypto'
-import { formatPeriod, SCHEDULE_TYPE } from '@/lib/display'
+import { formatPeriod, SCHEDULE_TYPE, MODIFICATION_FIELD_LABEL } from '@/lib/display'
 import type { ScheduleType, ModificationChange } from '@/lib/types'
 import type { MyApplicationRow, MyModificationRow, MyRefundRow } from '@/lib/applicationTypes'
 
@@ -53,7 +53,10 @@ export async function POST(req: Request) {
 
   // 변경 항목 라벨 요약(중복 제거) — 고객 노출용 짧은 설명.
   const summarize = (changes: ModificationChange[] | null): string => {
-    const labels = Array.from(new Set((Array.isArray(changes) ? changes : []).map((c) => c.label)))
+    // 필드 라벨 맵 우선 — 접수 당시 스냅샷 label 이 원시 필드명이어도 화면에는 한글로 나가게.
+    const labels = Array.from(
+      new Set((Array.isArray(changes) ? changes : []).map((c) => MODIFICATION_FIELD_LABEL[c.field] ?? c.label)),
+    )
     return labels.join(' · ') || '정보 수정'
   }
   const byNewest = <T extends { created_at: string }>(a: T, b: T) => (a.created_at < b.created_at ? 1 : -1)

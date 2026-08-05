@@ -12,9 +12,9 @@ import type { SessionAdmin, CourseOption, ScheduleType, PriceItemAdmin, PriceCat
 import { createSession, updateSession, deleteSession, completeSessionApplications, syncSessionOverrides, savePriceItems, type SessionInput } from './actions'
 import BaseGrid, { initBaseAmounts, basePatches, baseHasInvalid, baseDirtyCount } from './BaseGrid'
 
-const TYPE_ORDER: ScheduleType[] = ['jikmu', 'weekday_2n', 'weekend_2n', 'weekend_1n']
-// 자율패키지 하위 옵션 표시 순서(오너 지정): 주말2박 · 주말1박 · 주중2박.
-const JAYUL_VARIANTS: ScheduleType[] = ['weekend_2n', 'weekend_1n', 'weekday_2n']
+const TYPE_ORDER: ScheduleType[] = ['jikmu', 'weekend_2n', 'weekday_2n', 'weekend_1n']
+// 자율패키지 하위 옵션 표시 순서(오너 지정 2026-08-05): 주말2박 · 주중2박 · 주말1박.
+const JAYUL_VARIANTS: ScheduleType[] = ['weekend_2n', 'weekday_2n', 'weekend_1n']
 
 // 차수 요금 조정(오버라이드) 섹션의 카테고리 표시 순서·라벨.
 const PRICE_CATEGORIES: { key: PriceCategory; label: string }[] = [

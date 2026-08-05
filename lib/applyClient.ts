@@ -16,7 +16,16 @@ export async function submitApplication(payload: ApplyPayload): Promise<ApplyRes
 // 마이페이지 액션 — 환불신청 / 수정요청. 토큰으로 소유권 검증 후 접수(/api/my/requests).
 export type MyRequestBody =
   | { token: string; applicationId: string; type: 'refund'; reason: string; refundAccount: string }
-  | { token: string; applicationId: string; type: 'modification'; changes: ModificationChange[]; userNote?: string }
+  | {
+      token: string
+      applicationId: string
+      type: 'modification'
+      changes: ModificationChange[]
+      userNote?: string
+      // 보험 '희망' 전환 시에만 — 서버가 즉시 암호화 저장하고 요청 레코드에는 남기지 않는다.
+      birthBack?: string
+      birthBackParticipantId?: string
+    }
   | { token: string; applicationId: string; type: 'payment'; payerName: string }
   | { token: string; applicationId: string; type: 'due_payment' }
 

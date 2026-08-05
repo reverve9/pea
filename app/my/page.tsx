@@ -13,12 +13,12 @@ import { LoadingState } from '@/components/common/StateView'
 import { MasterDetailProvider, MasterDetailList, MasterDetailDetail } from '@/components/shell/MasterDetail'
 import { useQuery } from '@/lib/useQuery'
 import { getSiteContent } from '@/lib/queries'
-import { formatDate } from '@/lib/display'
+import { formatDate, modificationValueLabel } from '@/lib/display'
 import { isDetailFillClosed, detailFillDeadline } from '@/lib/fillDeadline'
 import { submitMyRequest, fetchMyRoster, submitMyParticipant, requestMyFillLink, assignParticipantOptions } from '@/lib/applyClient'
 import ParticipantFillSlot from '@/components/features/ParticipantFillSlot'
 import { RENTAL_OPTIONS, type RentalOptionKey } from '@/lib/rentalOptions'
-import { JAYUL_LESSONS, EQUIPMENT_TYPES, lessonLevelLabel, equipmentLabel } from '@/lib/lessonOptions'
+import { JAYUL_LESSONS, EQUIPMENT_TYPES } from '@/lib/lessonOptions'
 import type { SiteContent, ModificationField, ModificationChange } from '@/lib/types'
 import type { MyApplicationRow, MyRosterParticipant, RentalQty, RentalAssignmentInput } from '@/lib/applicationTypes'
 
@@ -386,18 +386,30 @@ function CompanionFill({ applicationId, token, startsOn }: { applicationId: stri
 
 // 수정요청 정형 폼 — 참가자별 항목 현재값→변경값(자유텍스트 폐기). 렌탈=직무만(자율 렌탈은 배정 매트릭스).
 // 요금 영향(직무 렌탈)은 어드민 반영 시 부분환불/추가결제로 자동 라우팅. 회차 변경은 대상 아님(취소 후 재신청).
-type ModFieldDef = { field: ModificationField; label: string; input: 'text' | 'gender' | 'lesson' | 'equipment' | 'rental'; only?: 'jikmu' | 'jayul' }
+// 렌탈 사이즈 — 최초 접수(JikmuApplyForm)와 동일 옵션. 고글은 사이즈 없음.
+const MOD_APPAREL_SIZES = ['S', 'M', 'L', 'XL', '2XL']
+const MOD_GEAR_SIZES = ['S', 'M', 'L']
+
+type ModFieldDef = {
+  field: ModificationField
+  label: string
+  input: 'text' | 'gender' | 'lesson' | 'equipment' | 'rental' | 'insurance'
+  only?: 'jikmu' | 'jayul'
+  sizeField?: ModificationField // 렌탈 '신청' 선택 시 함께 지정하는 사이즈 필드
+  sizes?: string[]
+}
 const MOD_FIELDS: ModFieldDef[] = [
   { field: 'name', label: '성함', input: 'text' },
   { field: 'phone', label: '연락처', input: 'text' },
   { field: 'birth_front', label: '생년월일(6자리)', input: 'text' },
   { field: 'gender', label: '성별', input: 'gender' },
+  { field: 'insurance', label: '여행자 보험', input: 'insurance' },
   { field: 'lesson_level', label: '기초강습', input: 'lesson', only: 'jayul' },
   { field: 'equipment', label: '용품세트', input: 'equipment', only: 'jayul' },
-  { field: 'rental_apparel', label: '렌탈·의류', input: 'rental', only: 'jikmu' },
-  { field: 'rental_protector', label: '렌탈·보호대', input: 'rental', only: 'jikmu' },
+  { field: 'rental_apparel', label: '렌탈·의류', input: 'rental', only: 'jikmu', sizeField: 'rental_apparel_size', sizes: MOD_APPAREL_SIZES },
+  { field: 'rental_protector', label: '렌탈·보호대', input: 'rental', only: 'jikmu', sizeField: 'rental_protector_size', sizes: MOD_GEAR_SIZES },
   { field: 'rental_goggle', label: '렌탈·고글', input: 'rental', only: 'jikmu' },
-  { field: 'rental_glove', label: '렌탈·장갑', input: 'rental', only: 'jikmu' },
+  { field: 'rental_glove', label: '렌탈·장갑', input: 'rental', only: 'jikmu', sizeField: 'rental_glove_size', sizes: MOD_GEAR_SIZES },
 ]
 
 function rawCurrent(p: MyRosterParticipant, f: ModificationField): string {
@@ -412,22 +424,29 @@ function rawCurrent(p: MyRosterParticipant, f: ModificationField): string {
     case 'rental_protector': return p.protector ? 'true' : 'false'
     case 'rental_goggle': return p.goggle ? 'true' : 'false'
     case 'rental_glove': return p.glove ? 'true' : 'false'
+    case 'rental_apparel_size': return p.apparel_size ?? ''
+    case 'rental_protector_size': return p.protector_size ?? ''
+    case 'rental_glove_size': return p.glove_size ?? ''
+    case 'insurance': return p.insurance_wanted ? 'true' : 'false'
     default: return ''
   }
 }
-function readableValue(f: ModificationField, v: string): string {
-  if (f === 'gender') return v === 'male' ? '남' : v === 'female' ? '여' : '(미지정)'
-  if (f === 'lesson_level') return v ? lessonLevelLabel(v) : '(미지정)'
-  if (f === 'equipment') return v ? equipmentLabel(v) : '(미지정)'
-  if (f.startsWith('rental_')) return v === 'true' ? '신청' : '미신청'
-  return v || '(미입력)'
+// 표시 라벨 — 사이즈 필드는 MOD_FIELDS 에 독립 항목이 없으므로(렌탈 항목의 sizeField) 부모 라벨에서 파생.
+// 이 값이 어드민 화면·고객 답변 문구에 그대로 쓰이므로 원시 필드명이 새면 안 된다.
+function modLabel(f: ModificationField): string {
+  const own = MOD_FIELDS.find((d) => d.field === f)
+  if (own) return own.label
+  const parent = MOD_FIELDS.find((d) => d.sizeField === f)
+  return parent ? `${parent.label} 사이즈` : f
 }
+const readableValue = modificationValueLabel
 
 function ModificationForm({ app, token, onDone }: { app: MyApplicationRow; token: string; onDone: () => void }) {
   const [roster, setRoster] = useState<MyRosterParticipant[] | null>(null)
   const [loadErr, setLoadErr] = useState<string | null>(null)
   const [pid, setPid] = useState('')
   const [edits, setEdits] = useState<Record<string, string>>({}) // `${pid}::${field}` = requested
+  const [birthBack, setBirthBack] = useState<Record<string, string>>({}) // pid → 뒷자리 7자리(보험 희망 전환 시)
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -443,15 +462,29 @@ function ModificationForm({ app, token, onDone }: { app: MyApplicationRow; token
   const fields = MOD_FIELDS.filter((f) => !f.only || f.only === app.kind)
   const part = roster?.find((p) => p.id === pid) ?? null
   const keyOf = (f: ModificationField) => `${pid}::${f}`
+  const defOf = (f: ModificationField) => MOD_FIELDS.find((d) => d.field === f)
+  // 체크 해제 시 딸린 사이즈 항목도 같이 정리(렌탈을 다시 끄면 사이즈 요청이 남지 않게).
   const toggle = (f: ModificationField) =>
     setEdits((e) => {
       const k = keyOf(f)
       const next = { ...e }
-      if (k in next) delete next[k]
-      else next[k] = part ? rawCurrent(part, f) : ''
+      const sizeKey = defOf(f)?.sizeField ? keyOf(defOf(f)!.sizeField!) : null
+      if (k in next) {
+        delete next[k]
+        if (sizeKey) delete next[sizeKey]
+      } else {
+        next[k] = part ? rawCurrent(part, f) : ''
+      }
       return next
     })
-  const setVal = (f: ModificationField, v: string) => setEdits((e) => ({ ...e, [keyOf(f)]: v }))
+  const setVal = (f: ModificationField, v: string) =>
+    setEdits((e) => {
+      const next = { ...e, [keyOf(f)]: v }
+      // 렌탈을 '미신청'으로 되돌리면 사이즈 지정은 의미가 없으므로 제거.
+      const sizeField = defOf(f)?.sizeField
+      if (sizeField && v !== 'true') delete next[keyOf(sizeField)]
+      return next
+    })
 
   const submit = async () => {
     setError(null)
@@ -463,13 +496,43 @@ function ModificationForm({ app, token, onDone }: { app: MyApplicationRow; token
       if (!p) continue
       const current = rawCurrent(p, field)
       if (requested === current) continue
-      const def = MOD_FIELDS.find((d) => d.field === field)
-      changes.push({ target: 'participant', participant_id: ppid, participant_name: p.name, field, label: def?.label ?? field, current, requested })
+      changes.push({ target: 'participant', participant_id: ppid, participant_name: p.name, field, label: modLabel(field), current, requested })
     }
     if (!changes.length) { setError('변경할 항목을 선택하고 값을 바꿔 주세요.'); return }
+
+    // 렌탈 '신청' 전환인데 사이즈를 안 고른 경우 차단 — 최초 접수와 동일 기준(고글 제외).
+    for (const c of changes) {
+      const def = MOD_FIELDS.find((d) => d.field === c.field)
+      if (!def?.sizeField || c.requested !== 'true') continue
+      const size = edits[`${c.participant_id}::${def.sizeField}`]
+      if (!size) { setError(`${def.label} 사이즈를 선택해 주세요.`); return }
+    }
+
+    // 보험 '희망' 전환 참가자 — 뒷자리가 아직 등록되지 않았다면 이번에 받아야 가입 처리가 가능.
+    const insChange = changes.find((c) => c.field === 'insurance' && c.requested === 'true')
+    let bb: string | undefined
+    let bbPid: string | undefined
+    if (insChange?.participant_id) {
+      const p = roster.find((x) => x.id === insChange.participant_id)
+      const entered = (birthBack[insChange.participant_id] ?? '').trim()
+      if (!p?.has_insurance && entered.length !== 7) {
+        setError('보험 가입을 위해 주민번호 뒷자리 7자리를 입력해 주세요.')
+        return
+      }
+      if (entered.length === 7) { bb = entered; bbPid = insChange.participant_id }
+    }
+
     setSubmitting(true)
     try {
-      await submitMyRequest({ token, applicationId: app.id, type: 'modification', changes, userNote: note.trim() || undefined })
+      await submitMyRequest({
+        token,
+        applicationId: app.id,
+        type: 'modification',
+        changes,
+        userNote: note.trim() || undefined,
+        birthBack: bb,
+        birthBackParticipantId: bbPid,
+      })
       onDone()
     } catch (e) {
       setError(e instanceof Error ? e.message : '요청 처리 중 오류가 발생했습니다.')
@@ -539,10 +602,48 @@ function ModificationForm({ app, token, onDone }: { app: MyApplicationRow; token
                         </select>
                       )}
                       {def.input === 'rental' && (
-                        <select value={requested} onChange={(e) => setVal(def.field, e.target.value)} className={fieldCls}>
-                          <option value="false">미신청</option>
-                          <option value="true">신청</option>
-                        </select>
+                        <>
+                          <select value={requested} onChange={(e) => setVal(def.field, e.target.value)} className={fieldCls}>
+                            <option value="false">미신청</option>
+                            <option value="true">신청</option>
+                          </select>
+                          {/* '신청' 전환 시 최초 접수와 동일하게 사이즈까지 지정(고글은 사이즈 없음). */}
+                          {requested === 'true' && def.sizeField && def.sizes && (
+                            <select
+                              value={edits[keyOf(def.sizeField)] ?? ''}
+                              onChange={(e) => setVal(def.sizeField!, e.target.value)}
+                              className={`${fieldCls} mt-2`}
+                            >
+                              <option value="">사이즈 선택</option>
+                              {def.sizes.map((sz) => <option key={sz} value={sz}>{sz}</option>)}
+                            </select>
+                          )}
+                        </>
+                      )}
+                      {def.input === 'insurance' && (
+                        <>
+                          <select value={requested} onChange={(e) => setVal(def.field, e.target.value)} className={fieldCls}>
+                            <option value="false">희망 안 함</option>
+                            <option value="true">가입 희망</option>
+                          </select>
+                          {/* 보험 가입에는 주민번호 뒷자리가 필요. 이미 등록돼 있으면 재입력 없이 희망만 전환. */}
+                          {requested === 'true' && (
+                            part.has_insurance ? (
+                              <p className="mt-2 font-score text-[12px] text-[#9ca3af]">주민번호 뒷자리가 이미 등록되어 있어 추가 입력이 필요 없습니다.</p>
+                            ) : (
+                              <>
+                                <input
+                                  value={birthBack[pid] ?? ''}
+                                  onChange={(e) => setBirthBack((b) => ({ ...b, [pid]: e.target.value.replace(/\D/g, '').slice(0, 7) }))}
+                                  className={`${fieldCls} mt-2`}
+                                  placeholder="주민번호 뒷자리 7자리 (보험 가입용)"
+                                  inputMode="numeric"
+                                />
+                                <p className="mt-1 font-score text-[12px] text-[#9ca3af]">보험 가입 목적으로만 사용되며 암호화되어 저장됩니다.</p>
+                              </>
+                            )
+                          )}
+                        </>
                       )}
                     </div>
                   )}

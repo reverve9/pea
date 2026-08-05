@@ -24,21 +24,36 @@ type Price = [label: string, value: string, sub?: string]
 // 세부사항 아이템 — 단순 문자열 또는 라벨+부가정보(하위줄 sub·주석 note·행 rows)
 interface IncludeDetail {
   label: string
-  sub?: string // 하위 한 줄(예: 1일차 오후~3일차 오전)
+  sub?: React.ReactNode // 하위 한 줄(문자열 또는 JSX — 모바일 줄바꿈용 br 등)
   note?: string // *주석(예: 야간권 포함)
   rows?: { name: string; desc: string }[] // 표형(예: 숙박 → 단체/개별객실)
-  grid?: { name: string; price: string }[] // 2×2 항목·가격(예: 추가렌탈 선택사항)
+  // 박수별 항목·가격(예: 추가렌탈) — 데스크탑 = 박수 라벨 + 4항목 한 줄 / 모바일 = 라벨 아래 2×2.
+  gridRows?: { label: string; items: { name: string; price: string }[] }[]
 }
 type IncludeItem = string | IncludeDetail
 
 // 추가렌탈(선택사항) — 4개 패키지 전부 동일해서 상수 하나로(각 패키지 세부 끝에 반복 노출).
 const ADDON_RENTAL: IncludeDetail = {
   label: '추가렌탈 (선택사항)',
-  grid: [
-    { name: '스키복(상하의)', price: '30,000원' },
-    { name: '고글', price: '20,000원' },
-    { name: '보호대', price: '20,000원' },
-    { name: '장갑 구매', price: '15,000원' },
+  gridRows: [
+    {
+      label: '2박',
+      items: [
+        { name: '스키복(상하의)', price: '30,000원' },
+        { name: '고글', price: '20,000원' },
+        { name: '보호대', price: '20,000원' },
+        { name: '장갑 구매', price: '15,000원' },
+      ],
+    },
+    {
+      label: '1박',
+      items: [
+        { name: '스키복(상하의)', price: '20,000원' },
+        { name: '고글', price: '10,000원' },
+        { name: '보호대', price: '10,000원' },
+        { name: '장갑 구매', price: '15,000원' },
+      ],
+    },
   ],
 }
 
@@ -51,6 +66,7 @@ interface CourseType {
   accent: string
   from: string // 카드 가격 힌트 시작가(최저)
   includes: IncludeItem[]
+  notice?: string // 세부사항 리스트 하단 안내 박스(포함사항이 아닌 '선택 가능' 안내)
   prices?: Price[] // 직무 = 단일 요금표
   variants?: JayulVariant[] // 자율 = 변형(주말2박/1박·주중2박) 비교표
 }
@@ -62,6 +78,7 @@ interface JayulVariant {
   key: Exclude<ScheduleType, 'jikmu'> // schedule_type 매칭
   label: string
   schedule: string
+  stay: string // 숙박(박수·객실수)
   lift: string
   breakfast: string
   prices: Price[] // 1~6인
@@ -69,16 +86,16 @@ interface JayulVariant {
 
 const JAYUL_VARIANTS: JayulVariant[] = [
   {
-    key: 'weekend_2n', label: '주말 2박', schedule: '2박 3일', lift: '2박3일권', breakfast: '1인 2매',
+    key: 'weekend_2n', label: '주말 2박', schedule: '2박 3일', stay: '2박 1실', lift: '2박3일권', breakfast: '1인 2매',
     prices: [['1인', '472,000원'], ['2인', '700,000원'], ['3인', '928,000원'], ['4인', '1,156,000원'], ['5인', '1,445,000원'], ['6인', '1,734,000원']],
   },
   {
-    key: 'weekend_1n', label: '주말 1박', schedule: '1박 2일', lift: '1박2일권', breakfast: '1인 1매',
-    prices: [['1인', '300,500원'], ['2인', '479,000원'], ['3인', '657,500원'], ['4인', '836,000원'], ['5인', '1,045,000원'], ['6인', '1,254,000원']],
+    key: 'weekday_2n', label: '주중 2박', schedule: '2박 3일', stay: '2박 1실', lift: '2박3일권', breakfast: '1인 2매',
+    prices: [['1인', '437,500원'], ['2인', '665,000원'], ['3인', '892,500원'], ['4인', '1,120,000원'], ['5인', '1,400,000원'], ['6인', '1,680,000원']],
   },
   {
-    key: 'weekday_2n', label: '주중 2박', schedule: '2박 3일', lift: '2박3일권', breakfast: '1인 2매',
-    prices: [['1인', '437,500원'], ['2인', '665,000원'], ['3인', '892,500원'], ['4인', '1,120,000원'], ['5인', '1,400,000원'], ['6인', '1,680,000원']],
+    key: 'weekend_1n', label: '주말 1박', schedule: '1박 2일', stay: '1박 1실', lift: '1박2일권', breakfast: '1인 1매',
+    prices: [['1인', '300,500원'], ['2인', '479,000원'], ['3인', '657,500원'], ['4인', '836,000원'], ['5인', '1,045,000원'], ['6인', '1,254,000원']],
   },
 ]
 
@@ -100,8 +117,8 @@ const TYPES: CourseType[] = [
         ],
       },
       { label: '리프트권 2박3일권', sub: '(1일차 오후~3일차 오전)', note: '야간권 포함' },
-      { label: '단체식 3회', sub: '(1일차 석, 2일차 중·석식)' },
-      { label: '수준별 강습 4타임', sub: '(1일차 오후+야간, 2일차 오전+오후)' },
+      { label: '단체식 3회', sub: '1일차 석, 2일차 중·석식' },
+      { label: '수준별 강습 4타임', sub: '1일차 오후+야간, 2일차 오전+오후' },
       ADDON_RENTAL,
     ],
     prices: [
@@ -121,21 +138,23 @@ const TYPES: CourseType[] = [
       { label: '숙박', sub: '22평(1~4인) · 33평(5~6인)' },
       { label: '리프트권', sub: '야간권 포함', note: '옵션별 상이 *하단 표 참조' },
       '기초 단체 강습 1회',
+      { label: '그룹 체험 강습 1회', sub: '입문자 기준 강습 운영' },
       ADDON_RENTAL,
     ],
+    notice: '개별 강습이 필요할 경우 추가 옵션을 선택하실 수 있습니다.',
     variants: JAYUL_VARIANTS,
   },
 ]
 
-// 세부 항목의 일정/부가 한 줄 — sub 티어(Pretendard·진한 회색). note가 있으면 일정 바깥 괄호는
-// 벗기고 note만 괄호로 감쌈: "1일차 오후~3일차 오전 (야간권 포함)".
-function DetailSub({ sub, note }: { sub?: string; note?: string }) {
-  if (!sub && !note) return null
-  const subText = sub && note ? sub.replace(/^\s*\(/, '').replace(/\)\s*$/, '') : sub
+// 세부 항목의 일정/부가 한 줄 — sub 티어(Pretendard·진한 회색). note가 있으면 sub 바깥 괄호는
+// 벗기고(이중 괄호 방지) note만 괄호로 감쌈: "1일차 오후~3일차 오전 (야간권 포함)".
+function DetailSub({ sub, note }: { sub?: React.ReactNode; note?: string }) {
+  if (sub == null && !note) return null
+  const subNode = typeof sub === 'string' && note ? sub.replace(/^\s*\(/, '').replace(/\)\s*$/, '') : sub
   return (
     <Text variant="sub" className="mt-0.5 block">
-      {subText}
-      {note && `${sub ? ' ' : ''}(${note})`}
+      {subNode}
+      {note && `${sub != null ? ' ' : ''}(${note})`}
     </Text>
   )
 }
@@ -145,6 +164,7 @@ function DetailSub({ sub, note }: { sub?: string; note?: string }) {
 function VariantCompare({ variants, accent }: { variants: JayulVariant[]; accent: string }) {
   const specs: [string, (v: JayulVariant) => string][] = [
     ['일정', (v) => v.schedule],
+    ['숙박', (v) => v.stay],
     ['리프트권', (v) => v.lift],
     ['조식', (v) => v.breakfast],
   ]
@@ -207,9 +227,21 @@ function TypeDetail({ t }: { t: CourseType }) {
           숙박·리프트권 / 단체식(조식)·강습 이 각 행, 추가렌탈만 전체폭(col-span-2). */}
       <ul className="space-y-1.5 md:grid md:grid-cols-2 md:gap-x-8 md:gap-y-3 md:space-y-0">
         {t.includes.map((item, i) => {
-          const isAddon = typeof item !== 'string' && !!item.grid
+          const isAddon = typeof item !== 'string' && !!item.gridRows
           return (
-            <li key={i} className={`flex items-start gap-2${isAddon ? ' md:col-span-2' : ''}`}>
+            <React.Fragment key={i}>
+              {/* 안내 박스 = 추가렌탈 바로 위(전체폭). 포함사항 체크리스트와 섞이지 않게 박스로 분리. */}
+              {t.notice && isAddon && (
+                <li className="md:col-span-2">
+                  <div
+                    className="rounded-[10px] border border-[#e5eaef] px-3.5 py-2.5"
+                    style={{ background: t.accent + '0d' }}
+                  >
+                    <Text variant="sub">{t.notice}</Text>
+                  </div>
+                </li>
+              )}
+            <li className={`flex items-start gap-2${isAddon ? ' md:col-span-2' : ''}`}>
               <Check size={14} className="mt-[3px] shrink-0" style={{ color: t.accent }} />
               {typeof item === 'string' ? (
                 <Text variant="body">{item}</Text>
@@ -229,12 +261,20 @@ function TypeDetail({ t }: { t: CourseType }) {
                     </div>
                   )}
                   <DetailSub sub={item.sub} note={item.note} />
-                  {item.grid && (
-                    <div className="mt-1.5 grid grid-cols-2 gap-x-5 gap-y-1 md:flex md:flex-wrap md:justify-between md:gap-x-6">
-                      {item.grid.map((g) => (
-                        <div key={g.name} className="flex items-baseline justify-between gap-2 md:justify-start">
-                          <Text variant="sub" className="whitespace-nowrap">{g.name}</Text>
-                          <Text variant="num">{g.price}</Text>
+                  {item.gridRows && (
+                    <div className="mt-1.5 space-y-2 md:space-y-1">
+                      {item.gridRows.map((gr) => (
+                        <div key={gr.label} className="md:flex md:items-baseline md:gap-3">
+                          <Text variant="label" className="shrink-0 md:w-[26px]">{gr.label}</Text>
+                          {/* 모바일 = 2열 2행 / 데스크탑 = 박수 라벨 옆 한 줄에 4항목 */}
+                          <div className="mt-0.5 grid grid-cols-2 gap-x-5 gap-y-1 md:mt-0 md:flex md:flex-1 md:flex-wrap md:justify-between md:gap-x-6">
+                            {gr.items.map((g) => (
+                              <div key={g.name} className="flex items-baseline justify-between gap-2 md:justify-start">
+                                <Text variant="sub" className="whitespace-nowrap">{g.name}</Text>
+                                <Text variant="num">{g.price}</Text>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -242,6 +282,7 @@ function TypeDetail({ t }: { t: CourseType }) {
                 </div>
               )}
             </li>
+            </React.Fragment>
           )
         })}
       </ul>

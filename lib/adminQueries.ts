@@ -2,6 +2,7 @@ import 'server-only'
 import { supabaseAdmin } from './supabaseAdmin'
 import { getSessionOccupancy } from './capacity'
 import { formatPeriod, SCHEDULE_TYPE } from './display'
+import { extractRentalQty, extractPrivateLesson } from './pricing'
 import type {
   NoticeAdmin,
   FaqAdmin,
@@ -76,7 +77,7 @@ export async function getAllApplications(): Promise<ApplicationAdmin[]> {
   const { data, error } = await supabaseAdmin
     .from('applications')
     .select(
-      'id, application_no, applicant_name, phone, payer_name, session_id, room_type, room_spec, pkg_size, total_amount, refunded_amount, due_amount, due_claimed_at, due_settled_amount, status, is_waitlisted, payment_claimed_at, payment_claim_name, companion_memo, special_notes, referral_source, marketing_opt_in, admin_memo, created_at, session:sessions(label, schedule_type, starts_on, ends_on, nights, course:courses(sport)), participants(id, name, gender, phone, lesson_level, rentals, birth_front, birth_back_enc, is_leader, line_amount, sort_order)',
+      'id, application_no, applicant_name, phone, payer_name, session_id, room_type, room_spec, pkg_size, total_amount, refunded_amount, due_amount, due_claimed_at, due_settled_amount, status, is_waitlisted, payment_claimed_at, payment_claim_name, companion_memo, special_notes, referral_source, privacy_agreed, marketing_opt_in, price_breakdown, admin_memo, created_at, session:sessions(label, schedule_type, starts_on, ends_on, nights, course:courses(sport)), participants(id, name, gender, phone, lesson_level, rentals, birth_front, birth_back_enc, is_leader, line_amount, sort_order)',
     )
     .order('created_at', { ascending: false })
   if (error) {
@@ -119,7 +120,9 @@ export async function getAllApplications(): Promise<ApplicationAdmin[]> {
     companion_memo: string | null
     special_notes: string | null
     referral_source: string[] | null
+    privacy_agreed: boolean | null
     marketing_opt_in: boolean
+    price_breakdown: { meta?: Record<string, unknown> } | null
     admin_memo: string | null
     created_at: string
     session:
@@ -185,7 +188,11 @@ export async function getAllApplications(): Promise<ApplicationAdmin[]> {
       companion_memo: r.companion_memo,
       special_notes: r.special_notes,
       referral_source: r.referral_source ?? [],
+      privacy_agreed: r.privacy_agreed ?? false,
       marketing_opt_in: r.marketing_opt_in,
+      // 자율 렌탈 '구매 수량'은 신청 단위(price_breakdown.meta) — 참가자별 배정 결과와 구분된다. [[rental-model]]
+      rental_qty: extractRentalQty(r.price_breakdown),
+      private_lesson: extractPrivateLesson(r.price_breakdown),
       admin_memo: r.admin_memo,
       created_at: r.created_at,
       participants,

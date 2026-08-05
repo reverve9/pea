@@ -3,6 +3,7 @@
 
 import type { BadgeColor } from '@/components/common/Badge'
 import type { CourseStatus, ScheduleType, NoticeCategory, RefundStatus, ModificationStatus } from './types'
+import { lessonLevelLabel, equipmentLabel } from './lessonOptions'
 
 // 과정 상태 → 라벨 + 배지색 (Phase 2.5 딥네이비 톤 키)
 export const COURSE_STATUS: Record<CourseStatus, { label: string; color: BadgeColor }> = {
@@ -59,10 +60,26 @@ export const MODIFICATION_FIELD_LABEL: Record<string, string> = {
   gender: '성별',
   lesson_level: '기초강습',
   equipment: '용품세트',
+  insurance: '여행자 보험',
   rental_apparel: '렌탈·의류',
   rental_protector: '렌탈·보호대',
   rental_goggle: '렌탈·고글',
   rental_glove: '렌탈·장갑',
+  rental_apparel_size: '렌탈·의류 사이즈',
+  rental_protector_size: '렌탈·보호대 사이즈',
+  rental_glove_size: '렌탈·장갑 사이즈',
+}
+
+// 수정요청 값 → 사람이 읽는 표기. 저장값은 기계값('true'/'male'/반 key)을 유지하고 표시 단계에서만 변환한다.
+// 마이 수정요청 폼·마이 처리이력·어드민 요청카드·고객 자동답변이 모두 이 함수를 쓴다(문구 드리프트 방지).
+export function modificationValueLabel(field: string, v: string): string {
+  if (field === 'gender') return v === 'male' ? '남' : v === 'female' ? '여' : '(미지정)'
+  if (field === 'lesson_level') return v ? lessonLevelLabel(v) : '(미지정)'
+  if (field === 'equipment') return v ? equipmentLabel(v) : '(미지정)'
+  if (field === 'insurance') return v === 'true' ? '가입 희망' : '희망 안 함'
+  if (field.endsWith('_size')) return v || '(미선택)'
+  if (field.startsWith('rental_')) return v === 'true' ? '신청' : '미신청'
+  return v || '(미입력)'
 }
 
 // 원화 포맷: 303000 → "303,000원"

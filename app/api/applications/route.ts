@@ -6,6 +6,7 @@ import { encryptSecret } from '@/lib/serverCrypto'
 import { computeJikmu, computeJayul, applyOverrides } from '@/lib/pricing'
 import { getSessionOccupancy } from '@/lib/capacity'
 import { applicationPrefix } from '@/lib/programs'
+import { lessonSlotsFor, PRIVATE_LESSON_MAX } from '@/lib/lessonOptions'
 import type { PriceItem } from '@/lib/types'
 import type { JikmuPayload, JayulPayload } from '@/lib/applicationTypes'
 
@@ -61,6 +62,10 @@ const jayulSchema = z.object({
   lessonClass: z.string(),
   equipment: z.enum(['ski', 'board']).or(z.literal('')),
   rentals: z.object({ apparel: z.number().int().min(0), goggle: z.number().int().min(0), protector: z.number().int().min(0), glove: z.number().int().min(0) }),
+  privateLesson: z.object({
+    qty: z.number().int().min(0).max(PRIVATE_LESSON_MAX),
+    slots: z.array(z.string()).max(PRIVATE_LESSON_MAX),
+  }),
   repInsurance: z.boolean(),
   note: z.string(),
   payerDiffers: z.boolean(),
@@ -95,6 +100,14 @@ export async function POST(req: Request) {
   if (session.schedule_type !== expectType) return fail('선택한 유형과 일정이 일치하지 않습니다.')
   const courseRaw = (session as { course: unknown }).course
   const sport = ((Array.isArray(courseRaw) ? courseRaw[0] : courseRaw) as { sport: string } | null)?.sport ?? null
+
+  // 1.5) 개별 강습 — 수량만큼 시간대를 골랐는지 + 그 시간대가 이 박수에 존재하는지(1박은 2슬롯).
+  if (payload.kind === 'jayul') {
+    const pl = (payload as JayulPayload).privateLesson
+    if (pl.slots.length !== pl.qty) return fail('개별 강습 시간대를 수량만큼 선택해 주세요.')
+    const allowed = new Set(lessonSlotsFor((payload as JayulPayload).variant).map((s) => s.key))
+    if (pl.slots.some((s) => !allowed.has(s))) return fail('선택할 수 없는 개별 강습 시간대입니다.')
+  }
 
   // 2) 단가 로드 + 가격 서버 재계산(권위).
   const { data: priceRows, error: pErr } = await supabaseAdmin

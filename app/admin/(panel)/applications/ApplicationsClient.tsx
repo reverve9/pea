@@ -8,10 +8,10 @@ import AdminModal from '@/components/admin/AdminModal'
 import AdminList, { type AdminListColumn } from '@/components/admin/AdminList'
 import AdminTabs from '@/components/admin/AdminTabs'
 import { adminSelectClass } from '@/components/admin/AdminToolbar'
-import { formatDate, formatKRW, APPLICATION_STATUS, SCHEDULE_TYPE } from '@/lib/display'
+import { formatDate, formatKRW, APPLICATION_STATUS, SCHEDULE_TYPE, MODIFICATION_FIELD_LABEL, modificationValueLabel } from '@/lib/display'
 import { isDetailFillClosed, detailFillDeadline } from '@/lib/fillDeadline'
-import { exportToExcel } from '@/lib/excel'
-import { lessonLevelLabel, lessonSportLabel, equipmentLabel, JAYUL_LESSONS, EQUIPMENT_TYPES, LESSON_CLASSES, LESSON_SPORTS } from '@/lib/lessonOptions'
+import { exportToExcelMultiSheet } from '@/lib/excel'
+import { lessonLevelLabel, lessonSportLabel, equipmentLabel, lessonSlotLabel, JAYUL_LESSONS, EQUIPMENT_TYPES, LESSON_CLASSES, LESSON_SPORTS } from '@/lib/lessonOptions'
 import { APPAREL_SIZES, GEAR_SIZES } from '@/lib/rentalOptions'
 import { PROGRAMS, OPEN_PROGRAMS } from '@/lib/programs'
 import type { ParticipantDetailInput } from '@/lib/participantDetail'
@@ -58,7 +58,29 @@ const KIND_OPTIONS: { key: 'all' | 'jikmu' | 'jayul'; label: string }[] = [
   { key: 'jayul', label: '자율패키지' },
 ]
 // 일정구분(schedule_type) 표시 순서 — 연수관리(SessionsClient)와 동일. 필터 옵션은 신청 데이터에 존재하는 값만 이 순서로 노출.
-const SCHEDULE_ORDER: ScheduleType[] = ['jikmu', 'weekday_2n', 'weekend_2n', 'weekend_1n']
+const SCHEDULE_ORDER: ScheduleType[] = ['jikmu', 'weekend_2n', 'weekday_2n', 'weekend_1n']
+
+// 엑셀용 — 대표 먼저, 그다음 신청 시 슬롯 순서(sort_order). 명단 요약·참가자 시트가 같은 순서를 쓴다.
+function sortedParticipants(a: ApplicationAdmin) {
+  return [...a.participants].sort((x, y) =>
+    x.is_leader !== y.is_leader ? (x.is_leader ? -1 : 1) : 0,
+  )
+}
+// 엑셀용 — 직무는 참가자 rentals 의 on/off 가 곧 수량(1인 신청). 자율은 신청 단위 구매수량을 따로 쓴다.
+function rentalQtyFromFlags(rentals: Record<string, unknown> | undefined) {
+  const n = (v: unknown) => (v ? 1 : 0)
+  const r = rentals ?? {}
+  return { apparel: n(r.apparel), goggle: n(r.goggle), protector: n(r.protector), glove: n(r.glove) }
+}
+// 개별객실 item_key → 사람이 읽는 라벨. price_items 라벨과 동일 규칙(room_{평}_{인실}_{사용인원|rep}).
+function roomSpecLabel(key: string): string {
+  const m = /^room_(\d+)_(\d+)_(\d+|rep)$/.exec(key)
+  if (!m) return key
+  const [, pyeong, cap, use] = m
+  return use === 'rep'
+    ? `${pyeong}평 ${cap}인실 사용, 동반인 대표 납부`
+    : `${pyeong}평 ${cap}인실 ${use}인 사용`
+}
 const STATUS_OPTIONS: { key: 'all' | ApplicationStatus; label: string }[] = [
   { key: 'all', label: '상태 전체' },
   { key: 'pending', label: '입금대기' },
@@ -430,47 +452,157 @@ function ApplicationsPanel({
       ? `${activeProgram.title} 연수는 준비 중입니다.`
       : '조건에 맞는 신청이 없습니다.'
 
-  // 엑셀 내보내기 — 현재 필터가 적용된 목록을 그대로 시트로. 금액은 숫자(천단위 포맷은 엑셀 유틸이 적용).
-  const exportExcel = () =>
-    exportToExcel(
-      filtered.map((a) => ({
+  // 엑셀 내보내기 — 현재 필터가 적용된 목록을 2시트로.
+  //   시트1 '신청' = 1행 1신청(금액·정산·연락) / 시트2 '참가자' = 1행 1명(대표 포함 전원, 명부·조편성·렌탈).
+  //   한 시트에 참가자를 반복하면 금액이 인원수만큼 중복 합산돼 정산이 틀어지므로 단위를 분리한다.
+  //   두 시트는 신청번호로 연결. 금액은 숫자(천단위 포맷은 엑셀 유틸이 적용).
+  const exportExcel = () => {
+    const applicationRows = filtered.map((a) => {
+      const leader = a.participants.find((p) => p.is_leader)
+      const [companionName = '', companionPhone = ''] = (a.companion_memo ?? '').split('/').map((s) => s.trim())
+      // 렌탈 수량 — 자율은 신청 단위 구매수량(rental_qty), 직무는 대표 참가자의 on/off(1/0).
+      const qty = a.kind === 'jayul' ? a.rental_qty : rentalQtyFromFlags(leader?.rentals)
+      return {
         no: a.application_no,
         created: formatDate(a.created_at.slice(0, 10)),
         status: APPLICATION_STATUS[a.status].label,
         assign: a.is_waitlisted ? '예비' : '정원',
         track: a.track_label,
-        sport: lessonSportLabel(a.participants.find((p) => p.is_leader)?.lesson_level) || (a.program_sport ?? ''),
+        sport: lessonSportLabel(leader?.lesson_level) || (a.program_sport ?? ''),
         session: a.session_label,
         period: a.period,
         applicant: a.applicant_name,
         phone: a.phone,
         payer: a.payer_name ?? '',
         headcount: a.headcount,
+        roster: sortedParticipants(a).map((p) => p.name).join(', '),
         amount: a.total_amount,
+        roomType: a.room_type ? (a.room_type === 'private' ? '개별객실' : '단체객실') : '',
+        roomSpec: a.room_spec ? roomSpecLabel(a.room_spec) : '',
+        apparelQty: qty.apparel,
+        goggleQty: qty.goggle,
+        protectorQty: qty.protector,
+        gloveQty: qty.glove,
+        lessonQty: a.private_lesson.qty,
+        lessonSlots: a.private_lesson.slots.map(lessonSlotLabel).join(', '),
+        hasCompanion: a.companion_memo ? '유' : '무',
+        companionName,
+        companionPhone,
+        referral: a.referral_source.join(', '),
+        privacy: a.privacy_agreed ? '동의' : '미동의',
+        marketing: a.marketing_opt_in ? '수신' : '거부',
         notes: a.special_notes ?? '',
         claim: a.payment_claimed_at ? (a.payment_claim_name ?? '요청') : '',
         memo: a.admin_memo ?? '',
-      })),
+      }
+    })
+
+    // 참가자 시트 — 대표 + 동반 전원. 자율 빈 슬롯(미입력)도 누락 확인용으로 함께 내보낸다.
+    // 신청번호만으로는 어느 건인지 즉시 안 잡혀서 '신청자(대표)'를 나란히 두고, 신청별 교차 배경으로 경계를 표시한다.
+    const participantRows = filtered.flatMap((a) =>
+      sortedParticipants(a).map((p, i) => {
+          const r = (p.rentals ?? {}) as Record<string, unknown>
+          const str = (v: unknown) => (typeof v === 'string' ? v : '')
+          return {
+            no: a.application_no,
+            applicant: a.applicant_name,
+            track: a.track_label,
+            session: a.session_label,
+            role: p.is_leader ? '대표' : `참가자 ${i + 1}`,
+            name: p.name,
+            gender: p.gender === 'male' ? '남' : p.gender === 'female' ? '여' : '',
+            phone: p.phone ?? '',
+            birth: p.birth_front ?? '',
+            lesson: lessonLevelLabel(p.lesson_level),
+            equipment: equipmentLabel(str(r.equipment)),
+            apparel: r.apparel ? 'O' : '',
+            apparelSize: str(r.apparel_size),
+            goggle: r.goggle ? 'O' : '',
+            protector: r.protector ? 'O' : '',
+            protectorSize: str(r.protector_size),
+            glove: r.glove ? 'O' : '',
+            gloveSize: str(r.glove_size),
+            insurance: p.has_insurance ? '가입' : '',
+            amount: p.line_amount,
+            filled: p.birth_front ? '완료' : '미입력',
+          }
+        }),
+    )
+
+    // 시트 간 하이퍼링크는 쓰지 않는다 — 고정 행번호를 가리키므로 담당자가 정렬·필터하면
+    // 엉뚱한 행으로 점프한다(자동필터가 켜져 있어 정렬은 일상적). 연결은 '신청자' 컬럼과
+    // 신청별 교차 배경, 신청현황의 참가자 명단으로 충분히 잡힌다.
+    exportToExcelMultiSheet(
       [
-        { key: 'no', label: '신청번호' },
-        { key: 'created', label: '신청일' },
-        { key: 'status', label: '상태' },
-        { key: 'assign', label: '배정' },
-        { key: 'track', label: '유형' },
-        { key: 'sport', label: '종목' },
-        { key: 'session', label: '회차' },
-        { key: 'period', label: '기간' },
-        { key: 'applicant', label: '신청자' },
-        { key: 'phone', label: '연락처' },
-        { key: 'payer', label: '입금자명' },
-        { key: 'headcount', label: '인원' },
-        { key: 'amount', label: '금액' },
-        { key: 'notes', label: '요청사항' },
-        { key: 'claim', label: '입금확인요청' },
-        { key: 'memo', label: '관리자메모' },
+        {
+          name: '신청현황',
+          rows: applicationRows,
+          columns: [
+            { key: 'no', label: '신청번호' },
+            { key: 'created', label: '신청일' },
+            { key: 'status', label: '상태' },
+            { key: 'assign', label: '배정' },
+            { key: 'track', label: '유형' },
+            { key: 'sport', label: '종목' },
+            { key: 'session', label: '회차' },
+            { key: 'period', label: '기간' },
+            { key: 'applicant', label: '신청자' },
+            { key: 'phone', label: '연락처' },
+            { key: 'payer', label: '입금자명' },
+            { key: 'headcount', label: '인원' },
+            { key: 'roster', label: '참가자 명단' },
+            { key: 'amount', label: '금액' },
+            { key: 'roomType', label: '객실구분' },
+            { key: 'roomSpec', label: '객실상세' },
+            { key: 'apparelQty', label: '의류' },
+            { key: 'goggleQty', label: '고글' },
+            { key: 'protectorQty', label: '보호대' },
+            { key: 'gloveQty', label: '장갑' },
+            { key: 'lessonQty', label: '추가강습' },
+            { key: 'lessonSlots', label: '추가강습 시간대' },
+            { key: 'hasCompanion', label: '동반인' },
+            { key: 'companionName', label: '동반인 성함' },
+            { key: 'companionPhone', label: '동반인 연락처' },
+            { key: 'referral', label: '알게된 경로' },
+            { key: 'privacy', label: '개인정보 동의' },
+            { key: 'marketing', label: '마케팅 수신' },
+            { key: 'notes', label: '요청사항' },
+            { key: 'claim', label: '입금확인요청' },
+            { key: 'memo', label: '관리자메모' },
+          ],
+        },
+        {
+          name: '참가자 정보',
+          rows: participantRows,
+          groupBy: 'no', // 같은 신청끼리 교차 배경 → 신청 경계가 눈으로 보인다
+          columns: [
+            { key: 'no', label: '신청번호' },
+            { key: 'applicant', label: '신청자' },
+            { key: 'track', label: '유형' },
+            { key: 'session', label: '회차' },
+            { key: 'role', label: '구분' },
+            { key: 'name', label: '성함' },
+            { key: 'gender', label: '성별' },
+            { key: 'phone', label: '연락처' },
+            { key: 'birth', label: '생년월일' },
+            { key: 'lesson', label: '희망 강습 수준' },
+            { key: 'equipment', label: '용품세트' },
+            { key: 'apparel', label: '의류' },
+            { key: 'apparelSize', label: '의류 사이즈' },
+            { key: 'goggle', label: '고글' },
+            { key: 'protector', label: '보호대' },
+            { key: 'protectorSize', label: '보호대 사이즈' },
+            { key: 'glove', label: '장갑' },
+            { key: 'gloveSize', label: '장갑 사이즈' },
+            { key: 'insurance', label: '보험' },
+            { key: 'amount', label: '금액' },
+            { key: 'filled', label: '정보입력' },
+          ],
+        },
       ],
       '신청목록',
     )
+  }
 
   const exportButton = (
     <button
@@ -1073,10 +1205,10 @@ function DetailModal({
                 ) : (
                   m.changes.map((c, i) => (
                     <div key={i} className="text-[12.5px]">
-                      <span className="text-[11.5px] font-[500] text-[#6b7280]">{c.participant_name} · {c.label}</span>{' '}
-                      <span className="tabular-nums text-[#9ca3af] line-through">{c.current || '(없음)'}</span>
+                      <span className="text-[11.5px] font-[500] text-[#6b7280]">{c.participant_name} · {MODIFICATION_FIELD_LABEL[c.field] ?? c.label}</span>{' '}
+                      <span className="tabular-nums text-[#9ca3af] line-through">{modificationValueLabel(c.field, c.current)}</span>
                       <span className="text-[#9ca3af]"> → </span>
-                      <span className="font-[500] tabular-nums text-[#1e3a5f]">{c.requested || '(없음)'}</span>
+                      <span className="font-[500] tabular-nums text-[#1e3a5f]">{modificationValueLabel(c.field, c.requested)}</span>
                     </div>
                   ))
                 )}

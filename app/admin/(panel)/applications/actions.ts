@@ -7,6 +7,7 @@ import { decryptSecret, issueFillToken } from '@/lib/serverCrypto'
 import { updateParticipantDetail as applyParticipantDetail, type ParticipantDetailInput } from '@/lib/participantDetail'
 import { issueCashReceipt, cancelCashReceipt } from '@/lib/cashReceipt'
 import { applyOverrides } from '@/lib/pricing'
+import { MODIFICATION_FIELD_LABEL, modificationValueLabel } from '@/lib/display'
 import type {
   ApplicationStatus,
   InsuranceRosterEntry,
@@ -456,7 +457,12 @@ export async function saveModificationNotes(id: string, adminReply: string, inte
 // 변경 diff 로 고객 답변 문구 자동 생성.
 function autoReplyFromChanges(changes: ModificationChange[]): string {
   if (!changes.length) return '요청하신 내용을 반영했습니다.'
-  const lines = changes.map((c) => `· ${c.participant_name} ${c.label}: ${c.current || '(없음)'} → ${c.requested || '(없음)'}`)
+  // 고객에게 그대로 나가는 문구 — 기계값('true'/반 key)이 새지 않도록 표시 변환을 거친다.
+  const lines = changes.map(
+    (c) =>
+      `· ${c.participant_name} ${MODIFICATION_FIELD_LABEL[c.field] ?? c.label}: ` +
+      `${modificationValueLabel(c.field, c.current)} → ${modificationValueLabel(c.field, c.requested)}`,
+  )
   return `요청하신 아래 내용을 반영했습니다.\n${lines.join('\n')}`
 }
 
@@ -520,6 +526,11 @@ export async function applyModification(id: string, adminReply: string): Promise
           case 'rental_protector': rentals.protector = c.requested === 'true'; rentalsTouched = true; break
           case 'rental_goggle': rentals.goggle = c.requested === 'true'; rentalsTouched = true; break
           case 'rental_glove': rentals.glove = c.requested === 'true'; rentalsTouched = true; break
+          case 'rental_apparel_size': rentals.apparel_size = c.requested || null; rentalsTouched = true; break
+          case 'rental_protector_size': rentals.protector_size = c.requested || null; rentalsTouched = true; break
+          case 'rental_glove_size': rentals.glove_size = c.requested || null; rentalsTouched = true; break
+          // 보험 희망 플래그만 반영 — 뒷자리는 요청 접수 시 이미 암호문으로 저장됨(평문 미보유).
+          case 'insurance': rentals.insurance_wanted = c.requested === 'true'; rentalsTouched = true; break
         }
       }
       if (rentalsTouched) patch.rentals = rentals
@@ -688,6 +699,11 @@ export async function revertModification(id: string): Promise<ActionResult> {
           case 'rental_protector': rentals.protector = c.current === 'true'; rentalsTouched = true; break
           case 'rental_goggle': rentals.goggle = c.current === 'true'; rentalsTouched = true; break
           case 'rental_glove': rentals.glove = c.current === 'true'; rentalsTouched = true; break
+          case 'rental_apparel_size': rentals.apparel_size = c.current || null; rentalsTouched = true; break
+          case 'rental_protector_size': rentals.protector_size = c.current || null; rentalsTouched = true; break
+          case 'rental_glove_size': rentals.glove_size = c.current || null; rentalsTouched = true; break
+          // 되돌리기는 희망 플래그만 원복 — 등록된 뒷자리 암호문은 건드리지 않는다.
+          case 'insurance': rentals.insurance_wanted = c.current === 'true'; rentalsTouched = true; break
         }
       }
       if (rentalsTouched) patch.rentals = rentals

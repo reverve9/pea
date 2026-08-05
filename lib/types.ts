@@ -150,7 +150,11 @@ export interface ApplicationAdmin {
   companion_memo: string | null
   special_notes: string | null
   referral_source: string[]
+  privacy_agreed: boolean // 수집·활용 동의(필수) 체크 여부
   marketing_opt_in: boolean
+  // 자율 렌탈 구매 수량(신청 단위) + 추가강습 — price_breakdown.meta 파생. 직무는 전부 0.
+  rental_qty: { apparel: number; goggle: number; protector: number; glove: number }
+  private_lesson: { qty: number; slots: string[] }
   admin_memo: string | null
   created_at: string
   participants: ParticipantAdmin[]
@@ -224,6 +228,13 @@ export type ModificationField =
   | 'rental_protector'
   | 'rental_goggle'
   | 'rental_glove'
+  // 렌탈 사이즈 — 미신청→신청 전환 시 최초 접수와 동일하게 사이즈까지 지정(고글은 사이즈 없음).
+  | 'rental_apparel_size'
+  | 'rental_protector_size'
+  | 'rental_glove_size'
+  // 보험 가입 희망 — 희망으로 바꿀 때 주민번호 뒷자리 필요. 뒷자리는 changes 에 싣지 않고
+  // modification_requests.birth_back_enc 로 암호화 보관(평문 노출 금지).
+  | 'insurance'
 
 export interface ModificationChange {
   target: 'participant' | 'application'
