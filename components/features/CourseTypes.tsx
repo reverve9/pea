@@ -8,6 +8,7 @@ import type { LucideIcon } from 'lucide-react'
 import Text, { BTN } from '@/components/common/Text'
 import MasterCard from '@/components/common/MasterCard'
 import TypeSwitchBanner, { type BannerType } from '@/components/features/TypeSwitchBanner'
+import CourseSchedulePlan from '@/components/features/CourseSchedulePlan'
 import type { ScheduleType, SessionWithCourse } from '@/lib/types'
 
 // /courses 연수 유형 — 계획안(연수비용 및 포함사항) 4개 유형을 공개용으로 큐레이션.
@@ -314,6 +315,9 @@ function TypeDetail({ t }: { t: CourseType }) {
           </div>
         </div>
       )}
+
+      {/* 일차 일정표 — 유형 상세 맨 아래(데스크탑 패널·모바일 모달 공용) */}
+      <CourseSchedulePlan typeKey={t.key} accent={t.accent} />
     </>
   )
 }

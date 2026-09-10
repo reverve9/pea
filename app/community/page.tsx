@@ -6,20 +6,20 @@ import AppShell from '@/components/layout/AppShell'
 import ExtendedHeader from '@/components/layout/ExtendedHeader'
 import PageTitle from '@/components/common/PageTitle'
 import Pagination from '@/components/common/Pagination'
-import { LoadingState } from '@/components/common/StateView'
-import CommunityNewsList, { type Selection } from '@/components/features/CommunityNewsList'
+import CommunityIndex, { type Selection } from '@/components/features/CommunityIndex'
 import CommunityDetailPanel from '@/components/features/CommunityDetailPanel'
 import DuotoneHero from '@/components/features/DuotoneHero'
-import NoticeDetail from '@/components/features/NoticeDetail'
 import FaqAccordion from '@/components/features/FaqAccordion'
+import NoticeGroupAccordion from '@/components/features/NoticeGroupAccordion'
 import InquiryBoardShell from '@/components/features/InquiryBoardShell'
 import { useQuery } from '@/lib/useQuery'
 import { getNotices, getFaqs } from '@/lib/queries'
 import type { Notice, Faq } from '@/lib/types'
 
-// §3-5 커뮤니티 — 나인브릿지 NEWS 이식. 좌(공지 보드+FAQ/문의 진입) ↔ 우(영역 스택: 공지/FAQ/문의).
+// §3-5 커뮤니티 — 좌(진입 카드 4개) ↔ 우(영역 스택: 공지/FAQ/문의).
+// 좌측은 인덱스만 — 공지 리스트를 좌우에 이중으로 깔지 않는다(2차 수정요청 p11).
 // 좌 카드 클릭: 데스크탑=우측 해당 영역 점프 / 모바일=모달. 공지·FAQ = 페이지당 5(모바일 3) 페이지네이션.
-type Modal = { kind: 'notice'; notice: Notice } | { kind: 'faq' } | { kind: 'inquiry' } | null
+type Modal = { kind: 'notices' } | { kind: 'faq' } | { kind: 'inquiry' } | null
 
 function pinnedFirst(a: Notice, b: Notice) {
   if (a.is_pinned && !b.is_pinned) return -1
@@ -33,7 +33,6 @@ export default function CommunityPage() {
   const notices = useQuery<Notice[]>(getNotices, [])
   const faqs = useQuery<Faq[]>(getFaqs, [])
   const [isMobile, setIsMobile] = useState(false)
-  const [selectedNoticeId, setSelectedNoticeId] = useState<string | null>(null)
   const [noticePage, setNoticePage] = useState(1)
   const [faqPage, setFaqPage] = useState(1)
   const [modal, setModal] = useState<Modal>(null)
@@ -68,19 +67,12 @@ export default function CommunityPage() {
 
   const handleSelect = (sel: Selection) => {
     if (isMobile) {
-      if (sel.kind === 'notice') {
-        const n = notices.data.find((x) => x.id === sel.id)
-        if (n) setModal({ kind: 'notice', notice: n })
-      } else if (sel.kind === 'faq') {
-        setModal({ kind: 'faq' })
-      } else {
-        setModal({ kind: 'inquiry' })
-      }
+      setModal({ kind: sel.kind })
       return
     }
-    if (sel.kind === 'notice') {
-      // 스크롤은 우측 아코디언이 해당 글로 직접(가운데) — 여기선 선택만(이중 스크롤 방지).
-      setSelectedNoticeId(sel.id)
+    if (sel.kind === 'notices') {
+      // 공지 아코디언은 첫 글이 기본으로 펼쳐져 있어 영역 점프만 하면 된다.
+      scrollToRegion('community-notices')
     } else if (sel.kind === 'faq') {
       scrollToRegion('community-faq')
       setFaqOpenPulse((n) => n + 1)
@@ -106,17 +98,11 @@ export default function CommunityPage() {
       <div className="md:hidden px-4 pt-6">
         <DuotoneHero eyebrow="SKI & SNOWBOARD" title={<>공지사항과 자주 묻는 질문을 확인하세요<br />궁금한 점은 1:1 문의로 남겨주실 수 있습니다</>} imgs={['/community/hero.jpg']} tint={0} mobile />
       </div>
-      {notices.loading ? (
-        <LoadingState />
-      ) : (
-        <CommunityNewsList
-          notices={pagedNotices}
-          faqCount={faqs.data.length}
-          onSelect={handleSelect}
-          selectedNoticeId={selectedNoticeId}
-          pagination={<Pagination page={noticePage} totalPages={noticeTotalPages} onChange={setNoticePage} />}
-        />
-      )}
+      <CommunityIndex
+        noticeCount={sortedNotices.length}
+        faqCount={faqs.data.length}
+        onSelect={handleSelect}
+      />
     </div>
   )
 
@@ -128,7 +114,6 @@ export default function CommunityPage() {
       <CommunityDetailPanel
         notices={pagedNotices}
         faqs={pagedFaqs}
-        selectedNoticeId={selectedNoticeId}
         noticePagination={<Pagination page={noticePage} totalPages={noticeTotalPages} onChange={setNoticePage} />}
         faqPagination={<Pagination page={faqPage} totalPages={faqTotalPages} onChange={setFaqPage} />}
         faqOpenPulse={faqOpenPulse}
@@ -145,9 +130,9 @@ export default function CommunityPage() {
       {isMobile && modal && (
         <Modal
           onClose={() => setModal(null)}
-          title={modal.kind === 'notice' ? '공지사항' : modal.kind === 'faq' ? '자주 묻는 질문' : '1:1 문의'}
+          title={modal.kind === 'notices' ? '공지사항' : modal.kind === 'faq' ? '자주 묻는 질문' : '1:1 문의'}
         >
-          {modal.kind === 'notice' && <NoticeDetail notice={modal.notice} />}
+          {modal.kind === 'notices' && <NoticeGroupAccordion notices={sortedNotices} />}
           {modal.kind === 'faq' && <FaqAccordion faqs={faqs.data} />}
           {modal.kind === 'inquiry' && <InquiryBoardShell hideHeader />}
         </Modal>

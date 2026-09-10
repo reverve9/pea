@@ -12,7 +12,6 @@ import type { Notice } from '@/lib/types'
 // 페이지 슬라이스(pagedNotices)를 받아 표시하고, 페이지네이션은 상위(섹션타이틀 우측)에서.
 interface Props {
   notices: Notice[]
-  selectedNoticeId?: string | null
 }
 
 function pinnedFirst(a: Notice, b: Notice) {
@@ -23,30 +22,18 @@ function pinnedFirst(a: Notice, b: Notice) {
   return bd.localeCompare(ad)
 }
 
-export default function NoticeGroupAccordion({ notices, selectedNoticeId }: Props) {
-  // 싱글 오픈 — 하나만 펼침(클릭 시 나머진 닫힘). 마스터-디테일 반응을 또렷하게.
+export default function NoticeGroupAccordion({ notices }: Props) {
+  // 싱글 오픈 — 하나만 펼침(클릭 시 나머진 닫힘).
   const [openId, setOpenId] = useState<string | null>(null)
   const [initialExpanded, setInitialExpanded] = useState(false)
 
-  // 최초 로드: 첫 글 펼침.
+  // 최초 로드: 첫 글 펼침. (좌측 공지 리스트가 없어져 외부 선택 배선은 제거 — 2차 수정요청 p11)
   useEffect(() => {
-    if (!initialExpanded && notices.length > 0 && !selectedNoticeId) {
+    if (!initialExpanded && notices.length > 0) {
       setOpenId([...notices].sort(pinnedFirst)[0].id)
       setInitialExpanded(true)
     }
-  }, [notices, initialExpanded, selectedNoticeId])
-
-  // 좌측에서 공지 선택 → 그 글만 펼침 + 스크롤(가운데).
-  useEffect(() => {
-    if (!selectedNoticeId) return
-    setOpenId(selectedNoticeId)
-    const t = setTimeout(() => {
-      document
-        .getElementById(`notice-${selectedNoticeId}`)
-        ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }, 100)
-    return () => clearTimeout(t)
-  }, [selectedNoticeId])
+  }, [notices, initialExpanded])
 
   if (notices.length === 0) {
     return <Text as="p" variant="sub" color="#9ca3af" className="py-12 text-center">등록된 공지가 없습니다.</Text>

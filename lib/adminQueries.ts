@@ -26,6 +26,7 @@ import type {
   CashReceiptStatus,
   PriceItemAdmin,
   SessionPriceOverride,
+  SiteContent,
 } from './types'
 import type { SettlementDatum } from './settlement'
 
@@ -532,4 +533,19 @@ export async function getSettlementData(): Promise<SettlementDatum[]> {
       refundAmount: r.refunded_amount ?? 0,
     }
   })
+}
+
+// 정책 문서(개인정보처리방침 등) 단건 — 어드민 편집용. 미등록이면 null.
+// 공개 조회는 lib/queries.getSiteContent(anon) 이고, 여기선 service_role(비공개 초안도 그대로 읽음).
+export async function getSiteContentAdmin(key: string): Promise<SiteContent | null> {
+  const { data, error } = await supabaseAdmin
+    .from('site_contents')
+    .select('id, key, title, body, sort_order')
+    .eq('key', key)
+    .maybeSingle()
+  if (error) {
+    console.warn('[adminQueries] getSiteContentAdmin:', error)
+    return null
+  }
+  return (data as SiteContent) ?? null
 }

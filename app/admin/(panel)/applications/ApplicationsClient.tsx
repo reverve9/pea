@@ -534,12 +534,30 @@ function ApplicationsPanel({
             glove: r.glove ? 'O' : '',
             gloveSize: str(r.glove_size),
             insurance: p.has_insurance ? '가입' : '',
-            birthBack: backDigits[p.id] ?? '',
             amount: p.line_amount,
             filled: p.birth_front ? '완료' : '미입력',
           }
         }),
     )
+
+    // 보험명단 시트 — 단체 여행자보험 가입 대행에 그대로 넘기는 최소 명단(제출 양식 = 성명+주민등록번호 13자리).
+    // 참가자 시트는 컬럼이 30개 가까이라 담당자가 매번 필요한 열만 골라내야 했다 → 뽑아 쓸 시트를 따로 둔다.
+    // 뒷자리 원문은 이 시트에만 싣는다(참가자 시트는 가입 여부만).
+    // 정렬 = 회차 → 신청번호: 보험기간이 같은 사람끼리 묶여야 회차 단위로 가입 신청하기 쉽다.
+    const insuranceRows = filtered
+      .flatMap((a) =>
+        sortedParticipants(a)
+          .filter((p) => backDigits[p.id])
+          .map((p) => ({
+            session: a.session_label, // 정렬·그룹 배경 전용(컬럼으로는 안 나감)
+            no: a.application_no, // 정렬 전용
+            name: p.name,
+            rrn: rrnText(p.birth_front, backDigits[p.id]),
+            period: a.period,
+          })),
+      )
+      .sort((x, y) => (x.session ?? '').localeCompare(y.session ?? '') || (x.no ?? '').localeCompare(y.no ?? ''))
+      .map((r, i) => ({ seq: i + 1, ...r }))
 
     // 시트 간 하이퍼링크는 쓰지 않는다 — 고정 행번호를 가리키므로 담당자가 정렬·필터하면
     // 엉뚱한 행으로 점프한다(자동필터가 켜져 있어 정렬은 일상적). 연결은 '신청자' 컬럼과
@@ -607,9 +625,19 @@ function ApplicationsPanel({
             { key: 'glove', label: '장갑' },
             { key: 'gloveSize', label: '장갑 사이즈' },
             { key: 'insurance', label: '보험' },
-            { key: 'birthBack', label: '주민번호 뒷자리' },
             { key: 'amount', label: '금액' },
             { key: 'filled', label: '정보입력' },
+          ],
+        },
+        {
+          name: '보험명단',
+          rows: insuranceRows,
+          groupBy: 'session', // 회차 경계를 교차 배경으로 — 보험기간 단위로 끊어 넘기기 쉽게
+          columns: [
+            { key: 'seq', label: '연번' },
+            { key: 'name', label: '성명' },
+            { key: 'rrn', label: '주민등록번호' },
+            { key: 'period', label: '보험기간(연수기간)' },
           ],
         },
       ],
@@ -1652,6 +1680,12 @@ function rentalLabel(p: ParticipantAdmin): string {
   if (r.goggle) items.push('고글')
   if (r.glove) items.push(`장갑${r.glove_size ? `(${r.glove_size})` : ''}`)
   return items.length ? items.join('·') : '—'
+}
+
+// 주민등록번호 조합(엑셀 전용) — 앞 6(생년월일) + '-' + 뒷 7. 한쪽만 있으면 있는 쪽만 낸다.
+function rrnText(front: string | null | undefined, back: string | undefined): string {
+  if (!back) return ''
+  return front ? `${front}-${back}` : back
 }
 
 // 보험 — 직무: 뒷자리 보유 = 가입 / 자율: insurance_wanted 플래그 = 희망(뒷자리 미수집).
