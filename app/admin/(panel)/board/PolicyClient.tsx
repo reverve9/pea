@@ -4,7 +4,8 @@ import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Save, Upload } from 'lucide-react'
 import { adminFieldClass } from '@/components/admin/AdminToolbar'
-import { savePolicy, PRIVACY_KEY } from './policyActions'
+import { savePolicy } from './policyActions'
+import { PRIVACY_KEY } from './policyKeys'
 
 // 개인정보처리방침 편집 — 문서 한 장이라 목록/모달 없이 본문 편집기 하나.
 // 입력 경로 둘: (a) 텍스트 붙여넣기 (b) .txt/.md 파일 올려 본문 채우기(길어서 붙여넣기 번거로운 경우).

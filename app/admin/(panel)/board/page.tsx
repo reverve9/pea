@@ -1,7 +1,7 @@
 import AdminHeader from '@/components/admin/AdminHeader'
 import { getAllNotices, getAllFaqs, getSiteContentAdmin } from '@/lib/adminQueries'
 import BoardTabs from './BoardTabs'
-import { PRIVACY_KEY } from './policyActions'
+import { PRIVACY_KEY } from './policyKeys'
 
 // 매 요청 최신 데이터(service_role 조회) — 캐시하지 않음.
 export const dynamic = 'force-dynamic'

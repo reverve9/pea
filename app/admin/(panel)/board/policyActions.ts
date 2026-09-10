@@ -3,13 +3,12 @@
 import { revalidatePath } from 'next/cache'
 import { requireAdmin } from '@/lib/adminGuard'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { PRIVACY_KEY } from './policyKeys'
 
 // 개인정보처리방침 등 정책 문서 저장 — site_contents 의 단일 행(body) 갱신.
 // 공지·FAQ 와 달리 문서 한 장이라 CRUD 없이 '덮어쓰기'만. 본문은 마크다운(공개 페이지에서 렌더).
 // requireAdmin(쿠키 재검증) 후 service_role. [[admin-mutation-architecture]]
 export type ActionResult = { ok: true } | { ok: false; error: string }
-
-export const PRIVACY_KEY = 'privacy_policy'
 
 export async function savePolicy(key: string, body: string): Promise<ActionResult> {
   try {
