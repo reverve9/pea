@@ -64,7 +64,11 @@ const jayulSchema = z.object({
   rentals: z.object({ apparel: z.number().int().min(0), goggle: z.number().int().min(0), protector: z.number().int().min(0), glove: z.number().int().min(0) }),
   privateLesson: z.object({
     qty: z.number().int().min(0).max(PRIVATE_LESSON_MAX),
-    slots: z.array(z.string()).max(PRIVATE_LESSON_MAX),
+    // 시간대당 1회 → 같은 슬롯 중복 금지(폼 상한이 1이라 정상 흐름에선 안 생기지만 서버에서 확정).
+    slots: z
+      .array(z.string())
+      .max(PRIVATE_LESSON_MAX)
+      .refine((v) => new Set(v).size === v.length, '같은 시간대는 1회만 선택할 수 있습니다.'),
   }),
   repInsurance: z.boolean(),
   note: z.string(),

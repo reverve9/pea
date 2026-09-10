@@ -32,6 +32,7 @@ import {
   releasePaymentClaim,
   saveAdminMemo,
   revealInsuranceRoster,
+  revealInsuranceBackDigits,
   updateParticipantDetail,
   issueFillLink,
   deleteApplication,
@@ -456,7 +457,17 @@ function ApplicationsPanel({
   //   시트1 '신청' = 1행 1신청(금액·정산·연락) / 시트2 '참가자' = 1행 1명(대표 포함 전원, 명부·조편성·렌탈).
   //   한 시트에 참가자를 반복하면 금액이 인원수만큼 중복 합산돼 정산이 틀어지므로 단위를 분리한다.
   //   두 시트는 신청번호로 연결. 금액은 숫자(천단위 포맷은 엑셀 유틸이 적용).
-  const exportExcel = () => {
+  const exportExcel = async () => {
+    // 보험 가입자 뒷자리 — 참가자 시트에 원문으로 싣는다(단체 보험 가입 대행용, 클라이언트 요청).
+    // 목록 쿼리는 has_insurance 플래그만 싣기 때문에 내보내기 시점에 서버에서 한 번 복호해 온다.
+    let backDigits: Record<string, string> = {}
+    const insuredAppIds = filtered.filter((a) => a.participants.some((p) => p.has_insurance)).map((a) => a.id)
+    if (insuredAppIds.length > 0) {
+      const res = await revealInsuranceBackDigits(insuredAppIds)
+      if (res.ok) backDigits = res.map
+      else alert(`${res.error}\n주민번호 뒷자리 없이 내보냅니다.`)
+    }
+
     const applicationRows = filtered.map((a) => {
       const leader = a.participants.find((p) => p.is_leader)
       const [companionName = '', companionPhone = ''] = (a.companion_memo ?? '').split('/').map((s) => s.trim())
@@ -523,6 +534,7 @@ function ApplicationsPanel({
             glove: r.glove ? 'O' : '',
             gloveSize: str(r.glove_size),
             insurance: p.has_insurance ? '가입' : '',
+            birthBack: backDigits[p.id] ?? '',
             amount: p.line_amount,
             filled: p.birth_front ? '완료' : '미입력',
           }
@@ -595,6 +607,7 @@ function ApplicationsPanel({
             { key: 'glove', label: '장갑' },
             { key: 'gloveSize', label: '장갑 사이즈' },
             { key: 'insurance', label: '보험' },
+            { key: 'birthBack', label: '주민번호 뒷자리' },
             { key: 'amount', label: '금액' },
             { key: 'filled', label: '정보입력' },
           ],
@@ -607,7 +620,7 @@ function ApplicationsPanel({
   const exportButton = (
     <button
       type="button"
-      onClick={exportExcel}
+      onClick={() => void exportExcel()}
       disabled={filtered.length === 0}
       className="flex items-center gap-1.5 rounded-[8px] bg-[#1e6b4f] px-3 py-1.5 text-[12px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
     >

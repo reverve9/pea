@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { GraduationCap, Boxes, ArrowRight } from 'lucide-react'
+import { GraduationCap, Boxes } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import AppShell from '@/components/layout/AppShell'
 import PageTitle from '@/components/common/PageTitle'
@@ -15,6 +15,7 @@ import JikmuApplyForm from '@/components/features/JikmuApplyForm'
 import JayulApplyForm from '@/components/features/JayulApplyForm'
 import { PendingPanel } from '@/components/features/ProgramTabs'
 import DuotoneHero from '@/components/features/DuotoneHero'
+import TypeSwitchBanner from '@/components/features/TypeSwitchBanner'
 import { PROGRAMS, OPEN_PROGRAMS, type Program } from '@/lib/programs'
 
 // §3-5 연수신청 — 좌우 동일 층위(프로그램 → 유형). 좌(main)=마스터 인덱스, 우(extended)=상세.
@@ -85,43 +86,6 @@ function TrackCard({ track, selected, compact, onSelect }: { track: Track; selec
         </Text>
       )}
     </MasterCard>
-  )
-}
-
-// 선택된 유형 배너(데스크탑 우 페인) — 유형 선택 시 2카드를 접고 활성 유형을 솔리드 유형색으로 승격.
-// 긴 폼을 스크롤해도 "지금 이 유형 작성 중"이 각인됨. '다른 유형'으로 선택 해제(2카드 복귀).
-function SelectedTypeBanner({ track, onSwitch }: { track: Track; onSwitch: (key: string) => void }) {
-  const Icon = track.icon
-  const other = TRACKS.find((t) => t.key !== track.key)
-  return (
-    <div className="mb-5 flex items-center justify-between gap-3">
-      {/* 현재 유형 배지 카드 — 1/2 폭(유형 전환해도 통일), 유형색 라이트 틴트 */}
-      <div
-        className="flex w-1/2 min-w-0 items-center gap-2.5 rounded-[10px] border border-[#e5eaef] px-3.5 py-2.5"
-        style={{ background: track.accent + '14' }}
-      >
-        <span
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
-          style={{ background: track.accent + '24' }}
-        >
-          <Icon size={15} strokeWidth={1.75} style={{ color: track.accent }} />
-        </span>
-        <Text variant="card-title" as="span" color={track.accent}>{track.title}</Text>
-        <Text variant="card-sub" as="span" className="truncate">{track.spec}</Text>
-      </div>
-      {/* 반대 유형 전환 — 솔리드 필(반대 유형색 배경 + 화이트 텍스트)로 강조 */}
-      {other && (
-        <button
-          type="button"
-          onClick={() => onSwitch(other.key)}
-          className="flex shrink-0 items-center gap-1 rounded-[8px] px-3.5 py-2 text-white transition-[filter] hover:brightness-95"
-          style={{ background: other.accent }}
-        >
-          <Text variant="card-title-sm" as="span" color="#fff">{other.title} 신청하기</Text>
-          <ArrowRight size={13} />
-        </button>
-      )}
-    </div>
   )
 }
 
@@ -216,7 +180,12 @@ export default function ApplyPage() {
           <DuotoneHero eyebrow="SKI & SNOWBOARD" title="원하는 일정과 유형을 골라 신청하세요" imgs={['/application/hero.jpg']} tint={0} />
           {/* 우 페인 = 연수유형(정식 섹션 타이틀) + 활성 유형 배너(스위치) + 폼(기본 직무 노출). 하단 2카드/안내박스 제거. */}
           <SectionTitle title="연수유형" />
-          <SelectedTypeBanner track={TRACKS.find((t) => t.key === type)!} onSwitch={setType} />
+          <TypeSwitchBanner
+            current={TRACKS.find((t) => t.key === type)!}
+            other={TRACKS.find((t) => t.key !== type)}
+            onSwitch={setType}
+            action="신청하기"
+          />
           {trackBody(type)}
         </div>
       ) : (

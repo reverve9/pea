@@ -3,10 +3,11 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
-import { Check, GraduationCap, Boxes, X, ArrowRight, ChevronDown } from 'lucide-react'
+import { Check, GraduationCap, Boxes, X, ArrowRight } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import Text, { BTN } from '@/components/common/Text'
 import MasterCard from '@/components/common/MasterCard'
+import TypeSwitchBanner, { type BannerType } from '@/components/features/TypeSwitchBanner'
 import type { ScheduleType, SessionWithCourse } from '@/lib/types'
 
 // /courses 연수 유형 — 계획안(연수비용 및 포함사항) 4개 유형을 공개용으로 큐레이션.
@@ -477,15 +478,18 @@ export function CourseTypesMobile({ sessions }: { sessions: SessionWithCourse[] 
   )
 }
 
-// 데스크탑 우측 디테일 — 유형 아코디언(선택된 것만 펼침). 선택 변경 시 해당 헤더가 페인 최상단으로 스크롤.
-export function CourseTypeAccordion({
+// 데스크탑 우측 디테일 — 선택된 유형 "하나만" 펼쳐 보여준다(2행 아코디언 폐지).
+// 좌 카드가 선택을 제어하고, 상단 전환 배너(TypeSwitchBanner)가 현재 유형 표시 + 반대 유형 전환을 담당
+// → 신청 페이지 우 페인과 동일 어법. 선택이 바뀌면 패널이 페인 최상단으로 스크롤(기존 거동 유지).
+// ⚠ 개요·일정(캘린더)은 유형 공통이라 그대로 — 유형 섹션만 swap 된다.
+export function CourseTypePanel({
   selected,
   onSelect,
 }: {
   selected: string | null
-  onSelect: (k: string | null) => void
+  onSelect: (k: string) => void
 }) {
-  const refs = useRef<Record<string, HTMLDivElement | null>>({})
+  const ref = useRef<HTMLDivElement | null>(null)
   const prevSelected = useRef<string | null | undefined>(undefined)
 
   useEffect(() => {
@@ -496,58 +500,25 @@ export function CourseTypeAccordion({
       return
     }
     if (prevSelected.current !== selected && selected) {
-      refs.current[selected]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
     prevSelected.current = selected
   }, [selected])
 
+  const t = TYPES.find((x) => x.key === selected) ?? TYPES[0]
+  const other = TYPES.find((x) => x.key !== t.key)
+
   return (
-    // 좌측 일정 아코디언(분리 카드 스택)과 실루엣 차별화 — 우측은 하나로 묶인 그룹 리스트(구분선).
-    <div className="overflow-hidden rounded-[10px] border border-[#e5eaef] bg-[#f2f5f9]">
-      {TYPES.map((t) => {
-        const on = t.key === selected
-        return (
-          <div
-            key={t.key}
-            ref={(el) => {
-              refs.current[t.key] = el
-            }}
-            className="scroll-mt-2 border-t border-[#e5eaef] first:border-t-0"
-          >
-            {/* 우측(콘텐츠) 헤더 — 닫힘은 타이틀만(요약은 좌 카드 담당, 열면 세부 다 나옴).
-                활성은 솔리드 대신 유형색 옅은 틴트 + 유형색 텍스트. */}
-            <button
-              type="button"
-              onClick={() => onSelect(t.key)}
-              aria-expanded={on}
-              className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors"
-              style={{ background: on ? t.accent + 'E6' : undefined }}
-            >
-              <Text
-                variant="card-title"
-                as="span"
-                className="min-w-0 flex-1"
-                color={on ? '#ffffff' : undefined}
-              >
-                {t.name}
-              </Text>
-              <ChevronDown
-                size={18}
-                className="shrink-0 transition-transform"
-                style={{
-                  transform: on ? 'rotate(180deg)' : undefined,
-                  color: on ? '#ffffff' : '#9ca3af',
-                }}
-              />
-            </button>
-            {on && (
-              <div className="border-t border-[#e5eaef] bg-white px-4 py-4">
-                <TypeDetail t={t} />
-              </div>
-            )}
-          </div>
-        )
-      })}
+    <div ref={ref} className="scroll-mt-2">
+      <TypeSwitchBanner current={toBannerType(t)} other={other && toBannerType(other)} onSwitch={onSelect} action="보기" />
+      <div className="overflow-hidden rounded-[10px] border border-[#e5eaef] bg-white px-4 py-4">
+        <TypeDetail t={t} />
+      </div>
     </div>
   )
+}
+
+// 유형 → 배너 프롭. 스펙 줄은 신청 페이지 TRACKS.spec 과 같은 어법(일정 · 학점).
+function toBannerType(t: CourseType): BannerType {
+  return { key: t.key, title: t.name, spec: `${t.schedule} · ${t.credit}`, accent: t.accent, icon: t.icon }
 }

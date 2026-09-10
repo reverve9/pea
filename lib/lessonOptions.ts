@@ -84,8 +84,10 @@ export function equipmentLabel(key: string | null | undefined): string {
 // 개별(추가) 강습 시간대 — 자율패키지 전용. 박수에 따라 선택 가능한 슬롯이 다르다.
 //   1박 = 1일차 야간 / 2일차 오전 (2슬롯)
 //   2박 = 위 + 2일차 오후 · 2일차 야간 · 3일차 오전 (5슬롯)
-// 수량만큼 슬롯을 고르며 같은 슬롯 중복 선택 가능(인원별 배정은 신청 후 처리).
-export const PRIVATE_LESSON_MAX = 5
+// 시간대별로 고르며, 한 시간대는 1회만 진행 가능 → 슬롯당 상한 1(중복 선택 불가, 접수 오류 방지).
+// 총 상한은 슬롯 수와 같아 사실상 2박 5회 / 1박 2회. (인원별 배정은 신청 후 처리.)
+export const PRIVATE_LESSON_MAX = 5 // 합계 상한
+export const PRIVATE_LESSON_SLOT_MAX = 1 // 시간대(슬롯)당 상한
 export interface LessonSlot {
   key: string
   label: string

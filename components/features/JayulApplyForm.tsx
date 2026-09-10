@@ -11,7 +11,7 @@ import { applyOverrides, rentalPriceItem, ONE_NIGHT_VARIANT, PRIVATE_LESSON_KEY 
 import { formatPeriod } from '@/lib/display'
 import { submitApplication } from '@/lib/applyClient'
 import ApplyComplete from '@/components/features/ApplyComplete'
-import { JAYUL_LESSONS, EQUIPMENT_TYPES, lessonSlotsFor, PRIVATE_LESSON_MAX } from '@/lib/lessonOptions'
+import { JAYUL_LESSONS, EQUIPMENT_TYPES, lessonSlotsFor, PRIVATE_LESSON_MAX, PRIVATE_LESSON_SLOT_MAX } from '@/lib/lessonOptions'
 import { Field, ApplicantFields, RouteSelect, PrivacyConsentBox, ConsentChecks, SummaryActions, SeatsLeft, WaitlistNotice, won, inputCls } from './apply/shared'
 import type { SessionWithCourse, PriceItem, SessionPriceOverride, ScheduleType, CashReceiptType } from '@/lib/types'
 import type { JayulPayload } from '@/lib/applicationTypes'
@@ -257,11 +257,11 @@ export default function JayulApplyForm() {
     setForm((f) => (f.variant === v ? f : { ...f, variant: v, sessionId: '', lessonSlotQty: {} }))
     setSaved(false)
   }
-  // 시간대별 강습 횟수 — 합계가 곧 총 수량. 상한(PRIVATE_LESSON_MAX)은 합계 기준으로 건다.
+  // 시간대별 강습 횟수 — 합계가 곧 총 수량. 상한은 둘: 시간대당 1회(운영상 회당 1회) + 합계 PRIVATE_LESSON_MAX.
   const setLessonSlotQty = (key: string, n: number) => {
     setForm((f) => {
       const others = Object.entries(f.lessonSlotQty).reduce((s, [k, v]) => (k === key ? s : s + v), 0)
-      const capped = Math.max(0, Math.min(n, PRIVATE_LESSON_MAX - others))
+      const capped = Math.max(0, Math.min(n, PRIVATE_LESSON_SLOT_MAX, PRIVATE_LESSON_MAX - others))
       return { ...f, lessonSlotQty: { ...f.lessonSlotQty, [key]: capped } }
     })
     setSaved(false)
@@ -458,7 +458,12 @@ export default function JayulApplyForm() {
         {itemBy[PRIVATE_LESSON_KEY] && (
           <Field
             label="추가 강습 (선택)"
-            hint={`더 필요하시면 시간대별 횟수를 선택하세요. 같은 시간대를 여러 번 고를 수 있으며, 최대 ${PRIVATE_LESSON_MAX}회까지 가능합니다.`}
+            hint={
+              <>
+                추가 강습을 희망하실 경우 시간대별 횟수를 선택하세요.
+                <br />* 시간대마다 1회만 가능합니다.
+              </>
+            }
           >
             {!form.variant ? (
               <Text variant="sub" as="p" className="text-[#8a94a0]">패키지 유형을 먼저 선택하시면 강습 시간대가 표시됩니다.</Text>
@@ -470,7 +475,7 @@ export default function JayulApplyForm() {
                     label={s.label}
                     unit={itemBy[PRIVATE_LESSON_KEY].amount}
                     qty={form.lessonSlotQty[s.key] ?? 0}
-                    max={PRIVATE_LESSON_MAX}
+                    max={PRIVATE_LESSON_SLOT_MAX}
                     onChange={(n) => setLessonSlotQty(s.key, n)}
                     unitLabel="회당"
                   />

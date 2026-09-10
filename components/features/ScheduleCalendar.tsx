@@ -12,14 +12,15 @@ import type { SessionWithCourse, ScheduleType } from '@/lib/types'
 // 원칙:
 //  - 셀 안에 텍스트를 넣지 않는다(좁은 페인에서 truncate돼 지저분함). 셀엔 날짜만.
 //  - 각 차수 기간 = 날짜 아래 컬러 바(샤프 사각형). 동시 진행 차수는 레인으로 스택(Gantt식).
-//  - 색은 "타입별". 텍스트 정보는 하단 범례가 담당.
+//  - 색은 "타입별", **차수명은 바 안에**(2026-09-10 오너 지시, 클라이언트 목업 p9). 하단 범례는 폐지 —
+//    색↔라벨을 눈으로 잇는 중간 단계 없이 바가 바로 자기 이름을 말한다. 좁으면 말줄임(툴팁 title 유지).
 //  - 단일 월 뷰 + 상단 월 탭(세션 있는 달만). 표준 달력처럼 앞뒤 인접월 날짜를 흐리게 노출 →
 //    월 경계 걸친 차수(1/31~2/2)가 1월 뷰에서도 잘리지 않고 이어져 보임. 차수 추가 시 탭 자동 증가.
 //  - 바 클릭 → 해당 차수 상세(날짜·정원·신청) 카드 내부 섹션에 노출.
 
 // 타입별 색 — 4유형 차별성·가독성 우선(쿨→웜으로 확실히 분리). 직무=네이비(CourseTypes 통일·앵커).
 // export — 좌 월별 마스터(ScheduleMonthMaster)가 같은 색 언어(타입 칩) 재사용.
-// 키 순서 = 하단 범례 노출 순서(Object.keys 순회) — 자율 3종은 주말2박 · 주중2박 · 주말1박(오너 지정).
+// 키 순서 = 자율 3종 주말2박 · 주중2박 · 주말1박(오너 지정).
 export const SCHEDULE_HEX: Record<ScheduleType, string> = {
   jikmu: '#1e3a5f', // 직무연수 — 네이비(플래그십, 가장 진함)
   weekend_2n: '#549a4e', // 주말 2박 — 그린
@@ -27,17 +28,9 @@ export const SCHEDULE_HEX: Record<ScheduleType, string> = {
   weekend_1n: '#d18a3c', // 주말 1박 — 앰버
 }
 
-// 범례 전용 라벨 — 자율 3종은 상위 유형(자율PKG)을 명시해 정확히 구분(공유 SCHEDULE_TYPE 배지는 짧게 유지).
-const LEGEND_LABEL: Record<ScheduleType, string> = {
-  jikmu: '직무연수',
-  weekday_2n: '자율PKG (주중2박)',
-  weekend_2n: '자율PKG (주말2박)',
-  weekend_1n: '자율PKG (주말1박)',
-}
-
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 const MS_WEEK = 7 * 24 * 3600 * 1000
-const LANE_H = 11 // 바 한 레인의 세로 간격(px)
+const LANE_H = 19 // 바 한 레인의 세로 간격(px) — 바 16 + 여백 3(바 안 차수명 수용)
 
 // 'YYYY-MM-DD' → 로컬 Date(0시)
 function toDate(iso: string): Date {
@@ -303,8 +296,7 @@ export default function ScheduleCalendar({
                     data-schedule-bar
                     onClick={() => setSelectedId(active ? null : seg.session.id)}
                     title={`${seg.session.label} · ${seg.session.course?.name ?? ''}`}
-                    aria-label={seg.session.label}
-                    className="absolute h-[6px] transition-opacity"
+                    className="absolute flex h-[16px] items-center justify-center overflow-hidden px-1.5 transition-opacity"
                     style={{
                       left: `calc(${(seg.startCol / 7) * 100}% + 2px)`,
                       width: `calc(${(len / 7) * 100}% - 4px)`,
@@ -314,21 +306,16 @@ export default function ScheduleCalendar({
                       outline: active ? '1.5px solid #1e293b' : undefined,
                       outlineOffset: active ? '1.5px' : undefined,
                     }}
-                  />
+                  >
+                    {/* 차수명은 바 안에서만 — 주에 걸쳐 잘린 조각(seg)마다 반복 표기해 어느 주에서 보든 이름이 보인다. */}
+                    <span className="truncate text-[clamp(0.5625rem,0.53rem+0.2cqi,0.625rem)] font-[500] leading-none text-white">
+                      {seg.session.label}
+                    </span>
+                  </button>
                 )
               })}
             </div>
           </div>
-        ))}
-      </div>
-
-      {/* 범례 — 타입 색↔라벨 (텍스트 담당) */}
-      <div className="flex flex-wrap gap-x-3.5 gap-y-1.5 border-t border-[#e5eaef] px-4 py-3">
-        {(Object.keys(SCHEDULE_HEX) as ScheduleType[]).map((t) => (
-          <span key={t} className="inline-flex items-center gap-1.5">
-            <span className="h-[6px] w-4" style={{ backgroundColor: SCHEDULE_HEX[t] }} />
-            <span className="fluid-nav-label text-[#6b7280]">{LEGEND_LABEL[t]}</span>
-          </span>
         ))}
       </div>
 

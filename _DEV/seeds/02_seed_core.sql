@@ -115,7 +115,7 @@ INSERT INTO site_contents (key, title, body, sort_order) VALUES
   ('training_overview', '연수 개요/비용 안내', '', 3),
   ('notes',             '참고사항',       '', 4),
   ('refund_policy',     '환불규정',
-    '연수 시작 15일 전 전액 환불 / 8일 전 50% 환불 / 7일 이내 환불 불가', 5)
+    '연수 시작 15일 전까지는 전액 환불 / 8일 전까지는 50% 환불 / 7일 이내에는 환불이 불가합니다.', 5)
 ON CONFLICT (key) DO NOTHING;
 
 -- ------------------------------------------------------------

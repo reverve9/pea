@@ -1,12 +1,13 @@
 'use client'
 
 import React, { useState } from 'react'
+import { ExternalLink } from 'lucide-react'
 import SectionTitle from '@/components/common/SectionTitle'
 import Text from '@/components/common/Text'
 
 // /courses 연수 개요 — 클라이언트 계획안(연수 계획 · 연수 개요 ①) 내용을 우리 디자인 시스템으로 재구성.
 // 스크린샷의 노랑/초록 raw 목업 스타일은 버리고 내용만 이식(네이비·시안·font-score).
-// ⚠ 문의 이메일/전화는 placeholder(후속 site_settings 연동). 장소·대상·인정 수치는 원안 확정값.
+// ⚠ 문의는 이메일 없이 1:1 문의·대표전화만(클라이언트 확정, 2차 수정요청). 장소·대상·인정 수치는 원안 확정값.
 // 직무/자율 색 코드 = 홈 듀오톤과 동일(직무=네이비 #1e3a5f / 자율=포레스트그린 #2f803a).
 
 const NAVY = '#1e3a5f'
@@ -15,12 +16,12 @@ const GREEN = '#2f803a'
 // 연수 개요 — 정의 목록(라벨 2글자 통일)
 const FACTS: { label: string; value: string; sub?: string; url?: string }[] = [
   { label: '기관', value: '체육교육회' },
-  { label: '문의', value: 'info@pea.or.kr · 02-000-0000' },
+  { label: '문의', value: '홈페이지 내 1:1 문의 · 02-7728-7947', sub: '연결 가능 시간 : 평일 10:00~17:00' },
   {
     label: '장소',
     value: '알펜시아 리조트',
     sub: '강원 평창군 대관령면 솔봉로 325',
-    url: 'http://www.alpensia.com',
+    url: 'https://www.alpensia.com',
   },
 ]
 
@@ -94,9 +95,17 @@ export default function CourseOverview() {
               <Text as="dd" variant="body">
                 {f.value}
                 {f.url && (
-                  <Text as="span" variant="sub" color="#2f8ba0" className="ml-2">
-                    {f.url}
-                  </Text>
+                  <a
+                    href={f.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="ml-2 inline-flex items-center gap-1 hover:underline"
+                  >
+                    <Text as="span" variant="sub" color="#2f8ba0">
+                      {f.url.replace(/^https?:\/\//, '')}
+                    </Text>
+                    <ExternalLink size={11} className="shrink-0 text-[#2f8ba0]" />
+                  </a>
                 )}
                 {f.sub && (
                   <Text as="span" variant="sub" className="block">

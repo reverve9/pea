@@ -3,6 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { usePathname } from 'next/navigation'
 import { UserRound } from 'lucide-react'
 
 interface PWAHeaderProps {
@@ -13,6 +14,8 @@ interface PWAHeaderProps {
 // 로고(흰 워드마크)는 어두운 좌측에, 마이 아이콘은 밝은 우측에 → 아이콘은 네이비로 대비 확보.
 export default function PWAHeader({ variant = 'mobile' }: PWAHeaderProps) {
   const isDesktop = variant === 'desktop'
+  const pathname = usePathname()
+  const onMy = pathname === '/my'
 
   return (
     <header
@@ -31,16 +34,23 @@ export default function PWAHeader({ variant = 'mobile' }: PWAHeaderProps) {
         />
       </Link>
 
-      {/* 마이페이지 진입 — 모바일만 헤더 우측 칩(축소). 데스크탑은 칩을 상단 네비(PWATopNav) 우측 끝으로 이관해 여기선 미표시. */}
-      {!isDesktop && (
-        <Link
-          href="/my"
-          aria-label="마이페이지"
-          className="shrink-0 grid h-8 w-8 place-items-center rounded-full bg-white text-[#1e3a5f] hover:bg-white/85 transition-colors"
+      {/* 마이페이지 진입 — 데스크탑·모바일 공통 헤더 우측(원형 칩 + 하단 MY 라벨, NavItemChip 어법).
+          주 네비 4개(프로그램·연수안내·신청·커뮤니티)와 층위가 달라 네비 바가 아니라 헤더에 둔다. */}
+      <Link
+        href="/my"
+        aria-label="마이페이지"
+        aria-current={onMy ? 'page' : undefined}
+        className="group shrink-0 flex flex-col items-center gap-[4px]"
+      >
+        <span
+          className={`grid h-8 w-8 place-items-center rounded-full transition-colors ${
+            onMy ? 'bg-[#2f8ba0] text-white' : 'bg-white text-[#1e3a5f] group-hover:bg-white/85'
+          }`}
         >
           <UserRound size={18} strokeWidth={1.75} />
-        </Link>
-      )}
+        </span>
+        <span className="text-[10px] font-medium leading-none tracking-[0.16em] text-white/90">MY</span>
+      </Link>
     </header>
   )
 }

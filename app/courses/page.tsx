@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import AppShell from '@/components/layout/AppShell'
 import PageTitle from '@/components/common/PageTitle'
 import SectionTitle from '@/components/common/SectionTitle'
@@ -11,7 +11,7 @@ import CourseProgramMaster from '@/components/features/CourseProgramMaster'
 import CourseOverview from '@/components/features/CourseOverview'
 import {
   CourseTypesMobile,
-  CourseTypeAccordion,
+  CourseTypePanel,
   DEFAULT_TYPE_KEY,
 } from '@/components/features/CourseTypes'
 import { ProgramTabs, PendingPanel } from '@/components/features/ProgramTabs'
@@ -36,13 +36,25 @@ export default function CoursesPage() {
   const [selectedType, setSelectedType] = useState<string | null>(DEFAULT_TYPE_KEY)
   const [monthIdx, setMonthIdx] = useState(0)
   const [selSession, setSelSession] = useState<string | null>(null)
-  const months = useMemo(() => scheduleMonths(sessions.data ?? []), [sessions.data])
+  // 선택 유형의 회차만 — 개요는 유형 공통이지만 일정(캘린더)·유형 상세는 선택 유형 것만 보여준다(2차 수정요청).
+  // 자율은 변형 3종(주중2박·주말2박·주말1박)이 모두 자율 → jikmu 여부로만 가른다(scheduleSummary 와 동일 기준).
+  const typeSessions = useMemo(() => {
+    const all = sessions.data ?? []
+    if (!selectedType) return all
+    return all.filter((s) => (selectedType === 'jikmu' ? s.schedule_type === 'jikmu' : s.schedule_type !== 'jikmu'))
+  }, [sessions.data, selectedType])
+  const months = useMemo(() => scheduleMonths(typeSessions), [typeSessions])
+  // 유형이 바뀌면 캘린더를 그 유형의 첫 달로 되돌린다(직무 1월만 / 자율 1~2월처럼 달 구성이 달라 인덱스가 어긋남).
+  useEffect(() => {
+    setMonthIdx(0)
+    setSelSession(null)
+  }, [selectedType])
   const activeProgram = PROGRAMS.find((p) => p.key === program) ?? PROGRAMS[0]
 
   // 좌 마스터에서 차수 클릭 → 그 차수의 시작월로 캘린더 점프 + 행 하이라이트.
   const selectSession = (id: string | null) => {
     setSelSession(id)
-    const s = (sessions.data ?? []).find((x) => x.id === id)
+    const s = typeSessions.find((x) => x.id === id)
     if (!s) return
     const y = Number(s.starts_on.slice(0, 4))
     const m = Number(s.starts_on.slice(5, 7)) - 1
@@ -123,14 +135,14 @@ export default function CoursesPage() {
               <div className="mb-20">
                 <CourseOverview />
               </div>
-              {/* 연수일정 캘린더 — 데스크탑 우측. 좌 마스터의 차수 클릭으로 월 점프 + 자체 월탭으로도 브라우징. */}
+              {/* 연수일정 캘린더 — 데스크탑 우측. 선택 유형의 회차만(개요는 공통). 자체 월탭으로 브라우징. */}
               <div className="mb-20">
                 <SectionTitle title="일정" en="Schedule" />
                 {sessions.loading ? (
                   <LoadingState />
                 ) : (
                   <ScheduleCalendar
-                    sessions={sessions.data}
+                    sessions={typeSessions}
                     monthIdx={monthIdx}
                     onMonthChange={setMonthIdx}
                     selectedId={selSession}
@@ -139,9 +151,9 @@ export default function CoursesPage() {
                   />
                 )}
               </div>
-              {/* 유형 상세 — 데스크탑 우측 아코디언(좌 카드가 제어, 선택 시 최상단 스크롤) */}
+              {/* 유형 상세 — 선택된 유형 하나만(좌 카드·전환 배너가 제어, 선택 시 최상단 스크롤) */}
               <SectionTitle title="유형" en="Types" />
-              <CourseTypeAccordion selected={selectedType} onSelect={setSelectedType} />
+              <CourseTypePanel selected={selectedType} onSelect={setSelectedType} />
             </>
           ) : (
             <PendingPanel title={activeProgram.title} />

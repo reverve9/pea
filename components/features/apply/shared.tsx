@@ -337,7 +337,7 @@ export function ApplicantFields({
         />
       </Field>
 
-      <Field label={`${personLabel}생년월일`} required hint="YYMMDD 6자리">
+      <Field label={`${personLabel}생년월일`} required>
         <input
           className={inputCls}
           value={value.birthFront}

@@ -295,6 +295,43 @@ export async function revealInsuranceRoster(applicationId: string): Promise<Rost
   }
 }
 
+// 엑셀 내보내기용 뒷자리 일괄 복호 — 참가자 id → 주민번호 뒷자리.
+// 단체 여행자보험 가입 대행에 뒷자리 원문이 필요해 명부(엑셀)에 싣는다(클라이언트 요청, 2차 수정).
+// 상세 모달의 revealInsuranceRoster 와 같은 게이트(requireAdmin + service_role) — 다만 여러 신청을 한 번에.
+// ⚠ 뒷자리는 여기서만 평문이 된다. 화면·목록 쿼리는 계속 has_insurance 플래그만 싣는다. [[participant-detail-deadline-lock]]
+export type InsuranceDigitsResult = { ok: true; map: Record<string, string> } | { ok: false; error: string }
+
+export async function revealInsuranceBackDigits(applicationIds: string[]): Promise<InsuranceDigitsResult> {
+  try {
+    await requireAdmin()
+    const ids = [...new Set(applicationIds)].filter(Boolean)
+    if (ids.length === 0) return { ok: true, map: {} }
+
+    const map: Record<string, string> = {}
+    // IN 절이 과도하게 길어지지 않게 청크 분할(필터 없이 전체 내보내기 = 수백 건).
+    for (let i = 0; i < ids.length; i += 200) {
+      const { data, error } = await supabaseAdmin
+        .from('participants')
+        .select('id, birth_back_enc')
+        .in('application_id', ids.slice(i, i + 200))
+        .not('birth_back_enc', 'is', null)
+      if (error) throw error
+      for (const p of (data as { id: string; birth_back_enc: string }[]) ?? []) {
+        try {
+          map[p.id] = decryptSecret(p.birth_back_enc)
+        } catch (err) {
+          console.error('[applications] decrypt 뒷자리:', err)
+          map[p.id] = '(복호 실패)'
+        }
+      }
+    }
+    return { ok: true, map }
+  } catch (e) {
+    console.error('[applications] revealBackDigits:', e)
+    return { ok: false, error: '주민번호 뒷자리 조회에 실패했습니다.' }
+  }
+}
+
 // ══════════════════════════════════════════════════════════════
 // 요청 처리 — 요청관리 해체로 신청관리에 흡수(환불요청·수정요청)
 // ══════════════════════════════════════════════════════════════

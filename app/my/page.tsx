@@ -915,7 +915,7 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
         ) : (
           <Text variant="sub" as="p" className="mt-1.5 text-[#9ca3af]">환불 규정을 불러오는 중…</Text>
         )}
-        <Text variant="caption" as="p" className="mt-2 text-[#9ca3af]">기준일은 연수 시작일이며, 자세한 사항은 1:1 문의 바랍니다.</Text>
+        <Text variant="caption" as="p" className="mt-2 text-[#9ca3af]">기준일은 연수 시작일이며, 환불 요청은 환불 신청 메뉴에서 접수해 주세요.</Text>
       </div>
     </div>
   )
