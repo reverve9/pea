@@ -14,16 +14,6 @@ const PhoneIcon = () => (
     <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" />
   </svg>
 )
-const FaxIcon = () => (
-  <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z" />
-  </svg>
-)
-const MailIcon = () => (
-  <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" />
-  </svg>
-)
 
 export default function HomeFooter() {
   const year = new Date().getFullYear()
@@ -60,9 +50,6 @@ export default function HomeFooter() {
               {ORG.address} | 대표자: {ORG.ceo}
             </p>
             <p>
-              입금계좌: {ORG.bank} {ORG.account} (예금주: {ORG.accountHolder})
-            </p>
-            <p>
               개인정보보호책임자: {ORG.privacyOfficer} ({ORG.privacyEmail})
             </p>
             <p className="flex items-center gap-1 flex-wrap">
@@ -72,13 +59,6 @@ export default function HomeFooter() {
               <span>(연결 가능 시간: {ORG.telHours})</span>
             </p>
             <p>홈페이지 내 문의사항 이용</p>
-            <p className="flex items-center gap-1 flex-wrap">
-              <FaxIcon />
-              <span>{ORG.fax}</span>
-              <span className="mx-0.5">|</span>
-              <MailIcon />
-              <span>{ORG.email}</span>
-            </p>
           </div>
         </div>
 
