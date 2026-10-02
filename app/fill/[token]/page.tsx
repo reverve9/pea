@@ -79,7 +79,7 @@ export default function FillPage() {
             </div>
           )}
           <Text variant="caption" as="p" className="mb-3 text-[#9ca3af]">
-            본인 정보(성별 · 생년월일 · 기초강습 · 용품세트)와 대표가 배정한 렌탈의 사이즈를 입력해 주세요. 보험 배정자는 주민번호 뒷자리도 필요하며, 서버에서 암호화되어 저장됩니다. 이 링크는 본인 정보 입력 전용입니다.
+            본인 정보(성별 · 생년월일 · 기초강습 · 용품세트)와 대표가 배정한 렌탈의 사이즈를 입력해 주세요. 이 링크는 본인 정보 입력 전용입니다.
             {deadlineLabel && !closed && <span className="text-[#8a6d3b]"> 입력은 <b className="font-[600]">{deadlineLabel}</b>까지 가능합니다.</span>}
           </Text>
 

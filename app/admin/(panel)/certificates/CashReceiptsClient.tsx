@@ -271,7 +271,7 @@ function IssueModal({
           type="button"
           disabled={busy || !valid}
           onClick={save}
-          className="rounded-[9px] bg-[#1e3a5f] px-5 py-2.5 text-[13px] font-[500] text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-[9px] bg-[#1e3a5f] px-5 py-2.5 text-[13px] font-[500] text-white transition-colors hover:bg-[#16304f] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {busy ? '처리 중…' : done ? '승인번호 저장' : '발급 확정'}
         </button>

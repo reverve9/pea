@@ -139,6 +139,7 @@ export interface MyRosterParticipant {
   // 렌탈 옵션 귀속(대표 배정) + 사이즈(참가자 입력). 고글은 사이즈 없음.
   apparel: boolean
   apparel_size: string | null
+  apparel_note: string | null // 의류 특이사항(유아용 선택 시 사이즈 기재)
   protector: boolean
   protector_size: string | null
   goggle: boolean
@@ -190,6 +191,7 @@ export interface MyParticipantInput {
   lessonClass?: string
   equipment?: string
   apparelSize?: string
+  apparelNote?: string
   protectorSize?: string
   gloveSize?: string
 }

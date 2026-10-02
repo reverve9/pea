@@ -170,7 +170,7 @@ export default function SettlementsClient({ data }: { data: SettlementDatum[] })
               type="button"
               onClick={exportExcel}
               disabled={listLen === 0}
-              className="flex items-center gap-1.5 rounded-[8px] bg-[#1e6b4f] px-3 py-1.5 text-[12px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+              className="flex items-center gap-1.5 rounded-[8px] bg-[#1e6b4f] px-3 py-1.5 text-[12px] font-[500] text-white transition-colors hover:bg-[#185a42] disabled:opacity-40"
             >
               <Download size={13} />
               엑셀 내보내기

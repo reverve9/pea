@@ -2,7 +2,6 @@ import 'server-only'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import { encryptSecret } from '@/lib/serverCrypto'
 import { computeJikmu, computeJayul, applyOverrides } from '@/lib/pricing'
 import { getSessionOccupancy } from '@/lib/capacity'
 import { applicationPrefix } from '@/lib/programs'
@@ -15,8 +14,8 @@ import type { JikmuPayload, JayulPayload } from '@/lib/applicationTypes'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const phone = z.string().regex(/^\d{10,11}$/, '연락처 형식 오류')
-const optPhone = z.string().regex(/^\d{10,11}$/).or(z.literal(''))
+const phone = z.string().regex(/^\d{11}$/, '연락처 형식 오류') // 휴대폰 11자리만(3차 수정)
+const optPhone = z.string().regex(/^\d{11}$/).or(z.literal(''))
 const birth6 = z.string().regex(/^\d{6}$/, '생년월일 6자리')
 
 const applicant = z.object({
@@ -194,7 +193,7 @@ export async function POST(req: Request) {
   } catch (e) {
     console.error('[applications] encrypt:', e)
     await supabaseAdmin.from('applications').delete().eq('id', appId)
-    return fail('보험 정보 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.', 500)
+    return fail('참가자 정보 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.', 500)
   }
   const { error: partErr } = await supabaseAdmin.from('participants').insert(participants)
   if (partErr) {
@@ -226,7 +225,8 @@ function buildParticipants(payload: JikmuPayload | JayulPayload, appId: string, 
         glove_size: payload.rentals.glove ? payload.gloveSize || null : null,
       },
       birth_front: a.birthFront,
-      birth_back_enc: payload.insurance && payload.birthBack ? encryptSecret(payload.birthBack) : null,
+      // 개인 보험 선택 폐지(3차 수정) — 구버전 클라이언트가 보내도 뒷자리는 수집하지 않는다.
+      birth_back_enc: null,
       is_leader: true,
       sort_order: 0,
       line_amount: total,
@@ -238,7 +238,7 @@ function buildParticipants(payload: JikmuPayload | JayulPayload, appId: string, 
     gender: a.gender || null,
     phone: a.phone,
     lesson_level: payload.lessonClass || null,
-    rentals: { insurance_wanted: payload.repInsurance, equipment: payload.equipment || null },
+    rentals: { equipment: payload.equipment || null }, // 보험 희망 미수집(3차 수정)
     birth_front: a.birthFront,
     birth_back_enc: null,
     is_leader: true,

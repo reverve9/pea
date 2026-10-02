@@ -144,7 +144,7 @@ export default function InquiryBoardShell({ openPulse, hideHeader }: { openPulse
         <button
           type="button"
           onClick={() => setWriting((v) => !v)}
-          className={`flex w-full shrink-0 items-center justify-center gap-1.5 rounded-[8px] bg-[#1e3a5f] px-3 py-2.5 ${BTN} text-white transition-opacity hover:opacity-90 md:w-auto md:justify-start md:py-2`}
+          className={`flex w-full shrink-0 items-center justify-center gap-1.5 rounded-[8px] bg-[#1e3a5f] px-3 py-2.5 ${BTN} text-white transition-colors hover:bg-[#16304f] md:w-auto md:justify-start md:py-2`}
         >
           <PenLine size={14} />
           문의 작성
@@ -186,7 +186,7 @@ export default function InquiryBoardShell({ openPulse, hideHeader }: { openPulse
               type="button"
               onClick={submit}
               disabled={!canSubmit}
-              className={`rounded-[8px] bg-[#1e3a5f] px-4 py-2 ${BTN} text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40`}
+              className={`rounded-[8px] bg-[#1e3a5f] px-4 py-2 ${BTN} text-white transition-colors hover:bg-[#16304f] disabled:cursor-not-allowed disabled:opacity-40`}
             >
               {submitting ? '제출 중…' : '제출'}
             </button>
@@ -285,7 +285,7 @@ export default function InquiryBoardShell({ openPulse, hideHeader }: { openPulse
                               type="button"
                               onClick={() => verify(it.id)}
                               disabled={!pw || verifying}
-                              className={`shrink-0 rounded-[8px] bg-[#1e3a5f] px-4 py-2 ${BTN} text-white transition-opacity hover:opacity-90 disabled:opacity-40`}
+                              className={`shrink-0 rounded-[8px] bg-[#1e3a5f] px-4 py-2 ${BTN} text-white transition-colors hover:bg-[#16304f] disabled:opacity-40`}
                             >
                               {verifying ? '확인 중…' : '열람'}
                             </button>

@@ -1,20 +1,35 @@
 import AdminHeader from '@/components/admin/AdminHeader'
-import { BarChart3 } from 'lucide-react'
+import {
+  getAllApplications,
+  getAllSessions,
+  getAllRefundRequests,
+  getAllModificationRequests,
+  getAllInquiries,
+} from '@/lib/adminQueries'
+import DashboardClient from './DashboardClient'
 
-// 대시보드 — 전체 운영현황 통계 대시보드 연동 예정(플레이스홀더). 임시 통계카드 제거. [[admin-dashboard-deferred]]
-export default function AdminDashboardPage() {
+// 대시보드 — 처리 대기 · 핵심 지표 · 차수별 현황 · 신청 추이 · 참가자 구성(3차 수정: 최대한 많은 정보 + 차수별 구분).
+// 집계는 클라이언트(유형·지난 차수 필터 즉시 반영). 소량 데이터라 기존 목록 쿼리를 그대로 재사용.
+export const dynamic = 'force-dynamic'
+
+export default async function AdminDashboardPage() {
+  const [applications, sessions, refunds, modifications, inquiries] = await Promise.all([
+    getAllApplications(),
+    getAllSessions(),
+    getAllRefundRequests(),
+    getAllModificationRequests(),
+    getAllInquiries(),
+  ])
   return (
     <>
-      <AdminHeader title="대시보드" desc="전체 운영 현황 요약" />
-      <div className="flex min-h-[360px] flex-col items-center justify-center rounded-[12px] bg-white px-6 text-center shadow-[0_1px_2px_rgba(15,27,46,0.04),0_3px_10px_rgba(15,27,46,0.05)]">
-        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#eef2f7]">
-          <BarChart3 size={22} className="text-[#8a94a0]" />
-        </div>
-        <p className="text-[14px] font-[500] text-[#4b5563]">운영 현황 통계 준비 중</p>
-        <p className="mt-1.5 max-w-[380px] text-[12.5px] font-[300] leading-relaxed text-[#9ca3af]">
-          신청 · 입금 · 정산 등 전체 운영 현황을 한눈에 볼 수 있는 통계가 연동될 예정입니다.
-        </p>
-      </div>
+      <AdminHeader title="대시보드" desc="전체 운영 현황 요약 · 차수별 신청/입금/정원 현황" />
+      <DashboardClient
+        applications={applications}
+        sessions={sessions}
+        refunds={refunds.map((r) => ({ status: r.status }))}
+        modifications={modifications.map((m) => ({ status: m.status }))}
+        inquiries={inquiries.map((q) => ({ status: q.status }))}
+      />
     </>
   )
 }

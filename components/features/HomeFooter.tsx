@@ -66,9 +66,13 @@ export default function HomeFooter() {
               개인정보보호책임자: {ORG.privacyOfficer} ({ORG.privacyEmail})
             </p>
             <p className="flex items-center gap-1 flex-wrap">
-              <span>고객센터:</span>
+              <span>문의:</span>
               <PhoneIcon />
               <span>{ORG.tel}</span>
+              <span>(연결 가능 시간: {ORG.telHours})</span>
+            </p>
+            <p>홈페이지 내 문의사항 이용</p>
+            <p className="flex items-center gap-1 flex-wrap">
               <FaxIcon />
               <span>{ORG.fax}</span>
               <span className="mx-0.5">|</span>

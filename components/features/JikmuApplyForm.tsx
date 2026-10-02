@@ -270,12 +270,11 @@ export default function JikmuApplyForm() {
       !a.sessionId ? '참가 연수 일정을 선택해 주세요.'
       : !a.name.trim() ? '참가자 성함을 입력해 주세요.'
       : !a.gender ? '성별을 선택해 주세요.'
-      : a.phone.length < 10 ? '연락처를 정확히 입력해 주세요.'
+      : a.phone.length !== 11 ? '휴대폰 번호 11자리를 정확히 입력해 주세요.'
       : a.birthFront.length !== 6 ? '생년월일 6자리를 입력해 주세요.'
       : !a.lessonSport ? '종목을 선택해 주세요.'
       : !a.lessonClass ? '희망 강습 수준을 선택해 주세요.'
       : a.roomType === 'private' && !a.roomSpec ? '개별객실 평형·인실을 선택해 주세요.'
-      : a.insurance && a.birthBack.length !== 7 ? '보험 가입용 주민번호 뒷자리 7자리를 입력해 주세요.'
       : a.cashReceiptType === 'business' && a.cashReceiptBizno.length !== 10 ? '현금영수증 지출증빙용 사업자등록번호 10자리를 입력해 주세요.'
       : !a.privacyConsent || !a.confirmChecked ? '필수 동의 항목을 확인해 주세요.'
       : selectedFull && !waitlistAck ? '정원이 마감된 차수입니다. 예비(대기) 신청 확인에 동의해 주세요.'
@@ -289,8 +288,9 @@ export default function JikmuApplyForm() {
       kind: 'jikmu',
       sessionId: a.sessionId,
       applicant: { name: a.name.trim(), gender: a.gender, phone: a.phone, birthFront: a.birthFront },
-      insurance: a.insurance,
-      birthBack: a.insurance ? a.birthBack : '',
+      // 개인 보험 선택 폐지(3차 수정) — 전원 주최자배상책임보험 적용. 임시저장 잔존값과 무관하게 미수집.
+      insurance: false,
+      birthBack: '',
       lessonSport: a.lessonSport,
       lessonClass: a.lessonClass,
       roomType: a.roomType || 'group',
@@ -367,28 +367,6 @@ export default function JikmuApplyForm() {
         accent={NAVY}
         personLabel="참가자 "
         namePlaceholder="본인 성함"
-        birthExtra={
-          <>
-            <label className="mt-2.5 flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={form.insurance}
-                onChange={(e) => set('insurance', e.target.checked)}
-                className="h-4 w-4 accent-[#1e3a5f]"
-              />
-              <Text variant="sub" className="text-[#4b5563]">여행자 보험 가입 희망 (주민등록번호 뒷자리 필요)</Text>
-            </label>
-            {form.insurance && (
-              <input
-                className={`${inputCls} mt-2`}
-                value={form.birthBack}
-                onChange={(e) => set('birthBack', e.target.value.replace(/\D/g, '').slice(0, 7))}
-                placeholder="뒷자리 7자리 (보험 가입용)"
-                inputMode="numeric"
-              />
-            )}
-          </>
-        }
       />
 
       <div className="mt-10">

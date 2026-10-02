@@ -27,6 +27,9 @@ const changeSchema = z.object({
   current: z.string().max(200),
   requested: z.string().max(200),
 })
+  // 3차 수정: 연락처는 휴대폰 11자리만, 개인 보험(insurance) 변경 요청은 신규 접수하지 않음(전원 주최자배상책임보험).
+  .refine((c) => c.field !== 'phone' || /^\d{11}$/.test(c.requested))
+  .refine((c) => c.field !== 'insurance')
 const schema = z.discriminatedUnion('type', [
   z.object({ ...base, type: z.literal('refund'), reason: z.string().trim().max(1000), refundAccount: z.string().trim().min(1).max(200) }),
   z.object({

@@ -2,6 +2,7 @@ import 'server-only'
 import { supabaseAdmin } from './supabaseAdmin'
 import { encryptSecret } from './serverCrypto'
 import { isDetailFillClosed } from './fillDeadline'
+import { INFANT_APPAREL_SIZE } from './rentalOptions'
 
 // 참가자 상세(성함·연락처·생년월일·성별·뒷자리·기초강습·대여장비·의류사이즈) 갱신 — 신청 완료 후 채우는 값.
 // 어드민 수기 입력과 동반인 셀프필(토큰) 두 경로가 공유하는 단일 갱신 로직. 뒷자리는 서버에서 암호화 저장.
@@ -16,6 +17,7 @@ export interface ParticipantDetailInput {
   lessonClass?: string // lesson_level key(직무 반 or 자율 jayul_*). 빈값 → 미변경
   equipment?: string // 'ski' | 'board' | '' → rentals.equipment (merge). 그 외/빈값 → 미변경
   apparelSize?: string // rentals.apparel_size (merge). 빈값 → 미변경
+  apparelNote?: string // rentals.apparel_note (merge) — 유아용 등 사이즈 특이사항. undefined → 미변경, 빈값 → 비움
   protectorSize?: string // rentals.protector_size (merge). 빈값 → 미변경
   gloveSize?: string // rentals.glove_size (merge). 빈값 → 미변경
   // 렌탈 옵션 귀속·보험 — 대표 배정(/api/my/assign)·어드민 보정 전용. 참가자 셀프필 라우트는 넘기지 않아 잠금 유지.
@@ -62,7 +64,10 @@ export async function updateParticipantDetail(
   }
   if (input.phone != null) {
     const p = input.phone.replace(/\D/g, '') // phone 컬럼은 숫자만(participants/applications digits CHECK)
-    if (p) patch.phone = p
+    if (p) {
+      if (p.length !== 11) return { ok: false, error: '휴대폰 번호 11자리를 입력해 주세요.' }
+      patch.phone = p
+    }
   }
   if (input.birthFront != null) {
     const bf = input.birthFront.replace(/\D/g, '')
@@ -92,6 +97,12 @@ export async function updateParticipantDetail(
   if (input.apparelSize != null) {
     const s = input.apparelSize.trim()
     if (s) rentalsPatch.apparel_size = s
+  }
+  if (input.apparelNote != null) {
+    rentalsPatch.apparel_note = input.apparelNote.trim().slice(0, 200) || null
+  }
+  if (input.apparelSize === INFANT_APPAREL_SIZE && !input.apparelNote?.trim()) {
+    return { ok: false, error: '유아용 사이즈를 선택한 경우 특이사항에 사이즈를 기재해 주세요.' }
   }
   if (input.protectorSize != null) {
     const s = input.protectorSize.trim()

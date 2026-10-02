@@ -3,12 +3,12 @@
 import { useState } from 'react'
 import Text from '@/components/common/Text'
 import { lessonLevelLabel, equipmentLabel, JAYUL_LESSONS, EQUIPMENT_TYPES } from '@/lib/lessonOptions'
-import { RENTAL_OPTIONS } from '@/lib/rentalOptions'
+import { RENTAL_OPTIONS, JAYUL_APPAREL_SIZES, INFANT_APPAREL_SIZE } from '@/lib/rentalOptions'
 import type { MyRosterParticipant, MyParticipantInput } from '@/lib/applicationTypes'
 
 // 참가자 후속입력 슬롯 — 마이페이지(대표 대신입력)·셀프필 공개페이지(참가자 각자입력) 공용.
-// 렌탈 옵션 귀속·보험 여부는 대표가 배정(잠금) → 여기선 배정된 옵션의 "사이즈"와 본인정보만 입력.
-// 접힘 시 요약, 펼침 시 폼. birth_front 보유 = 입력완료. 뒷자리는 write-only(보험 배정 시에만 노출).
+// 렌탈 옵션 귀속은 대표가 배정(잠금) → 여기선 배정된 옵션의 "사이즈"와 본인정보만 입력.
+// 접힘 시 요약, 펼침 시 폼. birth_front 보유 = 입력완료. 주민번호 뒷자리 입력은 개인 보험 선택 폐지로 제거(3차 수정).
 
 const fieldCls =
   'w-full rounded-[10px] border border-[#e5eaef] bg-white px-3.5 py-2.5 font-score text-[16px] text-[#1f2937] placeholder:text-[#b6bcc4] transition-colors focus:bg-[#f7f9fb] focus:outline-none'
@@ -43,7 +43,7 @@ export default function ParticipantFillSlot({
     protectorSize: part.protector_size ?? '',
     gloveSize: part.glove_size ?? '',
   })
-  const [birthBack, setBirthBack] = useState('')
+  const [apparelNote, setApparelNote] = useState(part.apparel_note ?? '')
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
@@ -71,8 +71,14 @@ export default function ParticipantFillSlot({
 
   const setSize = (field: keyof SizeState, v: string) => setSizes((s) => ({ ...s, [field]: v }))
 
+  const infant = part.apparel && sizes.apparelSize === INFANT_APPAREL_SIZE
+
   const save = async () => {
     setErr(null)
+    if (infant && !apparelNote.trim()) {
+      setErr('유아용 사이즈를 선택한 경우 특이사항에 사이즈를 기재해 주세요.')
+      return
+    }
     setSaving(true)
     try {
       await onSave({
@@ -80,14 +86,13 @@ export default function ParticipantFillSlot({
         phone,
         birthFront,
         gender,
-        birthBack,
         lessonClass,
         equipment,
         apparelSize: sizes.apparelSize,
+        apparelNote: part.apparel ? apparelNote : undefined,
         protectorSize: sizes.protectorSize,
         gloveSize: sizes.gloveSize,
       })
-      setBirthBack('') // write-only — 저장 후 잔존 방지
       onSaved()
     } catch (e) {
       setErr(e instanceof Error ? e.message : '저장 중 오류가 발생했습니다.')
@@ -173,8 +178,11 @@ export default function ParticipantFillSlot({
                         onChange={(e) => setSize(o.sizeField as keyof SizeState, e.target.value)}
                       >
                         <option value="">{o.label} 사이즈 선택</option>
-                        {o.sizes.map((s) => (
-                          <option key={s} value={s}>{s}</option>
+                        {/* 의류는 유아용 포함(자율 전용 — 이 슬롯은 자율패키지 참가자 입력에만 쓰임). */}
+                        {(o.key === 'apparel' ? JAYUL_APPAREL_SIZES : o.sizes).map((s) => (
+                          <option key={s} value={s}>
+                            {s === INFANT_APPAREL_SIZE ? '유아용 (선택 후 특이사항에 기재해 주세요)' : s}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -184,22 +192,16 @@ export default function ParticipantFillSlot({
                 )}
               </div>
             )}
-          </div>
-
-          {part.insurance_wanted && (
-            <>
-              {part.has_insurance && (
-                <Text variant="caption" as="p" className="mt-3 text-[#2f803a]">주민번호 뒷자리가 등록되어 있습니다. 새로 입력하면 교체됩니다.</Text>
-              )}
+            {part.apparel && (
               <input
                 className={`${fieldCls} mt-2`}
-                value={birthBack}
-                onChange={(e) => setBirthBack(e.target.value.replace(/\D/g, '').slice(0, 7))}
-                inputMode="numeric"
-                placeholder="주민번호 뒷자리 (보험 가입 · 7자리)"
+                value={apparelNote}
+                onChange={(e) => setApparelNote(e.target.value.slice(0, 200))}
+                placeholder={infant ? '특이사항 (필수) — 유아용 사이즈·키 등을 기재해 주세요' : '특이사항 (선택) — 사이즈 관련 요청사항'}
               />
-            </>
-          )}
+            )}
+          </div>
+
           {err && <p className="mt-2 rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{err}</p>}
           <button
             type="button"

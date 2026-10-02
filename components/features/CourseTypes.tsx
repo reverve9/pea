@@ -59,6 +59,18 @@ const ADDON_RENTAL: IncludeDetail = {
   ],
 }
 
+// 보험 안내 — 직무·자율 공통(3차 수정). 개인 선택 없이 참가자 전원 주최자배상책임보험 적용.
+const INSURANCE: IncludeDetail = {
+  label: '보험',
+  sub: (
+    <>
+      참가자 전원 대상으로 &lsquo;스포츠안전재단 주최자배상책임보험&rsquo;이 적용됩니다.
+      <br />
+      사고 발생 시 개인 실비 보험과 중복 적용되지 않습니다.
+    </>
+  ),
+}
+
 interface CourseType {
   key: 'jikmu' | 'jayul'
   name: string
@@ -121,6 +133,7 @@ const TYPES: CourseType[] = [
       { label: '리프트권 2박3일권', sub: '(1일차 오후~3일차 오전)', note: '야간권 포함' },
       { label: '단체식 3회', sub: '1일차 석, 2일차 중·석식' },
       { label: '수준별 강습 4타임', sub: '1일차 오후+야간, 2일차 오전+오후' },
+      INSURANCE,
       ADDON_RENTAL,
     ],
     prices: [
@@ -141,6 +154,7 @@ const TYPES: CourseType[] = [
       { label: '리프트권', sub: '야간권 포함', note: '옵션별 상이 *하단 표 참조' },
       '기초 단체 강습 1회',
       { label: '그룹 체험 강습 1회', sub: '입문자 기준 강습 운영' },
+      INSURANCE,
       ADDON_RENTAL,
     ],
     notice: '개별 강습이 필요할 경우 추가 옵션을 선택하실 수 있습니다.',

@@ -12,7 +12,7 @@ import { formatDate, formatKRW, APPLICATION_STATUS, SCHEDULE_TYPE, MODIFICATION_
 import { isDetailFillClosed, detailFillDeadline } from '@/lib/fillDeadline'
 import { exportToExcelMultiSheet } from '@/lib/excel'
 import { lessonLevelLabel, lessonSportLabel, equipmentLabel, lessonSlotLabel, JAYUL_LESSONS, EQUIPMENT_TYPES, LESSON_CLASSES, LESSON_SPORTS } from '@/lib/lessonOptions'
-import { APPAREL_SIZES, GEAR_SIZES } from '@/lib/rentalOptions'
+import { APPAREL_SIZES, JAYUL_APPAREL_SIZES, GEAR_SIZES } from '@/lib/rentalOptions'
 import { PROGRAMS, OPEN_PROGRAMS } from '@/lib/programs'
 import type { ParticipantDetailInput } from '@/lib/participantDetail'
 import type {
@@ -527,7 +527,7 @@ function ApplicationsPanel({
             lesson: lessonLevelLabel(p.lesson_level),
             equipment: equipmentLabel(str(r.equipment)),
             apparel: r.apparel ? 'O' : '',
-            apparelSize: str(r.apparel_size),
+            apparelSize: [str(r.apparel_size), str(r.apparel_note)].filter(Boolean).join(' / '), // 유아용 특이사항 동반 표기
             goggle: r.goggle ? 'O' : '',
             protector: r.protector ? 'O' : '',
             protectorSize: str(r.protector_size),
@@ -650,7 +650,7 @@ function ApplicationsPanel({
       type="button"
       onClick={() => void exportExcel()}
       disabled={filtered.length === 0}
-      className="flex items-center gap-1.5 rounded-[8px] bg-[#1e6b4f] px-3 py-1.5 text-[12px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+      className="flex items-center gap-1.5 rounded-[8px] bg-[#1e6b4f] px-3 py-1.5 text-[12px] font-[500] text-white transition-colors hover:bg-[#185a42] disabled:opacity-40"
     >
       <Download size={13} />
       엑셀 내보내기
@@ -789,7 +789,7 @@ function RefundInline({
           type="button"
           disabled={pending}
           onClick={confirmRefund}
-          className="rounded-[8px] bg-[#1e3a5f] px-3.5 py-2 text-[12.5px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+          className="rounded-[8px] bg-[#1e3a5f] px-3.5 py-2 text-[12.5px] font-[500] text-white transition-colors hover:bg-[#16304f] disabled:opacity-40"
         >
           환불 확정
         </button>
@@ -868,7 +868,7 @@ function AdminRefundInline({
           type="button"
           disabled={pending}
           onClick={submit}
-          className="rounded-[8px] bg-[#8f3a2a] px-3.5 py-1.5 text-[12px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+          className="rounded-[8px] bg-[#8f3a2a] px-3.5 py-1.5 text-[12px] font-[500] text-white transition-colors hover:bg-[#7a3123] disabled:opacity-40"
         >
           환불 등록
         </button>
@@ -989,7 +989,7 @@ function DetailModal({
                 if (!confirm('이 예비 건을 승인해 신청 접수할까요?')) return
                 runAndRefresh(() => setApplicationWaitlist(app.id, false))
               }}
-              className="rounded-[8px] bg-[#1e3a5f] px-3.5 py-2 text-[12.5px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+              className="rounded-[8px] bg-[#1e3a5f] px-3.5 py-2 text-[12.5px] font-[500] text-white transition-colors hover:bg-[#16304f] disabled:opacity-40"
             >
               승인 → 신청 접수
             </button>
@@ -1054,7 +1054,7 @@ function DetailModal({
               if (!confirm(`추가입금 ${formatKRW(app.due_amount)}을 확인했습니까? 확인 시 추가입금 대기가 해제됩니다.`)) return
               runAndRefresh(() => confirmDuePayment(app.id))
             }}
-            className="ml-auto rounded-[7px] bg-[#1e3a5f] px-3 py-1.5 text-[12px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+            className="ml-auto rounded-[7px] bg-[#1e3a5f] px-3 py-1.5 text-[12px] font-[500] text-white transition-colors hover:bg-[#16304f] disabled:opacity-40"
           >
             추가입금 확인
           </button>
@@ -1263,7 +1263,7 @@ function DetailModal({
                     if (!confirm('요청 내용을 신청에 반영하고 처리완료로 전환할까요? 요금이 바뀌면 환불요청/추가입금이 자동 처리됩니다.')) return
                     runAndRefresh(() => applyModification(m.id, ''))
                   }}
-                  className="rounded-[8px] bg-[#1e3a5f] px-3.5 py-2 text-[12.5px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+                  className="rounded-[8px] bg-[#1e3a5f] px-3.5 py-2 text-[12.5px] font-[500] text-white transition-colors hover:bg-[#16304f] disabled:opacity-40"
                 >
                   반영 · 처리완료
                 </button>
@@ -1361,7 +1361,7 @@ function DetailModal({
           type="button"
           disabled={pending || memo.trim() === (app.admin_memo ?? '')}
           onClick={() => runAndRefresh(() => saveAdminMemo(app.id, memo))}
-          className="rounded-[9px] bg-[#1e3a5f] px-5 py-2.5 text-[13px] font-[500] text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-[9px] bg-[#1e3a5f] px-5 py-2.5 text-[13px] font-[500] text-white transition-colors hover:bg-[#16304f] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {pending ? '저장 중…' : '메모 저장'}
         </button>
@@ -1383,7 +1383,7 @@ function DetailModal({
             if (!confirm('정말 삭제합니다. 이 작업은 취소할 수 없습니다. 계속할까요?')) return
             runAndRefresh(() => deleteApplication(app.id))
           }}
-          className="flex shrink-0 items-center gap-1.5 rounded-[8px] bg-[#8f3a2a] px-3.5 py-2 text-[12.5px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+          className="flex shrink-0 items-center gap-1.5 rounded-[8px] bg-[#8f3a2a] px-3.5 py-2 text-[12.5px] font-[500] text-white transition-colors hover:bg-[#7a3123] disabled:opacity-40"
         >
           <Trash2 size={13} /> 삭제
         </button>
@@ -1588,7 +1588,7 @@ function ParticipantEditModal({
               <span className={labelClass}>의류 사이즈</span>
               <select value={apparelSize} onChange={(e) => setApparelSize(e.target.value)} className={inputClass}>
                 <option value="">선택</option>
-                {APPAREL_SIZES.map((s) => (
+                {(isJayul ? JAYUL_APPAREL_SIZES : APPAREL_SIZES).map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
@@ -1647,7 +1647,7 @@ function ParticipantEditModal({
           type="button"
           disabled={pending || closed}
           onClick={submit}
-          className="rounded-[9px] bg-[#1e3a5f] px-5 py-2.5 text-[13px] font-[500] text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-[9px] bg-[#1e3a5f] px-5 py-2.5 text-[13px] font-[500] text-white transition-colors hover:bg-[#16304f] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {pending ? '저장 중…' : closed ? '마감됨' : '저장'}
         </button>
@@ -1675,7 +1675,8 @@ function rentalLabel(p: ParticipantAdmin): string {
   const r = p.rentals
   const items: string[] = []
   if (typeof r.equipment === 'string' && r.equipment) items.push(equipmentLabel(r.equipment))
-  if (r.apparel) items.push(`의류${r.apparel_size ? `(${r.apparel_size})` : ''}`)
+  const apparelNote = typeof r.apparel_note === 'string' && r.apparel_note ? `: ${r.apparel_note}` : ''
+  if (r.apparel) items.push(`의류${r.apparel_size ? `(${r.apparel_size}${apparelNote})` : apparelNote ? `(${apparelNote.slice(2)})` : ''}`)
   if (r.protector) items.push(`보호대${r.protector_size ? `(${r.protector_size})` : ''}`)
   if (r.goggle) items.push('고글')
   if (r.glove) items.push(`장갑${r.glove_size ? `(${r.glove_size})` : ''}`)

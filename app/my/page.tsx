@@ -150,7 +150,7 @@ function ApplicationCard(app: MyApplicationRow, selected: boolean) {
 const fieldCls =
   'apply-field w-full rounded-[10px] border border-[#e5eaef] bg-white px-3.5 py-2.5 font-score text-[16px] text-[#1f2937] placeholder:text-[#b6bcc4] transition-colors focus:bg-[#f7f9fb] focus:outline-none'
 
-// 참가자 후속입력 — 자율패키지 신청 후 대표가 참가자 성함·생년월일·강습·장비·(보험시)뒷자리를 대신 입력.
+// 참가자 후속입력 — 자율패키지 신청 후 대표가 참가자 성함·생년월일·강습·장비를 대신 입력.
 // 신청 단계를 단순 유지하기 위해 상세는 신청 후 채운다([[companion-detail-post-signup-fill]]).
 // 두 경로: 대표 대신입력(/api/my/participant) + 셀프필 링크 복사(참가자 각자입력, /fill/[token]).
 // 참가자별 렌탈 옵션 귀속(대표 배정) 로컬 선택.
@@ -246,14 +246,6 @@ function CompanionFill({ applicationId, token, startsOn }: { applicationId: stri
       return { ...prev, [pid]: { ...cur, [key]: !cur[key] } }
     })
   }
-  const toggleInsurance = (pid: string) => {
-    setAssign((prev) => {
-      const cur = prev[pid]
-      if (!cur) return prev
-      setAssignSaved(false)
-      return { ...prev, [pid]: { ...cur, insuranceWanted: !cur.insuranceWanted } }
-    })
-  }
 
   const saveAssign = async () => {
     if (!roster) return
@@ -286,12 +278,12 @@ function CompanionFill({ applicationId, token, startsOn }: { applicationId: stri
         )}
       </Text>
 
-      {/* 렌탈·보험 배정 — 옵션 귀속·보험은 대표가 결정(잠금). 렌탈이 없어도 다인원이면 보험 배정을 위해 노출. */}
-      {roster && rentalQty && (hasRentals || roster.length > 1) && (
+      {/* 렌탈 배정 — 옵션 귀속은 대표가 결정(잠금). 개인 보험 선택은 폐지(3차 수정)라 렌탈이 있을 때만 노출. */}
+      {roster && rentalQty && hasRentals && (
         <div className="mt-3 rounded-[10px] border border-[#e5eaef] bg-white p-3">
-          <Text variant="label" className="text-[#374151]">렌탈 · 보험 배정</Text>
+          <Text variant="label" className="text-[#374151]">렌탈 배정</Text>
           <Text variant="caption" as="p" className="mt-1 text-[#9ca3af]">
-            옵션·보험을 참가자별로 배정하세요. 대표가 정하고(잠금) 사이즈는 각 참가자가 입력합니다. 렌탈 배정 합계는 구매 수량을 넘을 수 없습니다.
+            렌탈 옵션을 참가자별로 배정하세요. 대표가 정하고(잠금) 사이즈는 각 참가자가 입력합니다. 렌탈 배정 합계는 구매 수량을 넘을 수 없습니다.
           </Text>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {RENTAL_OPTIONS.filter((o) => rentalQty[o.key] > 0).map((o) => {
@@ -330,14 +322,6 @@ function CompanionFill({ applicationId, token, startsOn }: { applicationId: stri
                         </button>
                       )
                     })}
-                    <button
-                      type="button"
-                      onClick={() => toggleInsurance(p.id)}
-                      className="rounded-[7px] border px-2.5 py-1 font-score text-[12.5px] transition-colors"
-                      style={{ borderColor: sel.insuranceWanted ? '#0f5a3c' : '#e5eaef', background: sel.insuranceWanted ? '#eaf4ec' : '#ffffff', color: sel.insuranceWanted ? '#0f5a3c' : '#9ca3af' }}
-                    >
-                      보험
-                    </button>
                   </div>
                 </div>
               )
@@ -403,7 +387,7 @@ const MOD_FIELDS: ModFieldDef[] = [
   { field: 'phone', label: '연락처', input: 'text' },
   { field: 'birth_front', label: '생년월일(6자리)', input: 'text' },
   { field: 'gender', label: '성별', input: 'gender' },
-  { field: 'insurance', label: '여행자 보험', input: 'insurance' },
+  // 'insurance'(여행자 보험) 항목은 개인 보험 선택 폐지로 제거(3차 수정). 과거 요청 표시는 lib/display 라벨 유지.
   { field: 'lesson_level', label: '기초강습', input: 'lesson', only: 'jayul' },
   { field: 'equipment', label: '용품세트', input: 'equipment', only: 'jayul' },
   { field: 'rental_apparel', label: '렌탈·의류', input: 'rental', only: 'jikmu', sizeField: 'rental_apparel_size', sizes: MOD_APPAREL_SIZES },
@@ -499,6 +483,10 @@ function ModificationForm({ app, token, onDone }: { app: MyApplicationRow; token
       changes.push({ target: 'participant', participant_id: ppid, participant_name: p.name, field, label: modLabel(field), current, requested })
     }
     if (!changes.length) { setError('변경할 항목을 선택하고 값을 바꿔 주세요.'); return }
+    if (changes.some((c) => c.field === 'phone' && !/^\d{11}$/.test(c.requested))) {
+      setError('연락처는 휴대폰 번호 11자리(숫자만)로 입력해 주세요.')
+      return
+    }
 
     // 렌탈 '신청' 전환인데 사이즈를 안 고른 경우 차단 — 최초 접수와 동일 기준(고글 제외).
     for (const c of changes) {

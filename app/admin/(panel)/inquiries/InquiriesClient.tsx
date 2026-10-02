@@ -173,7 +173,7 @@ function ReplyModal({
           type="button"
           disabled={pending}
           onClick={() => onSubmit(reply)}
-          className="rounded-[9px] bg-[#1e3a5f] px-5 py-2.5 text-[13px] font-[500] text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-[9px] bg-[#1e3a5f] px-5 py-2.5 text-[13px] font-[500] text-white transition-colors hover:bg-[#16304f] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {pending ? '저장 중…' : '답변 등록'}
         </button>

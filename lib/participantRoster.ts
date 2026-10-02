@@ -41,6 +41,7 @@ export async function getRoster(applicationId: string): Promise<MyRosterParticip
       equipment: typeof r.equipment === 'string' ? r.equipment : null,
       apparel: r.apparel === true,
       apparel_size: typeof r.apparel_size === 'string' ? r.apparel_size : null,
+      apparel_note: typeof r.apparel_note === 'string' ? r.apparel_note : null,
       protector: r.protector === true,
       protector_size: typeof r.protector_size === 'string' ? r.protector_size : null,
       goggle: r.goggle === true,

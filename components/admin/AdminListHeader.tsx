@@ -44,7 +44,7 @@ export function AdminHeaderButton({
 }) {
   const cls =
     variant === 'primary'
-      ? 'bg-[#1e3a5f] text-white hover:opacity-90'
+      ? 'bg-[#1e3a5f] text-white hover:bg-[#16304f]'
       : 'bg-[#eef1f4] text-[#4b5563] hover:bg-[#e4e8ec]'
   return (
     <button

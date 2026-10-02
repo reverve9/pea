@@ -23,6 +23,8 @@ export default function SlimFooter() {
         <span aria-hidden className="text-black/10">|</span>
         <Link
           href="/privacy"
+          target="_blank"
+          rel="noopener noreferrer"
           className="text-[#4b5563] underline-offset-2 hover:underline"
         >
           개인정보처리방침

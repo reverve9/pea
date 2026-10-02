@@ -198,7 +198,7 @@ function FaqEditor({
           type="button"
           disabled={!canSubmit}
           onClick={() => onSubmit({ ...form, question: form.question.trim(), content: form.content.trim() })}
-          className="flex items-center gap-1.5 rounded-[9px] bg-[#1e3a5f] px-5 py-2.5 text-[13px] font-[500] text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex items-center gap-1.5 rounded-[9px] bg-[#1e3a5f] px-5 py-2.5 text-[13px] font-[500] text-white transition-colors hover:bg-[#16304f] disabled:cursor-not-allowed disabled:opacity-40"
         >
           <PenLine size={14} />
           {pending ? '저장 중…' : '저장'}

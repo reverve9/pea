@@ -302,7 +302,7 @@ export default function JayulApplyForm() {
       : !a.sessionId ? '참가 차수를 선택해 주세요.'
       : !a.name.trim() ? '대표 신청자 성함을 입력해 주세요.'
       : !a.gender ? '성별을 선택해 주세요.'
-      : a.phone.length < 10 ? '연락처를 정확히 입력해 주세요.'
+      : a.phone.length !== 11 ? '휴대폰 번호 11자리를 정확히 입력해 주세요.'
       : a.birthFront.length !== 6 ? '생년월일 6자리를 입력해 주세요.'
       : !a.lessonClass ? '기초 단체 강습을 선택해 주세요.'
       : !a.equipment ? '대여 장비를 선택해 주세요.'
@@ -325,7 +325,7 @@ export default function JayulApplyForm() {
       equipment: a.equipment,
       privateLesson: { qty: lessonTotalQty, slots: lessonSlotList },
       rentals: a.rentals,
-      repInsurance: a.repInsurance,
+      repInsurance: false, // 개인 보험 선택 폐지(3차 수정)
       note: a.note,
       payerDiffers: a.payerDiffers,
       payerName: a.payerName,
@@ -528,18 +528,14 @@ export default function JayulApplyForm() {
         <FormSectionTitle title="참가자" />
         <Field
           label={`참가자 ${form.headcount}명`}
-          hint="신청 단계에서는 대표 본인만 등록됩니다. 동반 참가자 정보(성함·생년월일·보험 등)는 신청 완료 후 마이페이지에서 입력하거나 공유 링크로 각자 입력할 수 있습니다."
+          hint="신청 단계에서는 대표 본인만 등록됩니다. 동반 참가자 정보(성함·생년월일 등)는 신청 완료 후 마이페이지에서 입력하거나 공유 링크로 각자 입력할 수 있습니다."
         >
-          {/* 대표(위 입력값 표시, 보험 희망만 선택). 동반은 신청 후 입력 */}
+          {/* 대표(위 입력값 표시). 동반은 신청 후 입력 */}
           <div className="rounded-[10px] border border-[#e5eaef] bg-[#f7f9fb] px-3.5 py-2.5">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <span className="rounded-[6px] px-1.5 py-0.5 font-score text-[11px] font-[500]" style={{ background: GREEN + '1f', color: GREEN }}>대표</span>
               <Text variant="sub" className="text-[#374151]">{form.name || '대표 신청자'}</Text>
               {form.phone && <Text variant="caption" className="text-[#8a94a0]">{form.phone}</Text>}
-              <label className="ml-auto flex cursor-pointer items-center gap-1.5">
-                <input type="checkbox" checked={form.repInsurance} onChange={(e) => set('repInsurance', e.target.checked)} className="h-4 w-4 accent-[#2f803a]" />
-                <Text variant="caption" className="text-[#4b5563]">보험 희망</Text>
-              </label>
             </div>
           </div>
           {form.headcount > 1 && (

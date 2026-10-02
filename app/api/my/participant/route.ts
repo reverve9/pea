@@ -22,6 +22,7 @@ const schema = z.object({
   lessonClass: z.string().optional(),
   equipment: z.string().optional(),
   apparelSize: z.string().optional(),
+  apparelNote: z.string().max(200).optional(),
   protectorSize: z.string().optional(),
   gloveSize: z.string().optional(),
 })
@@ -68,6 +69,7 @@ export async function POST(req: Request) {
     lessonClass: b.lessonClass,
     equipment: b.equipment,
     apparelSize: b.apparelSize,
+    apparelNote: b.apparelNote,
     protectorSize: b.protectorSize,
     gloveSize: b.gloveSize,
   })

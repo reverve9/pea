@@ -165,10 +165,10 @@ export function PrivacyConsentBox() {
       </Text>
       <div className="mt-3 space-y-3">
         {[
-          { h: '1. 수집·이용 목적', body: '연수 참가 신청·접수 관리 / 연수 운영·참가자 확인 / 보험 가입·안전관리 / 연수 안내사항 전달 / 이수·결과 관리 / 홈페이지·SNS·홍보물·보도자료 등 교육활동 홍보' },
-          { h: '2. 수집 항목', body: '[필수] 성명 · 소속기관(학교) · 휴대전화번호 · 생년월일\n[보험 가입 시 추가] 주민등록번호 뒷자리 ※ 보험 가입 등 법령상 허용된 목적에 한하여 수집·이용' },
+          { h: '1. 수집·이용 목적', body: '연수 참가 신청·접수 관리 / 연수 운영·참가자 확인 / 안전관리 / 연수 안내사항 전달 / 이수·결과 관리 / 홈페이지·SNS·홍보물·보도자료 등 교육활동 홍보' },
+          { h: '2. 수집 항목', body: '[필수] 성명 · 소속기관(학교) · 휴대전화번호 · 생년월일' },
           { h: '3. 보유·이용기간', body: '연수 종료 후 2년간 보관 후 지체 없이 파기. 단, 홍보·기록 보존 목적으로 활용된 촬영물은 관련 사업 종료 후 보관될 수 있음' },
-          { h: '4. 동의 거부 권리', body: '동의를 거부할 권리가 있으며, 필수정보 수집에 동의하지 않을 경우 연수 신청·보험 가입·연수 참여가 제한될 수 있습니다.' },
+          { h: '4. 동의 거부 권리', body: '동의를 거부할 권리가 있으며, 필수정보 수집에 동의하지 않을 경우 연수 신청·참여가 제한될 수 있습니다.' },
         ].map((s) => (
           <div key={s.h}>
             <Text variant="label" className="text-[#374151]">{s.h}</Text>
@@ -293,7 +293,7 @@ export function CashReceiptSelect({
 
 // 신청자 기본정보 공통 필드셋 — 직무(참가자)·자율(대표). 두 폼 구조 동일, 문구·접두어만 prop 분기.
 // name/gender/phone/birthFront 4필드는 두 폼 구조 공유(아래 ApplicantCore).
-// 직무 전용 보험 토글·주민번호 뒷자리는 birthExtra 로 주입(도메인 로직은 각 폼 유지).
+// 생년월일 아래 추가 노드는 birthExtra 로 주입(도메인 로직은 각 폼 유지).
 export interface ApplicantCore {
   name: string
   gender: '' | 'male' | 'female'
@@ -312,7 +312,7 @@ export function ApplicantFields({
   personLabel?: string // '참가자 '(직무) / ''(자율) — 성함·성별·연락처·생년월일 라벨 접두어
   namePlaceholder: string
   phoneHint?: React.ReactNode
-  birthExtra?: React.ReactNode // 생년월일 입력 아래 추가 노드(직무 보험 토글 등)
+  birthExtra?: React.ReactNode // 생년월일 입력 아래 추가 노드(선택)
 }) {
   return (
     <>

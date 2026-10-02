@@ -4,6 +4,9 @@
 
 export const APPAREL_SIZES = ['S', 'M', 'L', 'XL', '2XL'] as const // 의류(스키복)
 export const GEAR_SIZES = ['S', 'M', 'L'] as const // 보호대·장갑
+// 유아용 의류 — 자율패키지 전용(3차 수정). 정확한 사이즈는 특이사항(rentals.apparel_note)에 기재.
+export const INFANT_APPAREL_SIZE = '유아용'
+export const JAYUL_APPAREL_SIZES = [...APPAREL_SIZES, INFANT_APPAREL_SIZE] as const
 
 export type RentalOptionKey = 'apparel' | 'protector' | 'goggle' | 'glove'
 

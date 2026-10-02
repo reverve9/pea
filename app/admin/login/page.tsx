@@ -68,7 +68,7 @@ function LoginForm() {
           <button
             type="submit"
             disabled={loading || !username || !password}
-            className="mt-1 w-full rounded-[10px] bg-[#1e3a5f] py-2.5 text-[14px] font-[500] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+            className="mt-1 w-full rounded-[10px] bg-[#1e3a5f] py-2.5 text-[14px] font-[500] text-white transition-colors hover:bg-[#16304f] disabled:opacity-40"
           >
             {loading ? '확인 중…' : '로그인'}
           </button>
