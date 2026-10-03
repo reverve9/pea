@@ -1,8 +1,10 @@
 // 솔라피 문자 발송 공통 타입 — 앱(서버)과 단위 시험이 함께 쓴다. 런타임 의존성 없음.
 
-// deposit_notice=접수완료·입금안내, due_notice=추가입금 안내, event_reminder=차수 1주일 전 안내.
+// deposit_notice=접수완료·입금안내, waitlist_notice=예비접수 안내, due_notice=추가입금 안내(수정 반영 시),
+// event_reminder=차수 1주일 전 행사 안내.
 export type SmsKind =
   | 'deposit_notice'
+  | 'waitlist_notice'
   | 'deposit_initial'
   | 'due_notice'
   | 'deposit_additional'

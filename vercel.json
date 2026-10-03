@@ -1,6 +1,6 @@
 {
   "crons": [
     { "path": "/api/cron/auto-cancel", "schedule": "10 15 * * *" },
-    { "path": "/api/cron/event-reminder", "schedule": "0 1 * * *" }
+    { "path": "/api/cron/daily-notices", "schedule": "0 1 * * *" }
   ]
 }

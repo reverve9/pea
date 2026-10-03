@@ -8,7 +8,7 @@ import { applicationPrefix } from '@/lib/programs'
 import { lessonSlotsFor, PRIVATE_LESSON_MAX } from '@/lib/lessonOptions'
 import type { PriceItem } from '@/lib/types'
 import type { JikmuPayload, JayulPayload } from '@/lib/applicationTypes'
-import { notifyDepositNotice } from '@/lib/sms'
+import { notifyDepositNotice, notifyWaitlistNotice } from '@/lib/sms'
 
 // 신청 제출 파이프라인 — service_role(RLS 우회). 클라 폼(직무·자율) → 여기로 POST.
 // 책임: 검증 → 가격 서버 재계산(조작 방지) → 발번 → 뒷자리 암호화 → applications+participants insert.
@@ -203,8 +203,9 @@ export async function POST(req: Request) {
     return fail('참가자 정보 저장 중 오류가 발생했습니다.', 500)
   }
 
-  // 접수완료·입금안내 문자 — 저장 성공 후, 정원 내 접수만(예비는 편입 승인 시 발송). 실패해도 접수 결과 유지.
-  if (!isWaitlisted) await notifyDepositNotice(appId, now)
+  // 접수 문자 — 저장 성공 후. 정원 내 = 접수완료·입금안내, 예비 = 예비접수 안내(입금안내는 편입 승인 시). 실패해도 접수 결과 유지.
+  if (isWaitlisted) await notifyWaitlistNotice(appId)
+  else await notifyDepositNotice(appId, now)
 
   return NextResponse.json({ application_no: appNo, waitlisted: isWaitlisted })
 }

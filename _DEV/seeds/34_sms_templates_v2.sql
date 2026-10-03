@@ -11,7 +11,7 @@
 -- ============================================================
 ALTER TABLE sms_notifications DROP CONSTRAINT IF EXISTS sms_notifications_kind_check;
 ALTER TABLE sms_notifications ADD CONSTRAINT sms_notifications_kind_check
-  CHECK (kind IN ('deposit_notice','deposit_initial','due_notice','deposit_additional','refund_received','refund_completed','auto_cancelled','event_reminder'));
+  CHECK (kind IN ('deposit_notice','waitlist_notice','deposit_initial','due_notice','deposit_additional','refund_received','refund_completed','auto_cancelled','event_reminder'));
 
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS notice_id uuid REFERENCES notices(id) ON DELETE SET NULL;
 COMMENT ON COLUMN sessions.notice_id IS '차수 안내 공지 — 1주일 전 안내 문자 #{공지URL}.';

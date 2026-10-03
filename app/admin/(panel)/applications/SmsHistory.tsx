@@ -17,13 +17,14 @@ import {
 
 const KIND_LABEL: Record<SmsRowView['kind'], string> = {
   deposit_notice: '접수완료·입금안내',
+  waitlist_notice: '예비접수 안내',
   deposit_initial: '입금확인',
   due_notice: '추가입금 안내',
   deposit_additional: '추가입금 확인',
   refund_received: '환불접수',
   refund_completed: '환불완료',
   auto_cancelled: '자동취소',
-  event_reminder: '1주일 전 안내',
+  event_reminder: '행사 1주일 전 안내',
 }
 const STATUS_VIEW: Record<SmsViewStatus, { label: string; color: BadgeColor }> = {
   sent: { label: '발송', color: 'emerald' },

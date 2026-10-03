@@ -47,6 +47,7 @@ import {
   registerAdminRefund,
 } from './actions'
 import { SmsHistory, SmsAttentionBanner } from './SmsHistory'
+import { refundableAmount } from '@/lib/refundMath'
 
 // 정상 생애주기(순방향 진행) vs 예외/종료(오프램프) — 같은 층위 아님.
 const LIFECYCLE: ApplicationStatus[] = ['pending', 'paid', 'completed']
@@ -800,7 +801,7 @@ function RefundInline({
   )
 }
 
-// 환불 금액 단축 — 전액(100%)·반액(50%). 결제 총액 기준. 인라인 환불(요청·관리자) 공용.
+// 환불 금액 단축 — 전액(100%)·반액(50%). 환불 가능 금액(받은 돈 − 이미 환불한 금액, lib/refundMath) 기준. 인라인 환불(요청·관리자) 공용.
 function RefundQuick({ total, onPick }: { total: number; onPick: (v: number) => void }) {
   return (
     <div className="flex gap-1">
@@ -823,7 +824,7 @@ function AdminRefundInline({
   runAndRefresh: (fn: () => Promise<{ ok: boolean; error?: string }>) => void
   onDone: () => void
 }) {
-  const [amount, setAmount] = useState(String(app.total_amount))
+  const [amount, setAmount] = useState(String(refundableAmount(app)))
   const [markRefunded, setMarkRefunded] = useState(true)
   const [account, setAccount] = useState('')
   const [reason, setReason] = useState('')
@@ -846,7 +847,7 @@ function AdminRefundInline({
           placeholder="환불 금액"
           className="admin-field w-32 rounded-[8px] bg-white px-2.5 py-1.5 text-[12.5px] tabular-nums text-[#1f2937] outline-none focus:bg-[#f3f5f8]"
         />
-        <RefundQuick total={app.total_amount} onPick={(v) => setAmount(String(v))} />
+        <RefundQuick total={refundableAmount(app)} onPick={(v) => setAmount(String(v))} />
         <label className="flex cursor-pointer items-center gap-1.5 text-[11.5px] font-[400] text-[#8f3a2a]">
           <input type="checkbox" checked={markRefunded} onChange={(e) => setMarkRefunded(e.target.checked)} className="h-3.5 w-3.5 accent-[#8f3a2a]" />
           전액(환불완료 전환)
@@ -1285,7 +1286,7 @@ function DetailModal({
           ))}
 
           {pendingRefunds.map((r) => (
-            <RefundInline key={r.id} r={r} appId={app.id} total={app.total_amount} pending={pending} runAndRefresh={runAndRefresh} />
+            <RefundInline key={r.id} r={r} appId={app.id} total={refundableAmount(app)} pending={pending} runAndRefresh={runAndRefresh} />
           ))}
         </div>
       )}
@@ -1320,12 +1321,12 @@ function DetailModal({
           {processedRefunds.map((r) => (
             <div key={r.id} className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[9px] bg-[#f4f6f8] px-3 py-2 text-[12px]">
               <Badge color="emerald" size="sm">{r.origin === 'modification' ? '부분환불 완료' : r.origin === 'admin' ? '관리자 환불 완료' : '환불 완료'}</Badge>
-              {r.amount != null && <span className="font-[300] tabular-nums text-[#6b7280]">{formatKRW(r.amount)}</span>}
+              {(r.paid_amount ?? r.amount) != null && <span className="font-[300] tabular-nums text-[#6b7280]">{formatKRW((r.paid_amount ?? r.amount)!)}</span>}
               <button
                 type="button"
                 disabled={pending}
                 onClick={() => {
-                  if (!confirm('환불 확정을 되돌릴까요? 환불액이 0으로 복원되고 요청이 재오픈됩니다. (실제 환불금 지급 여부는 별도 확인)')) return
+                  if (!confirm('환불 확정을 되돌릴까요? 이 환불 건 금액만 환불액에서 빠지고 요청이 재오픈됩니다. (실제 환불금 지급 여부는 별도 확인)')) return
                   runAndRefresh(() => revertRefund(r.id, app.id))
                 }}
                 className="ml-auto text-[11.5px] font-[400] text-[#3f6a99] underline-offset-2 hover:underline disabled:opacity-40"

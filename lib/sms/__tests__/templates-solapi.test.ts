@@ -15,6 +15,7 @@ export const SAMPLE_COMMON: SmsVars = {
 }
 export const SAMPLE: Record<SmsKind, SmsVars> = {
   deposit_notice: { 결제금액: fmtAmount(350000), 계좌정보: fmtAccount({ bank: '국민은행', account: '123456-01-234567', holder: '체육교육회' }), 입금기한: kstDate('2026-10-17T14:59:59Z'), 입금자명: '홍길동' },
+  waitlist_notice: {},
   deposit_initial: { 확인금액: fmtAmount(350000), 참가상태: '확정' },
   due_notice: { 추가금액: fmtAmount(20000), 계좌정보: fmtAccount({ bank: '국민은행', account: '123456-01-234567', holder: '체육교육회' }), 총결제금액: fmtAmount(370000), 입금기한: '2026.10.24' },
   deposit_additional: { 추가금액: fmtAmount(20000), 총결제금액: fmtAmount(370000) },
@@ -25,8 +26,8 @@ export const SAMPLE: Record<SmsKind, SmsVars> = {
 }
 const KINDS = Object.keys(SMS_TEMPLATES) as SmsKind[]
 
-test('문안 8종: 샘플값 전부 치환 · 미치환 변수 없음 · 금액 단위 중복 없음 · LMS 범위', () => {
-  assert.equal(KINDS.length, 8)
+test('문안 9종: 샘플값 전부 치환 · 미치환 변수 없음 · 금액 단위 중복 없음 · LMS 범위', () => {
+  assert.equal(KINDS.length, 9)
   for (const k of KINDS) {
     const { message, missing } = renderSms(k, { ...SAMPLE_COMMON, ...SAMPLE[k] })
     assert.deepEqual(missing, [], k)
@@ -43,6 +44,7 @@ test('문안 8종: 샘플값 전부 치환 · 미치환 변수 없음 · 금액 
 test('문안 변수명이 정의와 정확히 일치(본문 토큰 = 필수 변수)', () => {
   const expected: Record<SmsKind, string[]> = {
     deposit_notice: ['결제금액', '계좌정보', '입금기한', '입금자명'],
+    waitlist_notice: [],
     deposit_initial: ['확인금액', '참가상태'],
     due_notice: ['추가금액', '계좌정보', '총결제금액', '입금기한'],
     deposit_additional: ['추가금액', '총결제금액'],
@@ -67,6 +69,13 @@ test('치환 결과 예시: 금액 쉼표+원, 날짜 YYYY.MM.DD, 일정 기간,
   assert.match(t, /입금자명: 홍길동\n/)
   const r = renderSms('refund_received', { ...SAMPLE_COMMON, ...SAMPLE.refund_received }).message.text
   assert.match(r, /접수일: 2026\.10\.04\n/) // KST
+})
+
+test('예비접수 안내: 금액·계좌·입금기한 없음, 편입 후 입금안내 예정 명시', () => {
+  const t = renderSms('waitlist_notice', SAMPLE_COMMON).message.text
+  assert.match(t, /참가 신청이 예비로 접수되었습니다/)
+  assert.match(t, /추후 정원 편입이 확정되면 입금안내를 보내드리겠습니다/)
+  assert.doesNotMatch(t, /원\n|계좌|입금기한|참가비/)
 })
 
 test('필수 변수 누락 → missing 목록, 해당 자리는 #{이름} 그대로', () => {

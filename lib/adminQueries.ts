@@ -29,6 +29,8 @@ import type {
   SiteContent,
 } from './types'
 import type { SettlementDatum } from './settlement'
+import { receivedAmount } from './refundMath'
+import { modRefundTotals } from './refundLedger'
 
 // 요청 join 공통 — application 은 SET NULL 이라 null 가능. 배열/객체 어느 형태든 정규화.
 type JoinedApp = { application_no: string; applicant_name: string } | { application_no: string; applicant_name: string }[] | null
@@ -85,6 +87,11 @@ export async function getAllApplications(): Promise<ApplicationAdmin[]> {
     console.warn('[adminQueries] getAllApplications:', error)
     return []
   }
+  // 수정 감액분(받은 돈 계산용, lib/refundMath). 조회 실패 시 0 으로 두고 목록은 그대로 보여 준다.
+  const modTotals = await modRefundTotals().catch((e) => {
+    console.warn('[adminQueries] modRefundTotals:', e?.code ?? e)
+    return new Map<string, number>()
+  })
 
   type PartRow = {
     id: string
@@ -179,6 +186,7 @@ export async function getAllApplications(): Promise<ApplicationAdmin[]> {
       pkg_size: r.pkg_size,
       total_amount: r.total_amount,
       refunded_amount: r.refunded_amount ?? 0,
+      mod_refund_amount: modTotals.get(r.id) ?? 0,
       due_amount: r.due_amount ?? 0,
       due_claimed_at: r.due_claimed_at,
       due_settled_amount: r.due_settled_amount,
@@ -213,7 +221,7 @@ export async function getAllApplications(): Promise<ApplicationAdmin[]> {
 export async function getAllRefundRequests(): Promise<RefundRequestAdmin[]> {
   const { data, error } = await supabaseAdmin
     .from('refund_requests')
-    .select('id, application_id, phone, reason, refund_account, amount, origin, status, admin_memo, created_at, application:applications(application_no, applicant_name)')
+    .select('*, application:applications(application_no, applicant_name)') // paid_amount(36 SQL) 유무와 무관하게 조회
     .order('created_at', { ascending: false })
   if (error) {
     console.warn('[adminQueries] getAllRefundRequests:', error)
@@ -226,6 +234,7 @@ export async function getAllRefundRequests(): Promise<RefundRequestAdmin[]> {
     reason: string | null
     refund_account: string | null
     amount: number | null
+    paid_amount?: number | null
     origin: RefundOrigin
     status: RefundStatus
     admin_memo: string | null
@@ -240,6 +249,7 @@ export async function getAllRefundRequests(): Promise<RefundRequestAdmin[]> {
     reason: r.reason,
     refund_account: r.refund_account,
     amount: r.amount,
+    paid_amount: r.paid_amount ?? null,
     origin: r.origin,
     status: r.status,
     admin_memo: r.admin_memo,
@@ -497,6 +507,10 @@ export async function getSettlementData(): Promise<SettlementDatum[]> {
     console.warn('[adminQueries] getSettlementData:', error)
     return []
   }
+  const modTotals = await modRefundTotals().catch((e) => {
+    console.warn('[adminQueries] modRefundTotals:', e?.code ?? e)
+    return new Map<string, number>()
+  })
   type Row = {
     id: string
     application_no: string
@@ -527,9 +541,9 @@ export async function getSettlementData(): Promise<SettlementDatum[]> {
       period: s ? formatPeriod(s.starts_on, s.ends_on, s.nights) : '',
       status: r.status,
       basisISO: r.deposit_confirmed_at ?? r.created_at,
-      // 실수령 매출 = 신규 total − 미수 추가입금(due). 추가결제 확정 전엔 base만 잡힘.
-      grossAmount: r.total_amount - (r.due_amount ?? 0),
-      // 환불액 = refunded_amount 그대로 차감(status 무관). 전액환불(refunded)·부분환불(paid+수정감액) 모두 반영.
+      // 실수령 매출 = 받은 돈(total − 미수 추가입금 + 수정 감액분, lib/refundMath). 추가결제 확정 전엔 base만 잡힘.
+      grossAmount: receivedAmount({ total_amount: r.total_amount, due_amount: r.due_amount, refunded_amount: r.refunded_amount, mod_refund_amount: modTotals.get(r.id) ?? 0 }),
+      // 환불액 = 완료 환불 합계(refunded_amount). 전액환불(refunded)·부분환불(수정 감액·관리자 부분) 모두 반영.
       refundAmount: r.refunded_amount ?? 0,
     }
   })

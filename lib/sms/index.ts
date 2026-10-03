@@ -1,7 +1,8 @@
 import 'server-only'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { PLACEHOLDER_ORG } from '@/lib/siteMeta'
-import { depositDeadline } from '@/lib/depositDeadline'
+import { depositDeadline, dueDeadline } from '@/lib/depositDeadline'
+import { loadLedger } from '@/lib/refundLedger'
 import { readSmsConfig } from './config'
 import { createDispatcher, type DispatchResult } from './dispatcher'
 import { createSolapiProvider } from './solapi'
@@ -9,7 +10,7 @@ import { createSupabaseSmsStore } from './store'
 import { SMS_SITE_HOST, fmtAccount, fmtAmount, fmtSchedule, kstDate, renderSms, type SmsVars } from './templates'
 import type { SmsKind } from './types'
 
-// 업무 처리(접수·입금확인·환불·자동취소·일정 안내) 저장 성공 후 호출하는 문자 안내 진입점.
+// 업무 처리(접수·입금확인·환불) 저장 성공 후, 또는 오전 10시 일괄 안내(lib/dailyNotices)에서 호출하는 문자 안내 진입점.
 // ⚠ 반드시 저장 성공 뒤에만 호출. 모든 함수는 예외를 던지지 않는다(문자 실패가 업무 결과를 되돌리지 않음).
 // 변수 값은 호출 시점에 DB 에 저장된 신청·입금·환불 정보를 다시 읽어 만든다. 비는 값은 추정하지 않고 보류한다.
 
@@ -29,11 +30,6 @@ export function siteBase(): string {
 // 추후 PG 연동 시 해당 납부 건의 가상계좌로 바꾼다.
 function depositAccount(): string | null {
   return fmtAccount({ bank: PLACEHOLDER_ORG.bank, account: PLACEHOLDER_ORG.account, holder: PLACEHOLDER_ORG.accountHolder })
-}
-
-// #{입금기한}(추가입금) — 추가납부 기한 정책이 없어 비워 둔다 → 추가입금 안내는 보류된다. 정책 확정 시 여기서 계산.
-function dueDeadline(): string | null {
-  return null
 }
 
 interface AppRow {
@@ -71,6 +67,13 @@ async function loadApp(appId: string): Promise<{ row: AppRow; common: SmsVars } 
       일정: s ? fmtSchedule(s.starts_on, s.ends_on, s.nights) : null,
     },
   }
+}
+
+// 추가납부 시작 시각 — 열(36 SQL)이 없거나 조회 실패면 null.
+async function dueStartedAt(appId: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin.from('applications').select('*').eq('id', appId).maybeSingle()
+  if (error || !data) return null
+  return (data as { due_started_at?: string | null }).due_started_at ?? null
 }
 
 function report(tag: string, ref: string, r: DispatchResult) {
@@ -122,6 +125,16 @@ export async function notifyDepositNotice(appId: string, deadlineBaseIso: string
   })
 }
 
+// 1-1. 예비접수 안내 — 정원 초과(예비)로 신청 저장 직후. 금액·계좌·입금기한 없음. 신청당 1회.
+//      정원 편입 확정 시에는 접수완료·입금안내(notifyDepositNotice)가 따로 나간다.
+export async function notifyWaitlistNotice(appId: string): Promise<void> {
+  await safe('waitlist_notice', appId, async () => {
+    const a = await loadApp(appId)
+    if (!a) return null
+    return send('waitlist_notice', `waitlist_notice:${appId}`, a, {})
+  })
+}
+
 // 2. 입금확인 — 최초 입금확인 저장 후. 신청당 1회(되돌림 후 재확인해도 재발송하지 않음).
 export async function notifyDepositInitial(appId: string): Promise<void> {
   await safe('deposit_initial', appId, async () => {
@@ -135,17 +148,21 @@ export async function notifyDepositInitial(appId: string): Promise<void> {
   })
 }
 
-// 3. 추가입금 안내 — 수정 반영으로 입금확정 건에 부족분이 생긴 뒤. 수정요청 건당 1회.
+// 3. 추가입금 안내 — 수정 반영으로 입금확정 건에 부족분이 생긴 뒤(연수 직전 수정 포함). 수정요청 건당 1회.
 //    #{추가금액} = 반영 후 미납 부족분(due_amount) — 입금확인(confirmDuePayment)이 이 금액 전체를 확인한다.
-export async function notifyDueNotice(appId: string, modificationRequestId: string): Promise<void> {
+//    #{입금기한} = 추가납부 시작일 + 7일. 시작일 = 부족분이 0 에서 처음 생긴 안내 시각(applications.due_started_at).
+//                 미납 중 추가 수정으로 금액이 늘어도 첫 기한을 유지한다(연장 없음). 열이 없거나 비면 이번 안내 시각.
+//                 문안과 함께 이력에 저장 → 재발송해도 기한 그대로.
+export async function notifyDueNotice(appId: string, modificationRequestId: string, noticeIso: string = new Date().toISOString()): Promise<void> {
   await safe('due_notice', appId, async () => {
     const a = await loadApp(appId)
     if (!a) return null
+    const startedAt = await dueStartedAt(appId)
     return send('due_notice', `due_notice:${appId}:${modificationRequestId}`, a, {
       추가금액: a.row.due_amount > 0 ? fmtAmount(a.row.due_amount) : null,
       계좌정보: depositAccount(),
       총결제금액: fmtAmount(a.row.total_amount),
-      입금기한: dueDeadline(),
+      입금기한: kstDate(dueDeadline(startedAt ?? noticeIso).toISOString()),
     })
   })
 }
@@ -182,8 +199,8 @@ async function loadRefund(refundId: string): Promise<RefundRow | null> {
 
 // 5. 환불접수 — 환불 요청 건당 1회. 관리자 직접 환불(접수 즉시 완료)은 완료 문자만 보낸다.
 //    #{환불구분}: 수정 감액 자동 접수 = 부분, 고객 환불(신청 취소) 요청 = 전체.
-//    #{요청금액}: 요청 건에 금액이 있으면 그 값(수정 감액분). 고객 요청은 금액 입력이 없어 현재 입금액 전액
-//                 (총액 − 기환불 − 미납 부족분)을 요청금액으로 본다 — 최종 금액은 규정에 따라 달라질 수 있음(문안 명시).
+//    #{요청금액}: 요청 건에 금액이 있으면 그 값(수정 감액분). 고객 요청은 금액 입력이 없어 현재 환불 가능 금액 전액
+//                 (받은 돈 − 이미 환불한 금액, lib/refundMath)을 요청금액으로 본다 — 최종 금액은 규정에 따라 달라질 수 있음(문안 명시).
 export async function notifyRefundReceived(refundId: string): Promise<void> {
   await safe('refund_received', refundId, async () => {
     const r = await loadRefund(refundId)
@@ -191,11 +208,7 @@ export async function notifyRefundReceived(refundId: string): Promise<void> {
     const a = await loadApp(r.application_id)
     if (!a) return null
     const requested =
-      r.amount != null && r.amount > 0
-        ? r.amount
-        : r.origin === 'user'
-          ? (a.row.total_amount ?? 0) - (a.row.refunded_amount ?? 0) - (a.row.due_amount ?? 0)
-          : 0
+      r.amount != null && r.amount > 0 ? r.amount : r.origin === 'user' ? ((await loadLedger(r.application_id))?.refundable ?? 0) : 0
     return send(
       'refund_received',
       `refund_received:${refundId}`,
@@ -231,7 +244,7 @@ export async function notifyRefundCompleted(refundId: string, amount: number, fu
   })
 }
 
-// 7. 자동취소 — cron 이 취소 저장에 성공한 뒤. 신청당 1회(관리자 복구 후에도 재발송하지 않음).
+// 7. 자동취소 — 취소(00:10 cron) 후 오전 10시 일괄 안내에서, 그때도 취소 상태인 건만. 신청당 1회.
 export async function notifyAutoCancelled(appId: string, cancelledAtIso: string): Promise<void> {
   await safe('auto_cancelled', appId, async () => {
     const a = await loadApp(appId)
@@ -243,7 +256,7 @@ export async function notifyAutoCancelled(appId: string, cancelledAtIso: string)
   })
 }
 
-// 8. 차수 1주일 전 안내 — cron(lib/eventReminder). 신청·차수 시작일 단위 1회. noticeUrl 없으면 보류.
+// 8. 행사 1주일 전 안내 — 오전 10시 일괄(D-7) 또는 시작 7일 미만 시점의 늦은 입금확인 시(lib/dailyNotices). 신청·차수 시작일 단위 1회. noticeUrl 없으면 보류.
 export async function notifyEventReminder(appId: string, startsOn: string, noticeUrl: string | null): Promise<void> {
   await safe('event_reminder', appId, async () => {
     const a = await loadApp(appId)

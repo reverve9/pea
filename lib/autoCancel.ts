@@ -1,7 +1,6 @@
 import 'server-only'
 import { supabaseAdmin } from './supabaseAdmin'
 import { autoCancelCutoff, deadlineBase, isPastDeadline } from './depositDeadline'
-import { notifyAutoCancelled } from './sms'
 
 // 입금기한 경과 자동취소 — 하루 1회 cron(app/api/cron/auto-cancel).
 // 대상: status=pending · 입금 신고 없음 · 예비 아님 · 자동취소 이력 없음 · 기한 경과(신청일, 예비 승인 건은 승인일 기준).
@@ -65,8 +64,7 @@ export async function runAutoCancel(opts: { execute: boolean; now?: Date }): Pro
         continue
       }
       cancelled.push(r.application_no)
-      // 취소 문자 — 저장 성공 후, 신청당 1회. 실패해도 취소 유지.
-      await notifyAutoCancelled(r.id, stamp)
+      // 취소 안내 문자는 여기서 보내지 않는다 — 오전 10시 일괄 안내(lib/dailyNotices)가 그때도 취소 상태인 건만 보낸다.
     }
     return { ok: true, ...base, candidates: rows.length, cancelled, skipped }
   } catch (e) {

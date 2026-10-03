@@ -7,6 +7,7 @@ import AdminTabs from '@/components/admin/AdminTabs'
 import { formatKRW, formatPeriod, SCHEDULE_TYPE } from '@/lib/display'
 import { lessonLevelLabel } from '@/lib/lessonOptions'
 import { kstDate } from '@/lib/settlement'
+import { netAmount } from '@/lib/refundMath'
 import type {
   ApplicationAdmin,
   SessionAdmin,
@@ -16,7 +17,7 @@ import type {
 } from '@/lib/types'
 
 // 어드민 대시보드 — 처리 대기(바로가기) → 핵심 지표 → 차수별 현황 → 신청 추이 → 참가자 구성.
-// 금액 기준은 정산 관리와 동일: 입금확정 매출 = total − 미수 추가입금(due) − 환불액(refunded_amount).
+// 금액 기준은 정산 관리와 동일: 입금확정 매출 = 받은 돈(total − 미수 추가입금 + 수정 감액분) − 환불 합계(lib/refundMath).
 // 정원 점유 = pending·paid·completed(예비 제외) — lib/capacity 와 동일 정책(SessionAdmin.occupied 사용).
 
 type KindFilter = 'all' | 'jikmu' | 'jayul'
@@ -27,7 +28,7 @@ const ACTIVE = new Set(['pending', 'paid', 'completed'])
 const DEPOSITED = new Set(['paid', 'completed', 'refunded'])
 
 const sessionKind = (s: SessionAdmin): 'jikmu' | 'jayul' => (s.schedule_type === 'jikmu' ? 'jikmu' : 'jayul')
-const netDeposit = (a: ApplicationAdmin) => (DEPOSITED.has(a.status) ? a.total_amount - a.due_amount - a.refunded_amount : 0)
+const netDeposit = (a: ApplicationAdmin) => (DEPOSITED.has(a.status) ? netAmount(a) : 0)
 // 미입금 = 입금대기 신청 전액 + 입금확정 건의 미수 추가입금.
 const unpaid = (a: ApplicationAdmin) => (a.status === 'pending' ? a.total_amount : ACTIVE.has(a.status) ? a.due_amount : 0)
 const missingInfo = (a: ApplicationAdmin) =>

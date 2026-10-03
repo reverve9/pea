@@ -16,6 +16,14 @@ export function depositDeadline(baseIso: string): Date {
   return new Date(kstDayStart(new Date(baseIso).getTime()) + (DEPOSIT_DAYS + 1) * DAY_MS - 1)
 }
 
+// 추가납부 기한 — 추가입금 안내일(KST 날짜) + 7일 23:59:59 까지. 예: 10/3 안내 → 10/10 23:59:59.999 KST.
+// 기준은 안내(수정 반영) 시각 하나뿐이다. 문안에 찍힌 기한은 이력에 저장되고 재발송은 저장된 문안을 그대로 보내므로
+// 재발송으로 기한이 늘어나지 않는다. 자동취소 대상 아님(최초납부 14일·자동취소 정책과 별개).
+export const DUE_DAYS = 7
+export function dueDeadline(noticeIso: string): Date {
+  return new Date(kstDayStart(new Date(noticeIso).getTime()) + (DUE_DAYS + 1) * DAY_MS - 1)
+}
+
 export function isPastDeadline(baseIso: string, now: Date): boolean {
   return now.getTime() > depositDeadline(baseIso).getTime()
 }
