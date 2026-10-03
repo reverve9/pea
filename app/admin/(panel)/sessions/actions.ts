@@ -195,6 +195,6 @@ export async function setSessionNotice(sessionId: string, noticeId: string | nul
     return { ok: true }
   } catch (e) {
     console.error('[sessions] setSessionNotice:', e)
-    return { ok: false, error: '안내 공지 저장에 실패했습니다. (DB 적용 여부 확인: 34_sms_templates_v2.sql)' }
+    return { ok: false, error: '안내 공지 저장에 실패했습니다.' }
   }
 }

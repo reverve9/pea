@@ -538,11 +538,10 @@ function SessionEditor({
           </p>
         )}
 
-        {/* 안내 공지 — 1주일 전 안내 문자의 '공지 바로가기' 링크. 미지정·미게시면 그 문자는 보류된다. */}
-        <Field label="안내 공지 (1주일 전 문자 링크)">
-          {noticeId === undefined ? (
-            <p className="text-[12px] font-[300] text-[#9ca3af]">DB 적용(34_sms_templates_v2.sql) 후 지정할 수 있습니다.</p>
-          ) : (
+        {/* 안내 공지 — 1주일 전 안내 문자의 '공지 바로가기' 링크. 미지정·미게시면 그 문자는 보류된다.
+            notice_id 열이 없는 환경(noticeId === undefined)에서는 칸 자체를 숨긴다. */}
+        {noticeId !== undefined && (
+          <Field label="안내 공지 (1주일 전 문자 링크)">
             <select
               value={noticeId ?? ''}
               onChange={(e) => setNoticeId(e.target.value || null)}
@@ -556,8 +555,8 @@ function SessionEditor({
                 </option>
               ))}
             </select>
-          )}
-        </Field>
+          </Field>
+        )}
         </div>
 
         {/* 우: 이 차수 요금 — 이 유형이 받는 항목만, 카테고리 아코디언(평소엔 헤더만). 일정·정원과 한 모달. */}
