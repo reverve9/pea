@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 function LoginForm() {
   const router = useRouter()
   const params = useSearchParams()
-  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -18,7 +18,7 @@ function LoginForm() {
     const res = await fetch('/api/admin/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ email, password }),
     })
     if (res.ok) {
       const from = params.get('from')
@@ -46,10 +46,10 @@ function LoginForm() {
 
         <form onSubmit={submit} className="space-y-3">
           <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="아이디"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="이메일"
             autoComplete="username"
             autoFocus
             className="admin-field w-full rounded-[10px] bg-[#f4f6f8] px-3.5 py-2.5 text-[14px] text-[#1f2937] outline-none transition-colors placeholder:text-[#b0b6be] focus:bg-[#eaeef2]"
@@ -67,7 +67,7 @@ function LoginForm() {
 
           <button
             type="submit"
-            disabled={loading || !username || !password}
+            disabled={loading || !email || !password}
             className="mt-1 w-full rounded-[10px] bg-[#1e3a5f] py-2.5 text-[14px] font-[500] text-white transition-colors hover:bg-[#16304f] disabled:opacity-40"
           >
             {loading ? '확인 중…' : '로그인'}

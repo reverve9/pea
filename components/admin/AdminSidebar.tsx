@@ -33,7 +33,7 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(href + '/')
 }
 
-export default function AdminSidebar() {
+export default function AdminSidebar({ email }: { email: string }) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -57,8 +57,8 @@ export default function AdminSidebar() {
 
       {/* 로그인 계정 */}
       <div className="border-y border-white/[0.1] px-5 py-3">
-        <p className="text-[12px] font-[300] text-white/50">
-          로그인 <span className="ml-1 font-[500] text-white">운영자</span>
+        <p className="truncate text-[12px] font-[300] text-white/50" title={email}>
+          로그인 <span className="ml-1 font-[500] text-white">{email}</span>
         </p>
       </div>
 
