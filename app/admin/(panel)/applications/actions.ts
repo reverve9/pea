@@ -8,7 +8,14 @@ import { updateParticipantDetail as applyParticipantDetail, type ParticipantDeta
 import { issueCashReceipt, cancelCashReceipt } from '@/lib/cashReceipt'
 import { applyOverrides } from '@/lib/pricing'
 import { MODIFICATION_FIELD_LABEL, modificationValueLabel } from '@/lib/display'
-import { notifyDepositInitial, notifyDepositAdditional, notifyRefundReceived, notifyRefundCompleted } from '@/lib/sms'
+import {
+  notifyDepositInitial,
+  notifyDepositAdditional,
+  notifyDepositNotice,
+  notifyDueNotice,
+  notifyRefundReceived,
+  notifyRefundCompleted,
+} from '@/lib/sms'
 import type {
   ApplicationStatus,
   InsuranceRosterEntry,
@@ -151,6 +158,9 @@ export async function deleteApplication(id: string): Promise<ActionResult> {
 export async function setApplicationWaitlist(id: string, waitlisted: boolean): Promise<ActionResult> {
   try {
     await requireAdmin()
+    const { data: before, error: bErr } = await supabaseAdmin
+      .from('applications').select('is_waitlisted, status').eq('id', id).maybeSingle()
+    if (bErr) throw bErr
     const { error } = await supabaseAdmin
       .from('applications')
       .update({ is_waitlisted: waitlisted, updated_at: new Date().toISOString() })
@@ -158,9 +168,12 @@ export async function setApplicationWaitlist(id: string, waitlisted: boolean): P
     if (error) throw error
     // 예비 승인 시각 — 입금기한(자동취소) 기준. 열 미적용(32_auto_cancel.sql 전)이어도 승인은 유지되도록 별도 best-effort.
     if (!waitlisted) {
+      const releasedAt = new Date().toISOString()
       const { error: wErr } = await supabaseAdmin
-        .from('applications').update({ waitlist_released_at: new Date().toISOString() }).eq('id', id)
+        .from('applications').update({ waitlist_released_at: releasedAt }).eq('id', id)
       if (wErr) console.error('[applications] waitlist_released_at:', wErr.code)
+      // 예비 → 정원 편입된 미입금 건에 접수완료·입금안내(입금기한 = 편입 시각 기준). 신청당 1회.
+      if (before?.is_waitlisted && before.status === 'pending') await notifyDepositNotice(id, releasedAt)
     }
     revalidatePath('/admin/applications')
     return { ok: true }
@@ -685,8 +698,9 @@ export async function applyModification(id: string, adminReply: string): Promise
       .eq('id', id)
     if (cErr) throw cErr
 
-    // 부분환불 접수 문자 — 수정 반영 저장이 모두 성공한 뒤. 환불 건당 1회.
+    // 부분환불 접수 / 추가입금 안내 문자 — 수정 반영 저장이 모두 성공한 뒤. 건당 1회.
     if (createdRefundId) await notifyRefundReceived(createdRefundId)
+    if (delta > 0 && paidLike) await notifyDueNotice(app.id, id)
 
     revalidatePath('/admin/applications')
     revalidatePath('/admin/settlements')

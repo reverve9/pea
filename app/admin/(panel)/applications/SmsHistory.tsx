@@ -16,11 +16,14 @@ import {
 // 문자(솔라피) 발송 이력 — 신청 상세 하단 + 신청관리 상단 '확인 필요' 안내. 기존 화면 구성은 그대로 두고 덧붙이기만 한다.
 
 const KIND_LABEL: Record<SmsRowView['kind'], string> = {
+  deposit_notice: '접수완료·입금안내',
   deposit_initial: '입금확인',
+  due_notice: '추가입금 안내',
   deposit_additional: '추가입금 확인',
   refund_received: '환불접수',
   refund_completed: '환불완료',
   auto_cancelled: '자동취소',
+  event_reminder: '1주일 전 안내',
 }
 const STATUS_VIEW: Record<SmsViewStatus, { label: string; color: BadgeColor }> = {
   sent: { label: '발송', color: 'emerald' },
@@ -73,7 +76,7 @@ export function SmsHistory({ applicationId }: { applicationId: string }) {
       <p className="mb-2 text-[12.5px] font-[500] text-[#8a94a0]">문자 발송</p>
       {rows.map((r) => {
         const st = STATUS_VIEW[r.status]
-        const canResend = r.status === 'failed' || r.status === 'held'
+        const canResend = (r.status === 'failed' || r.status === 'held') && !r.incomplete
         const canCheck = r.status === 'unknown' || r.status === 'stale' || r.status === 'sent'
         const canResolve = r.status === 'unknown' || r.status === 'stale'
         return (

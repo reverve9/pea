@@ -3,7 +3,7 @@
 import { requireAdmin } from '@/lib/adminGuard'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { smsDispatcher } from '@/lib/sms'
-import { errorLabel, isStaleSending } from '@/lib/sms/dispatcher'
+import { MISSING_PREFIX, errorLabel, isStaleSending } from '@/lib/sms/dispatcher'
 import type { SmsKind, SmsLog, SmsStatus } from '@/lib/sms/types'
 
 // 문자 발송 이력·재발송·결과 조회(관리자). requireAdmin 후 service_role.
@@ -20,6 +20,7 @@ export interface SmsRowView {
   body: string
   attempts: number
   error: string | null
+  incomplete: boolean // 필수 변수 누락 보류 — 문안 불완전이라 재발송 불가
   created_at: string
   sent_at: string | null
 }
@@ -41,6 +42,7 @@ function view(r: SmsLog, now: Date): SmsRowView {
     body: r.body,
     attempts: r.attempts,
     error: r.status === 'sent' && !r.last_error ? null : r.last_error || r.provider_status_message ? errorLabel(r) : null,
+    incomplete: !!r.last_error?.startsWith(MISSING_PREFIX),
     created_at: r.created_at,
     sent_at: r.sent_at,
   }

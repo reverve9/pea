@@ -9,8 +9,11 @@ import AdminDateField from '@/components/admin/AdminDateField'
 import AdminListHeader, { AdminHeaderButton } from '@/components/admin/AdminListHeader'
 import { SCHEDULE_TYPE, formatPeriod, formatKRW } from '@/lib/display'
 import type { SessionAdmin, CourseOption, ScheduleType, PriceItemAdmin, PriceCategory, SessionPriceOverride } from '@/lib/types'
-import { createSession, updateSession, deleteSession, completeSessionApplications, syncSessionOverrides, savePriceItems, type SessionInput } from './actions'
+import { createSession, updateSession, deleteSession, completeSessionApplications, syncSessionOverrides, savePriceItems, setSessionNotice, type SessionInput } from './actions'
 import BaseGrid, { initBaseAmounts, basePatches, baseHasInvalid, baseDirtyCount } from './BaseGrid'
+
+// 안내 공지 선택지(1주일 전 문자 #{공지URL})
+type NoticeOption = { id: string; title: string; is_published: boolean }
 
 const TYPE_ORDER: ScheduleType[] = ['jikmu', 'weekend_2n', 'weekday_2n', 'weekend_1n']
 // 자율패키지 하위 옵션 표시 순서(오너 지정 2026-08-05): 주말2박 · 주중2박 · 주말1박.
@@ -48,11 +51,15 @@ export default function SessionsClient({
   courses,
   priceItems,
   overrides,
+  noticeLinks,
+  notices,
 }: {
   sessions: SessionAdmin[]
   courses: CourseOption[]
   priceItems: PriceItemAdmin[]
   overrides: SessionPriceOverride[]
+  noticeLinks: Record<string, string | null> | null // null = notice_id 열 미적용
+  notices: NoticeOption[]
 }) {
   const router = useRouter()
   const [editing, setEditing] = useState<Editing>(null)
@@ -186,9 +193,11 @@ export default function SessionsClient({
           courses={courses}
           items={priceItems}
           overrides={editing === 'new' ? [] : overrides.filter((o) => o.session_id === editing.id)}
+          notices={notices}
+          noticeId={noticeLinks ? (editing === 'new' ? null : noticeLinks[editing.id] ?? null) : undefined}
           pending={pending}
           onClose={() => setEditing(null)}
-          onSubmit={(input, ov) => {
+          onSubmit={(input, ov, noticeId) => {
             startTransition(async () => {
               // 회차 저장 → 같은 흐름에서 이 차수 요금 오버라이드 동기화(생성은 새 id 로).
               if (editing === 'new') {
@@ -198,11 +207,19 @@ export default function SessionsClient({
                   const r2 = await syncSessionOverrides(res.id, ov)
                   if (!r2.ok) return alert(r2.error)
                 }
+                if (noticeId) {
+                  const r3 = await setSessionNotice(res.id, noticeId)
+                  if (!r3.ok) return alert(r3.error)
+                }
               } else {
                 const res = await updateSession(editing.id, input)
                 if (!res.ok) return alert(res.error)
                 const r2 = await syncSessionOverrides(editing.id, ov)
                 if (!r2.ok) return alert(r2.error)
+                if (noticeId !== undefined && noticeId !== (noticeLinks?.[editing.id] ?? null)) {
+                  const r3 = await setSessionNotice(editing.id, noticeId)
+                  if (!r3.ok) return alert(r3.error)
+                }
               }
               setEditing(null)
               router.refresh()
@@ -341,6 +358,8 @@ function SessionEditor({
   courses,
   items,
   overrides,
+  notices,
+  noticeId: initialNoticeId,
   pending,
   onClose,
   onSubmit,
@@ -349,10 +368,13 @@ function SessionEditor({
   courses: CourseOption[]
   items: PriceItemAdmin[]
   overrides: SessionPriceOverride[]
+  notices: NoticeOption[]
+  noticeId: string | null | undefined // undefined = 연결 기능 미적용(열 없음)
   pending: boolean
   onClose: () => void
-  onSubmit: (input: SessionInput, overrides: { item_key: string; amount: number }[]) => void
+  onSubmit: (input: SessionInput, overrides: { item_key: string; amount: number }[], noticeId: string | null | undefined) => void
 }) {
+  const [noticeId, setNoticeId] = useState<string | null | undefined>(initialNoticeId)
   const occupied = editing !== 'new' ? editing.occupied : null
   // 이 차수 요금 — 기본가를 실제 값으로 채워두고(수정 가능함이 직관적으로 보이게), 오버라이드 있으면 덮어씀.
   // 기본가와 같은 값은 저장 시 오버라이드로 안 넘어간다(sparse).
@@ -515,6 +537,27 @@ function SessionEditor({
             <span className="font-[300] text-[#b0b6be]"> (신청 현황은 신청 관리에서)</span>
           </p>
         )}
+
+        {/* 안내 공지 — 1주일 전 안내 문자의 '공지 바로가기' 링크. 미지정·미게시면 그 문자는 보류된다. */}
+        <Field label="안내 공지 (1주일 전 문자 링크)">
+          {noticeId === undefined ? (
+            <p className="text-[12px] font-[300] text-[#9ca3af]">DB 적용(34_sms_templates_v2.sql) 후 지정할 수 있습니다.</p>
+          ) : (
+            <select
+              value={noticeId ?? ''}
+              onChange={(e) => setNoticeId(e.target.value || null)}
+              className={selectClass}
+            >
+              <option value="">지정 안 함 (1주일 전 문자 보류)</option>
+              {notices.map((n) => (
+                <option key={n.id} value={n.id}>
+                  {n.is_published ? '' : '[미게시] '}
+                  {n.title}
+                </option>
+              ))}
+            </select>
+          )}
+        </Field>
         </div>
 
         {/* 우: 이 차수 요금 — 이 유형이 받는 항목만, 카테고리 아코디언(평소엔 헤더만). 일정·정원과 한 모달. */}
@@ -607,7 +650,7 @@ function SessionEditor({
         <button
           type="button"
           disabled={!canSubmit}
-          onClick={() => onSubmit({ ...form, label: form.label.trim(), nights }, buildOverrides())}
+          onClick={() => onSubmit({ ...form, label: form.label.trim(), nights }, buildOverrides(), noticeId)}
           className="flex items-center gap-1.5 rounded-[9px] bg-[#1e3a5f] px-5 py-2.5 text-[13px] font-[500] text-white transition-colors hover:bg-[#16304f] disabled:cursor-not-allowed disabled:opacity-40"
         >
           <PenLine size={14} />

@@ -1,20 +1,201 @@
-// 솔라피 문자 문안 — 문구 수정은 이 파일에서만 한다. (⚠ 초안: 테스트 발송 전 사용자 확정 필요)
-// 원칙: 저장된 신청 정보 기준 · 환불접수 ≠ 환불완료 · 요청금액과 최종 환불금액 구분 ·
-//       환불 예정일/처리기간은 확정 정책이 없으므로 안내하지 않음 · 계좌번호 등 불필요한 개인정보 미포함.
-import type { SmsMessage } from './types'
+// 솔라피 문자 문안 — 문구 수정은 이 파일에서만 한다. (2026-10-03 사용자 확정 문안 8종)
+// 문안 안의 #{변수} 표기는 알림톡 템플릿 변수명과 같게 유지한다(알림톡 등록 시 그대로 사용).
+// 규칙: 필수 변수가 하나라도 비면 문자를 보내지 않는다 → 호출측이 '보류(누락 항목)'로 이력만 남긴다.
+//       금액 변수는 천 단위 쉼표 숫자만('원'은 문안에 포함), 날짜는 YYYY.MM.DD.
+import type { SmsKind, SmsMessage } from './types'
 
 export const SMS_ORG = '체육교육회'
-export const SMS_CONTACT_TEL = '070-7728-7947'
+// 문안 하단·공지 링크 기준 주소. 공지URL 은 NEXT_PUBLIC_SITE_URL(https)이 있으면 그것을 쓴다.
+export const SMS_SITE_HOST = 'www.pea2025.co.kr'
 
-export interface SmsAppInfo {
-  applicationNo: string
-  applicantName: string
-  programLabel: string // 예: 스키·스노보드 직무연수 · 1차
-  period: string // 예: 2027/01/11 – 01/13 (2박)
-  isWaitlisted: boolean
+const COMMON = ['신청자명', '신청번호', '신청차수', '일정'] as const
+
+const HELLO = `안녕하세요. ${SMS_ORG}입니다.`
+const FOOTER = `문의: 홈페이지 ‘1:1 문의’\n${SMS_SITE_HOST}\n\n감사합니다.`
+
+interface Template {
+  subject: string // LMS 제목
+  vars: readonly string[] // 필수 변수(공통 포함)
+  body: string
 }
 
-const won = (n: number) => `${n.toLocaleString('ko-KR')}원`
+export const SMS_TEMPLATES: Record<SmsKind, Template> = {
+  deposit_notice: {
+    subject: '참가 신청 접수 안내',
+    vars: [...COMMON, '결제금액', '계좌정보', '입금기한', '입금자명'],
+    body: `${HELLO}
+
+#{신청자명}님의 참가 신청이 접수되었습니다.
+
+신청번호: #{신청번호}
+신청차수: #{신청차수}
+일정: #{일정}
+참가비: #{결제금액}원
+계좌정보: #{계좌정보}
+입금기한: #{입금기한}
+입금자명: #{입금자명}
+
+기한 내 참가비를 입금해 주세요.
+입금 확인 후 참가 상태를 안내드립니다.
+
+※ 신청 수정: 마이페이지 ‘신청 확인’
+※ 해당 회차 연수 시작 2주 전부터 수정 불가
+
+${FOOTER}`,
+  },
+  deposit_initial: {
+    subject: '입금 확인 안내',
+    vars: [...COMMON, '확인금액', '참가상태'],
+    body: `${HELLO}
+
+#{신청자명}님의 참가비 입금이 확인되었습니다.
+
+신청번호: #{신청번호}
+신청차수: #{신청차수}
+일정: #{일정}
+확인금액: #{확인금액}원
+참가상태: #{참가상태}
+
+회차별 일정과 참가 안내는 홈페이지 공지사항을 확인해 주세요.
+
+※ 환불 요청: 마이페이지
+※ 요청 전 홈페이지 환불 규정 확인
+
+${FOOTER}`,
+  },
+  due_notice: {
+    subject: '추가입금 안내',
+    vars: [...COMMON, '추가금액', '계좌정보', '총결제금액', '입금기한'],
+    body: `${HELLO}
+
+#{신청자명}님의 신청내용 수정으로 인해
+추가납부 금액이 발생했습니다.
+
+신청번호: #{신청번호}
+신청차수: #{신청차수}
+일정: #{일정}
+추가금액: #{추가금액}원
+계좌정보: #{계좌정보}
+총 참가비: #{총결제금액}원
+입금기한: #{입금기한}
+
+기한 내 추가금액을 입금해 주세요.
+
+${FOOTER}`,
+  },
+  deposit_additional: {
+    subject: '추가입금 확인 안내',
+    vars: [...COMMON, '추가금액', '총결제금액'],
+    body: `${HELLO}
+
+#{신청자명}님의 추가입금이 확인되었습니다.
+
+신청번호: #{신청번호}
+신청차수: #{신청차수}
+일정: #{일정}
+추가금액: #{추가금액}원
+총 참가비: #{총결제금액}원
+
+${FOOTER}`,
+  },
+  refund_received: {
+    subject: '환불 요청 접수 안내',
+    vars: [...COMMON, '환불구분', '요청금액', '접수일'],
+    body: `${HELLO}
+
+#{신청자명}님의 환불 요청이 접수되었습니다.
+
+신청번호: #{신청번호}
+신청차수: #{신청차수}
+일정: #{일정}
+환불구분: #{환불구분}
+요청금액: #{요청금액}원
+접수일: #{접수일}
+
+환불 규정에 따라 확인 후 처리하며, 완료 시 다시 안내드립니다.
+최종 환불금액은 요청금액과 다를 수 있습니다.
+
+${FOOTER}`,
+  },
+  refund_completed: {
+    subject: '환불 완료 안내',
+    vars: [...COMMON, '환불구분', '환불금액', '처리일'],
+    body: `${HELLO}
+
+#{신청자명}님의 환불이 완료되었습니다.
+
+신청번호: #{신청번호}
+신청차수: #{신청차수}
+일정: #{일정}
+환불구분: #{환불구분}
+환불금액: #{환불금액}원
+처리일: #{처리일}
+
+입금 내역을 확인해 주세요.
+
+${FOOTER}`,
+  },
+  auto_cancelled: {
+    subject: '신청 취소 안내',
+    vars: [...COMMON, '취소일', '취소사유'],
+    body: `${HELLO}
+
+#{신청자명}님의 참가 신청이 취소되었습니다.
+
+신청번호: #{신청번호}
+신청차수: #{신청차수}
+일정: #{일정}
+취소일: #{취소일}
+취소사유: #{취소사유}
+
+${FOOTER}`,
+  },
+  event_reminder: {
+    subject: '연수 일주일 전 안내',
+    vars: [...COMMON, '공지URL'],
+    body: `${HELLO}
+
+#{신청자명}님, 행사 일정이 일주일 앞으로 다가왔습니다.
+
+신청번호: #{신청번호}
+신청차수: #{신청차수}
+일정: #{일정}
+
+집결시간·장소·준비물 등 차수별 안내사항을 반드시 확인해 주세요.
+
+공지 바로가기: #{공지URL}
+
+${FOOTER}`,
+  },
+}
+
+export type SmsVars = Record<string, string | null | undefined>
+
+export interface Rendered {
+  message: SmsMessage
+  missing: string[] // 비어 있는 필수 변수 이름(#{} 표기 없이). 비어 있지 않으면 발송 보류.
+}
+
+// 변수 치환. 누락 변수는 #{이름} 그대로 남겨 보류 이력에서 어디가 비었는지 보이게 한다.
+export function renderSms(kind: SmsKind, vars: SmsVars): Rendered {
+  const t = SMS_TEMPLATES[kind]
+  const missing = t.vars.filter((k) => !(vars[k] ?? '').trim())
+  const text = t.body.replace(/#\{([^}]+)\}/g, (all, k: string) => {
+    const v = (vars[k] ?? '').trim()
+    return v || all
+  })
+  const message: SmsMessage =
+    smsBytes(text) <= 90 ? { type: 'SMS', subject: null, text } : { type: 'LMS', subject: `[${SMS_ORG}] ${t.subject}`, text }
+  return { message, missing }
+}
+
+// ── 값 서식 ──
+
+// 금액: 천 단위 쉼표 숫자만(‘원’ 없음). 숫자가 아니거나 음수면 null(누락 처리).
+export function fmtAmount(n: number | null | undefined): string | null {
+  if (n == null || !Number.isFinite(n) || n < 0) return null
+  return String(Math.trunc(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+}
 
 // 한국시간 날짜(YYYY.MM.DD).
 export function kstDate(iso: string): string {
@@ -23,119 +204,21 @@ export function kstDate(iso: string): string {
   return `${d.getUTCFullYear()}.${p(d.getUTCMonth() + 1)}.${p(d.getUTCDate())}`
 }
 
-function appLines(app: SmsAppInfo): string[] {
-  const lines = [`■ 신청번호: ${app.applicationNo}`, `■ 신청내역: ${app.programLabel}`]
-  if (app.period) lines.push(`■ 일정: ${app.period}`)
-  return lines
+// 일정: 차수 시작~종료일(DB date 'YYYY-MM-DD') + 박수. 예: 2027.01.11 ~ 2027.01.13 (2박)
+export function fmtSchedule(startsOn: string | null | undefined, endsOn: string | null | undefined, nights: number | null | undefined): string | null {
+  if (!startsOn || !endsOn) return null
+  const d = (s: string) => s.slice(0, 10).replaceAll('-', '.')
+  const range = startsOn === endsOn ? d(startsOn) : `${d(startsOn)} ~ ${d(endsOn)}`
+  return nights && nights > 0 ? `${range} (${nights}박)` : range
 }
 
-// 참가 확정 여부 — 예비(정원 초과) 접수는 확정으로 안내하지 않는다.
-function participationLine(app: SmsAppInfo, additional: boolean): string {
-  if (app.isWaitlisted) return '■ 참가: 정원 초과 예비 접수 상태입니다. 참가 확정 여부는 별도로 안내드립니다.'
-  return additional ? '■ 참가: 참가 확정 상태가 유지됩니다.' : '■ 참가: 참가가 확정되었습니다.'
-}
-
-function footer(myUrl: string | null): string[] {
-  const lines: string[] = []
-  if (myUrl) lines.push(`신청 조회: ${myUrl}`)
-  lines.push(`문의: ${SMS_CONTACT_TEL}`)
-  return lines
-}
-
-function build(subject: string, lines: string[]): SmsMessage {
-  const text = [`[${SMS_ORG}] ${subject}`, ...lines].join('\n')
-  return smsBytes(text) <= 90 ? { type: 'SMS', subject: null, text } : { type: 'LMS', subject: `[${SMS_ORG}] ${subject}`, text }
-}
-
-// 최초 입금확인 — 관리자 입금확인(최초 전환) 저장 후.
-export function depositInitialMessage(i: { app: SmsAppInfo; amount: number; myUrl: string | null }): SmsMessage {
-  return build('입금 확인 안내', [
-    `${i.app.applicantName}님, 연수비 입금이 확인되었습니다.`,
-    '',
-    ...appLines(i.app),
-    `■ 확인금액: ${won(i.amount)}`,
-    participationLine(i.app, false),
-    '',
-    ...footer(i.myUrl),
-  ])
-}
-
-// 추가입금 확인 — 수정 증액 부족분 입금확인 저장 후. 최초 입금확인과 문구를 구분한다.
-export function depositAdditionalMessage(i: { app: SmsAppInfo; amount: number; total: number; myUrl: string | null }): SmsMessage {
-  return build('추가 입금 확인 안내', [
-    `${i.app.applicantName}님, 추가 입금이 확인되었습니다.`,
-    '',
-    ...appLines(i.app),
-    `■ 추가 확인금액: ${won(i.amount)}`,
-    `■ 총 결제금액: ${won(i.total)}`,
-    participationLine(i.app, true),
-    '',
-    ...footer(i.myUrl),
-  ])
-}
-
-// 환불접수 — 환불 요청 저장 후. 완료가 아님을 명시하고, 최종 금액은 확인 후 확정임을 구분한다.
-export function refundReceivedMessage(i: {
-  app: SmsAppInfo
-  origin: 'user' | 'modification'
-  requestedAmount: number | null
-  receivedAt: string
-  myUrl: string | null
-}): SmsMessage {
-  const kindLine =
-    i.origin === 'modification' ? '■ 구분: 부분환불 (신청 내용 수정 반영)' : '■ 구분: 신청 취소·환불 요청'
-  const amountLine =
-    i.requestedAmount != null && i.requestedAmount > 0
-      ? `■ 요청금액: ${won(i.requestedAmount)}`
-      : '■ 요청금액: 환불 규정에 따라 담당자 확인 후 산정'
-  return build('환불 요청 접수 안내', [
-    `${i.app.applicantName}님, 환불 요청이 접수되었습니다.`,
-    '아직 환불이 완료된 것은 아니며, 처리가 완료되면 완료 안내를 다시 보내드립니다.',
-    '',
-    ...appLines(i.app),
-    kindLine,
-    amountLine,
-    '■ 최종 환불금액은 담당자 확인 후 확정됩니다.',
-    `■ 접수일: ${kstDate(i.receivedAt)}`,
-    '',
-    ...footer(i.myUrl),
-  ])
-}
-
-// 환불완료 — 관리자 환불 확정(송금 완료 처리) 저장 후. 실제 환불금액·처리일·대상 환불 건(접수일) 안내.
-export function refundCompletedMessage(i: {
-  app: SmsAppInfo
-  amount: number
-  full: boolean
-  completedAt: string
-  receivedAt: string | null
-  myUrl: string | null
-}): SmsMessage {
-  const lines = [
-    `${i.app.applicantName}님, 환불이 완료되었습니다.`,
-    '',
-    ...appLines(i.app),
-    `■ 구분: ${i.full ? '전체환불' : '부분환불'}`,
-    `■ 환불금액: ${won(i.amount)}`,
-    `■ 처리일: ${kstDate(i.completedAt)}`,
-  ]
-  if (i.receivedAt) lines.push(`■ 환불 접수일: ${kstDate(i.receivedAt)}`)
-  return build('환불 완료 안내', [...lines, '', ...footer(i.myUrl)])
-}
-
-// 입금기한 경과 자동취소 — cron 이 취소 저장에 성공한 뒤. 이미 입금한 경우 문의 안내.
-export function autoCancelledMessage(i: { app: SmsAppInfo; deadline: string; myUrl: string | null }): SmsMessage {
-  return build('신청 취소 안내', [
-    `${i.app.applicantName}님, 입금기한(${kstDate(i.deadline)})까지 입금이 확인되지 않아 신청이 자동 취소되었습니다.`,
-    '',
-    ...appLines(i.app),
-    '■ 취소 사유: 입금기한 경과',
-    '',
-    '이미 입금하셨다면 아래 연락처로 문의해 주시면 확인해 드립니다.',
-    '재신청은 홈페이지에서 가능하며, 정원 상황에 따라 제한될 수 있습니다.',
-    '',
-    ...footer(i.myUrl),
-  ])
+// 계좌정보: 은행·계좌번호·예금주. 하나라도 비었거나 자리표시 계좌번호(0 과 - 만)면 null(누락 처리).
+export function fmtAccount(a: { bank?: string | null; account?: string | null; holder?: string | null }): string | null {
+  const bank = a.bank?.trim()
+  const account = a.account?.trim()
+  const holder = a.holder?.trim()
+  if (!bank || !account || !holder || /^[0\-\s]+$/.test(account)) return null
+  return `${bank} ${account} (예금주: ${holder})`
 }
 
 // 문자 바이트 수(EUC-KR 기준 근사: ASCII 1, 그 외 2). SMS 90바이트 초과 시 LMS.

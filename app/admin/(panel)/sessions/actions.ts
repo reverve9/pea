@@ -181,3 +181,20 @@ export async function completeSessionApplications(sessionId: string): Promise<Ac
     return { ok: false, error: '일괄 이수처리에 실패했습니다.' }
   }
 }
+
+// 차수 안내 공지 지정(1주일 전 안내 문자 #{공지URL}). noticeId=null 이면 연결 해제. 회차 정보와 별도 열이라 따로 저장.
+export async function setSessionNotice(sessionId: string, noticeId: string | null): Promise<ActionResult> {
+  try {
+    await requireAdmin()
+    const { error } = await supabaseAdmin
+      .from('sessions')
+      .update({ notice_id: noticeId, updated_at: new Date().toISOString() })
+      .eq('id', sessionId)
+    if (error) throw error
+    revalidatePath('/admin/sessions')
+    return { ok: true }
+  } catch (e) {
+    console.error('[sessions] setSessionNotice:', e)
+    return { ok: false, error: '안내 공지 저장에 실패했습니다. (DB 적용 여부 확인: 34_sms_templates_v2.sql)' }
+  }
+}

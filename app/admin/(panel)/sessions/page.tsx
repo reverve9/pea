@@ -4,6 +4,8 @@ import {
   getSelectableCourses,
   getAllPriceItems,
   getAllSessionOverrides,
+  getSessionNoticeLinks,
+  getNoticeOptions,
 } from '@/lib/adminQueries'
 import SessionsClient from './SessionsClient'
 
@@ -11,11 +13,13 @@ import SessionsClient from './SessionsClient'
 export const dynamic = 'force-dynamic'
 
 export default async function AdminSessionsPage() {
-  const [sessions, courses, priceItems, overrides] = await Promise.all([
+  const [sessions, courses, priceItems, overrides, noticeLinks, notices] = await Promise.all([
     getAllSessions(),
     getSelectableCourses(),
     getAllPriceItems(),
     getAllSessionOverrides(),
+    getSessionNoticeLinks(),
+    getNoticeOptions(),
   ])
   // 요금 조정 모달엔 활성 기본가만 노출(비활성 항목은 신청 폼에 안 뜨므로 조정 대상 아님).
   const activeItems = priceItems.filter((p) => p.is_active)
@@ -27,6 +31,8 @@ export default async function AdminSessionsPage() {
         courses={courses}
         priceItems={activeItems}
         overrides={overrides}
+        noticeLinks={noticeLinks}
+        notices={notices}
       />
     </>
   )

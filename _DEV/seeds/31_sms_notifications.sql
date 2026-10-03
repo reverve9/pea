@@ -17,7 +17,7 @@
 CREATE TABLE IF NOT EXISTS sms_notifications (
   id                      uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   dedupe_key              text NOT NULL,
-  kind                    text NOT NULL CHECK (kind IN ('deposit_initial','deposit_additional','refund_received','refund_completed','auto_cancelled')),
+  kind                    text NOT NULL CHECK (kind IN ('deposit_notice','deposit_initial','due_notice','deposit_additional','refund_received','refund_completed','auto_cancelled','event_reminder')),
   application_id          uuid REFERENCES applications(id) ON DELETE SET NULL,
   refund_request_id       uuid REFERENCES refund_requests(id) ON DELETE SET NULL,
   recipient               text NOT NULL,          -- 숫자만(신청 phone 기준)

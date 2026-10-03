@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createDispatcher, type DispatchInput } from '../dispatcher'
+import { createDispatcher, errorLabel, type DispatchInput } from '../dispatcher'
 import { readSmsConfig } from '../config'
 import { LIVE, PHONE, memoryStore, mockProvider } from './helpers'
 import type { SmsConfig } from '../types'
@@ -256,4 +256,19 @@ test('held 재발송: 설정이 여전히 없으면 안내만, 설정 후 발송
   const on = await createDispatcher({ store, config: LIVE, provider }).resend(store.rows[0].id)
   assert.equal(on.ok, true)
   assert.equal(calls.send.length, 1)
+})
+
+test('필수 변수 누락 → held(missing_vars), 외부 발송 없음, 재발송 불가', async () => {
+  const store = memoryStore()
+  const { provider, calls } = mockProvider()
+  const d = createDispatcher({ store, config: LIVE, provider })
+  const r = await d.dispatch(input({ kind: 'deposit_notice', dedupeKey: 'deposit_notice:app-1', missing: ['계좌정보'] }))
+  assert.equal(r.outcome, 'held')
+  assert.equal(calls.send.length, 0)
+  assert.equal(store.rows[0].last_error, 'missing_vars:계좌정보')
+  assert.equal(errorLabel(store.rows[0]), '필수 항목이 비어 발송하지 않았습니다: #{계좌정보}.')
+  const re = await d.resend(store.rows[0].id)
+  assert.equal(re.ok, false)
+  assert.match((re as { error: string }).error, /#\{계좌정보\}.*재발송할 수 없습니다/)
+  assert.equal(calls.send.length, 0)
 })

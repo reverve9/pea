@@ -1,6 +1,15 @@
 // 솔라피 문자 발송 공통 타입 — 앱(서버)과 단위 시험이 함께 쓴다. 런타임 의존성 없음.
 
-export type SmsKind = 'deposit_initial' | 'deposit_additional' | 'refund_received' | 'refund_completed' | 'auto_cancelled'
+// deposit_notice=접수완료·입금안내, due_notice=추가입금 안내, event_reminder=차수 1주일 전 안내.
+export type SmsKind =
+  | 'deposit_notice'
+  | 'deposit_initial'
+  | 'due_notice'
+  | 'deposit_additional'
+  | 'refund_received'
+  | 'refund_completed'
+  | 'auto_cancelled'
+  | 'event_reminder'
 export type SmsStatus = 'sending' | 'sent' | 'failed' | 'unknown' | 'held'
 export type SmsMsgType = 'SMS' | 'LMS'
 

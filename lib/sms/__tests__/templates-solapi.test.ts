@@ -1,78 +1,94 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createHmac } from 'node:crypto'
-import {
-  depositInitialMessage,
-  depositAdditionalMessage,
-  refundReceivedMessage,
-  refundCompletedMessage,
-  kstDate,
-  smsBytes,
-  type SmsAppInfo,
-} from '../templates'
+import { SMS_TEMPLATES, renderSms, fmtAmount, fmtAccount, fmtSchedule, kstDate, smsBytes, type SmsVars } from '../templates'
+import type { SmsKind } from '../types'
 import { authHeader, createSolapiProvider } from '../solapi'
 import { readSmsConfig } from '../config'
 
-const APP: SmsAppInfo = {
-  applicationNo: 'SJ-2701-0007',
-  applicantName: '홍길동',
-  programLabel: '스키·스노보드 직무연수 · 1차',
-  period: '2027/01/11 – 01/13 (2박)',
-  isWaitlisted: false,
+// 샘플값 — 실제 신청 아님(합성).
+export const SAMPLE_COMMON: SmsVars = {
+  신청자명: '홍길동',
+  신청번호: 'SJ-27-00007',
+  신청차수: '직무 1차수',
+  일정: fmtSchedule('2027-01-11', '2027-01-13', 2),
 }
+export const SAMPLE: Record<SmsKind, SmsVars> = {
+  deposit_notice: { 결제금액: fmtAmount(350000), 계좌정보: fmtAccount({ bank: '국민은행', account: '123456-01-234567', holder: '체육교육회' }), 입금기한: kstDate('2026-10-17T14:59:59Z'), 입금자명: '홍길동' },
+  deposit_initial: { 확인금액: fmtAmount(350000), 참가상태: '확정' },
+  due_notice: { 추가금액: fmtAmount(20000), 계좌정보: fmtAccount({ bank: '국민은행', account: '123456-01-234567', holder: '체육교육회' }), 총결제금액: fmtAmount(370000), 입금기한: '2026.10.24' },
+  deposit_additional: { 추가금액: fmtAmount(20000), 총결제금액: fmtAmount(370000) },
+  refund_received: { 환불구분: '전체', 요청금액: fmtAmount(350000), 접수일: kstDate('2026-10-03T15:30:00Z') },
+  refund_completed: { 환불구분: '부분', 환불금액: fmtAmount(15000), 처리일: kstDate('2026-10-05T01:00:00Z') },
+  auto_cancelled: { 취소일: kstDate('2026-10-18T15:10:00Z'), 취소사유: '입금기한 경과' },
+  event_reminder: { 공지URL: 'https://www.pea2025.co.kr/community/notices/00000000-0000-0000-0000-000000000001' },
+}
+const KINDS = Object.keys(SMS_TEMPLATES) as SmsKind[]
 
-test('입금확인: 금액·신청내역·참가 확정, 예비는 확정 안내 안 함', () => {
-  const m = depositInitialMessage({ app: APP, amount: 350000, myUrl: 'https://x.kr/my' })
-  assert.equal(m.type, 'LMS')
-  assert.match(m.text, /입금이 확인되었습니다/)
-  assert.match(m.text, /확인금액: 350,000원/)
-  assert.match(m.text, /SJ-2701-0007/)
-  assert.match(m.text, /참가가 확정되었습니다/)
-  const w = depositInitialMessage({ app: { ...APP, isWaitlisted: true }, amount: 1, myUrl: null })
-  assert.doesNotMatch(w.text, /확정되었습니다/)
-  assert.doesNotMatch(w.text, /신청 조회/)
+test('문안 8종: 샘플값 전부 치환 · 미치환 변수 없음 · 금액 단위 중복 없음 · LMS 범위', () => {
+  assert.equal(KINDS.length, 8)
+  for (const k of KINDS) {
+    const { message, missing } = renderSms(k, { ...SAMPLE_COMMON, ...SAMPLE[k] })
+    assert.deepEqual(missing, [], k)
+    assert.doesNotMatch(message.text, /#\{/, `${k} 미치환`)
+    assert.doesNotMatch(message.text, /원원|,원|\d원원/, `${k} 금액 단위 중복`)
+    assert.match(message.text, /^안녕하세요\. 체육교육회입니다\./, k)
+    assert.match(message.text, /문의: 홈페이지 ‘1:1 문의’\nwww\.pea2025\.co\.kr\n\n감사합니다\.$/, k)
+    assert.equal(message.type, 'LMS', k)
+    assert.ok(smsBytes(message.text) < 2000, k)
+    assert.ok(smsBytes(message.subject ?? '') <= 40, k)
+  }
 })
 
-test('추가입금: 최초 입금확인과 구분', () => {
-  const m = depositAdditionalMessage({ app: APP, amount: 20000, total: 370000, myUrl: null })
-  assert.match(m.subject ?? '', /추가 입금 확인/)
-  assert.match(m.text, /추가 확인금액: 20,000원/)
-  assert.match(m.text, /총 결제금액: 370,000원/)
+test('문안 변수명이 정의와 정확히 일치(본문 토큰 = 필수 변수)', () => {
+  const expected: Record<SmsKind, string[]> = {
+    deposit_notice: ['결제금액', '계좌정보', '입금기한', '입금자명'],
+    deposit_initial: ['확인금액', '참가상태'],
+    due_notice: ['추가금액', '계좌정보', '총결제금액', '입금기한'],
+    deposit_additional: ['추가금액', '총결제금액'],
+    refund_received: ['환불구분', '요청금액', '접수일'],
+    refund_completed: ['환불구분', '환불금액', '처리일'],
+    auto_cancelled: ['취소일', '취소사유'],
+    event_reminder: ['공지URL'],
+  }
+  for (const k of KINDS) {
+    const tokens = [...new Set([...SMS_TEMPLATES[k].body.matchAll(/#\{([^}]+)\}/g)].map((m) => m[1]))]
+    assert.deepEqual(tokens.sort(), ['신청자명', '신청번호', '신청차수', '일정', ...expected[k]].sort(), k)
+    assert.deepEqual([...SMS_TEMPLATES[k].vars].sort(), tokens.sort(), k)
+  }
 })
 
-test('환불접수: 완료 아님 명시, 요청금액과 최종금액 구분, 처리기간 미안내', () => {
-  const u = refundReceivedMessage({ app: APP, origin: 'user', requestedAmount: null, receivedAt: '2026-10-03T15:30:00Z', myUrl: null })
-  assert.match(u.text, /환불 요청이 접수되었습니다/)
-  assert.match(u.text, /아직 환불이 완료된 것은 아니며/)
-  assert.match(u.text, /담당자 확인 후 산정/)
-  assert.match(u.text, /최종 환불금액은 담당자 확인 후 확정/)
-  assert.match(u.text, /접수일: 2026\.10\.04/) // KST 날짜
-  assert.doesNotMatch(u.text, /환불이 완료되었습니다|영업일|예정일/)
-  const p = refundReceivedMessage({ app: APP, origin: 'modification', requestedAmount: 15000, receivedAt: '2026-10-03T00:00:00Z', myUrl: null })
-  assert.match(p.text, /부분환불/)
-  assert.match(p.text, /요청금액: 15,000원/)
+test('치환 결과 예시: 금액 쉼표+원, 날짜 YYYY.MM.DD, 일정 기간, 계좌 3요소', () => {
+  const t = renderSms('deposit_notice', { ...SAMPLE_COMMON, ...SAMPLE.deposit_notice }).message.text
+  assert.match(t, /참가비: 350,000원\n/)
+  assert.match(t, /일정: 2027\.01\.11 ~ 2027\.01\.13 \(2박\)\n/)
+  assert.match(t, /계좌정보: 국민은행 123456-01-234567 \(예금주: 체육교육회\)\n/)
+  assert.match(t, /입금기한: 2026\.10\.17\n/)
+  assert.match(t, /입금자명: 홍길동\n/)
+  const r = renderSms('refund_received', { ...SAMPLE_COMMON, ...SAMPLE.refund_received }).message.text
+  assert.match(r, /접수일: 2026\.10\.04\n/) // KST
 })
 
-test('환불완료: 실제 금액·처리일·전체/부분, 계좌정보 없음', () => {
-  const f = refundCompletedMessage({ app: APP, amount: 350000, full: true, completedAt: '2026-10-05T01:00:00Z', receivedAt: '2026-10-03T00:00:00Z', myUrl: null })
-  assert.match(f.text, /환불이 완료되었습니다/)
-  assert.match(f.text, /구분: 전체환불/)
-  assert.match(f.text, /환불금액: 350,000원/)
-  assert.match(f.text, /처리일: 2026\.10\.05/)
-  assert.match(f.text, /환불 접수일: 2026\.10\.03/)
-  assert.doesNotMatch(f.text, /계좌/)
-  const p = refundCompletedMessage({ app: APP, amount: 15000, full: false, completedAt: '2026-10-05T01:00:00Z', receivedAt: null, myUrl: null })
-  assert.match(p.text, /구분: 부분환불/)
-  assert.doesNotMatch(p.text, /접수일/)
+test('필수 변수 누락 → missing 목록, 해당 자리는 #{이름} 그대로', () => {
+  const { message, missing } = renderSms('deposit_notice', { ...SAMPLE_COMMON, ...SAMPLE.deposit_notice, 계좌정보: null, 입금기한: '  ' })
+  assert.deepEqual(missing, ['계좌정보', '입금기한'])
+  assert.match(message.text, /계좌정보: #\{계좌정보\}/)
+  assert.deepEqual(renderSms('event_reminder', { ...SAMPLE_COMMON }).missing, ['공지URL'])
+  assert.deepEqual(renderSms('deposit_initial', {}).missing, ['신청자명', '신청번호', '신청차수', '일정', '확인금액', '참가상태'])
 })
 
-test('바이트 계산·SMS/LMS 판정·LMS 2000바이트 이내', () => {
+test('값 서식: 금액·계좌 자리표시 판정·일정·날짜', () => {
+  assert.equal(fmtAmount(1234567), '1,234,567')
+  assert.equal(fmtAmount(0), '0')
+  assert.equal(fmtAmount(null), null)
+  assert.equal(fmtAmount(-1), null)
+  assert.equal(fmtAccount({ bank: '국민은행', account: '000000-00-000000', holder: '체육교육회' }), null) // 현재 사이트 자리표시 계좌
+  assert.equal(fmtAccount({ bank: '국민은행', account: '123-45', holder: '' }), null)
+  assert.equal(fmtSchedule('2027-01-15', '2027-01-15', 0), '2027.01.15')
+  assert.equal(fmtSchedule(null, '2027-01-15', 1), null)
   assert.equal(smsBytes('ab가'), 4)
   assert.equal(kstDate('2026-10-03T14:59:59Z'), '2026.10.03')
   assert.equal(kstDate('2026-10-03T15:00:00Z'), '2026.10.04')
-  const long = refundReceivedMessage({ app: { ...APP, applicantName: '가'.repeat(20) }, origin: 'user', requestedAmount: null, receivedAt: '2026-10-03T00:00:00Z', myUrl: 'https://example.com/my' })
-  assert.ok(smsBytes(long.text) < 2000)
-  assert.ok(smsBytes(long.subject ?? '') <= 40)
 })
 
 test('설정 읽기: 키 이름만, 발신번호 숫자 정규화, 허용번호', () => {

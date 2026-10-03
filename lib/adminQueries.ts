@@ -549,3 +549,25 @@ export async function getSiteContentAdmin(key: string): Promise<SiteContent | nu
   }
   return (data as SiteContent) ?? null
 }
+
+// 차수 → 안내 공지 연결(1주일 전 안내 문자 #{공지URL}). notice_id 열(34_sms_templates_v2.sql) 미적용이면 null.
+export async function getSessionNoticeLinks(): Promise<Record<string, string | null> | null> {
+  const { data, error } = await supabaseAdmin.from('sessions').select('id, notice_id')
+  if (error) {
+    console.warn('[adminQueries] getSessionNoticeLinks:', error.code)
+    return null
+  }
+  const out: Record<string, string | null> = {}
+  for (const r of (data as { id: string; notice_id: string | null }[]) ?? []) out[r.id] = r.notice_id
+  return out
+}
+
+// 안내 공지 선택지 — 제목·게시 여부만.
+export async function getNoticeOptions(): Promise<{ id: string; title: string; is_published: boolean }[]> {
+  const { data, error } = await supabaseAdmin
+    .from('notices')
+    .select('id, title, is_published')
+    .order('created_at', { ascending: false })
+  if (error) console.warn('[adminQueries] getNoticeOptions:', error.code)
+  return (data as { id: string; title: string; is_published: boolean }[]) ?? []
+}
