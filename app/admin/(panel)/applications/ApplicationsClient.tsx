@@ -46,6 +46,7 @@ import {
   revertDuePayment,
   registerAdminRefund,
 } from './actions'
+import { SmsHistory, SmsAttentionBanner } from './SmsHistory'
 
 // 정상 생애주기(순방향 진행) vs 예외/종료(오프램프) — 같은 층위 아님.
 const LIFECYCLE: ApplicationStatus[] = ['pending', 'paid', 'completed']
@@ -659,6 +660,7 @@ function ApplicationsPanel({
 
   return (
     <>
+      <SmsAttentionBanner applications={applications} onOpen={setDetail} />
       {reviewCount > 0 && (
         <div className="mb-3 ml-auto flex w-fit items-center gap-2 rounded-[8px] bg-[#f3f6f9] px-3.5 py-2.5 text-[12.5px]">
           <Badge color="amber" size="sm">입금확인요청</Badge>
@@ -1334,6 +1336,9 @@ function DetailModal({
           ))}
         </div>
       )}
+
+      {/* 문자 발송 이력 — 실패·보류 재발송, 결과 불명확 조회(이력 없으면 미표시) */}
+      <SmsHistory applicationId={app.id} />
 
       {/* 관리자 메모 */}
       <label className="mt-4 block">

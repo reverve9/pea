@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { verifyMyToken } from '@/lib/serverCrypto'
 import { updateParticipantDetail } from '@/lib/participantDetail'
+import { notifyRefundReceived } from '@/lib/sms'
 
 // 마이페이지 신청건 액션 — 환불신청(refund) / 수정요청(modification).
 // 토큰으로 본인확인 후, 대상 신청이 그 사람 소유(phone+name)인지 검증하고 insert.
@@ -65,16 +66,33 @@ export async function POST(req: Request) {
   if (!app) return NextResponse.json({ error: '대상 신청 내역을 찾을 수 없습니다.' }, { status: 404 })
 
   if (body.type === 'refund') {
-    const { error } = await supabaseAdmin.from('refund_requests').insert({
+    // 같은 신청에 처리 대기 중인 본인 환불신청이 있으면 중복 접수하지 않는다(중복 접수·중복 문자 방지).
+    const { data: open, error: oErr } = await supabaseAdmin
+      .from('refund_requests')
+      .select('id')
+      .eq('application_id', body.applicationId)
+      .eq('origin', 'user')
+      .in('status', ['requested', 'confirmed'])
+      .limit(1)
+    if (oErr) {
+      console.error('[my/requests] refund open check:', oErr)
+      return NextResponse.json({ error: '처리 중 오류가 발생했습니다.' }, { status: 500 })
+    }
+    if (open && open.length > 0) {
+      return NextResponse.json({ error: '이미 접수된 환불 신청이 있습니다. 담당자 확인 후 처리됩니다.' }, { status: 409 })
+    }
+    const { data: ins, error } = await supabaseAdmin.from('refund_requests').insert({
       application_id: body.applicationId,
       phone: claims.phone,
       reason: body.reason.trim() || null,
       refund_account: body.refundAccount.trim(),
-    })
+    }).select('id').single()
     if (error) {
       console.error('[my/requests] refund insert:', error)
       return NextResponse.json({ error: '환불 신청 저장 중 오류가 발생했습니다.' }, { status: 500 })
     }
+    // 환불접수 문자 — 저장 성공 후. 실패해도 접수 결과는 유지.
+    await notifyRefundReceived((ins as { id: string }).id)
   } else if (body.type === 'modification') {
     // 보험 '희망' 전환은 뒷자리 없이는 성립하지 않는다 — 이미 등록된 참가자가 아니면 서버에서 거절.
     // (클라이언트 검증만으로는 우회 가능 → 보험 미가입인데 가입으로 처리되는 사고 방지)

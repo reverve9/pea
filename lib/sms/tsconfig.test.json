@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "types": ["node"],
+    "rootDir": ".",
+    "outDir": "../../node_modules/.cache/sms-test"
+  },
+  "include": ["./types.ts", "./templates.ts", "./config.ts", "./solapi.ts", "./dispatcher.ts", "./__tests__/**/*.ts"]
+}

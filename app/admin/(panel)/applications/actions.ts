@@ -8,6 +8,7 @@ import { updateParticipantDetail as applyParticipantDetail, type ParticipantDeta
 import { issueCashReceipt, cancelCashReceipt } from '@/lib/cashReceipt'
 import { applyOverrides } from '@/lib/pricing'
 import { MODIFICATION_FIELD_LABEL, modificationValueLabel } from '@/lib/display'
+import { notifyDepositInitial, notifyDepositAdditional, notifyRefundReceived, notifyRefundCompleted } from '@/lib/sms'
 import type {
   ApplicationStatus,
   InsuranceRosterEntry,
@@ -29,6 +30,14 @@ export async function setApplicationStatus(id: string, status: ApplicationStatus
   try {
     await requireAdmin()
     if (!STATUSES.includes(status)) return { ok: false, error: '알 수 없는 상태입니다.' }
+    // 최초 입금확인 판별용 — 변경 전 입금확인 시각이 없던 건이 paid 로 전환될 때만 문자 안내.
+    let firstDeposit = false
+    if (status === 'paid') {
+      const { data: prev, error: pErr } = await supabaseAdmin
+        .from('applications').select('deposit_confirmed_at').eq('id', id).maybeSingle()
+      if (pErr) throw pErr
+      firstDeposit = !!prev && !prev.deposit_confirmed_at
+    }
     const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() }
     if (status === 'paid') patch.deposit_confirmed_at = new Date().toISOString()
     else if (status === 'pending') patch.deposit_confirmed_at = null
@@ -44,6 +53,8 @@ export async function setApplicationStatus(id: string, status: ApplicationStatus
       if (status === 'paid') await issueCashReceipt(id, net)
       else await cancelCashReceipt(id, net)
     }
+    // 입금확인 문자 — 저장 성공 후. 신청당 1회(dedupe), 실패해도 상태변경 유지. [[lib/sms]]
+    if (firstDeposit) await notifyDepositInitial(id)
     revalidatePath('/admin/applications')
     return { ok: true }
   } catch (e) {
@@ -70,7 +81,7 @@ export async function registerAdminRefund(
       .from('applications').select('phone').eq('id', appId).maybeSingle()
     if (gErr) throw gErr
     if (!app) return { ok: false, error: '신청을 찾을 수 없습니다.' }
-    const { error: insErr } = await supabaseAdmin.from('refund_requests').insert({
+    const { data: ins, error: insErr } = await supabaseAdmin.from('refund_requests').insert({
       application_id: appId,
       phone: app.phone,
       origin: 'admin',
@@ -78,7 +89,7 @@ export async function registerAdminRefund(
       refund_account: account.trim() || null,
       reason: reason.trim() || '관리자 직접 환불',
       status: 'completed',
-    })
+    }).select('id').single()
     if (insErr) throw insErr
     const appPatch: Record<string, unknown> = { refunded_amount: amount, updated_at: new Date().toISOString() }
     if (markRefunded) appPatch.status = 'refunded'
@@ -86,6 +97,8 @@ export async function registerAdminRefund(
     if (upErr) throw upErr
     // 환불 = 현금영수증 취소발급(부분환불이면 부분취소, amount 만큼). [[cash-receipt-spec]]
     await cancelCashReceipt(appId, amount)
+    // 환불완료 문자 — 관리자 직접 환불은 접수 즉시 완료라 완료 안내만. 환불 건(id)당 1회.
+    await notifyRefundCompleted((ins as { id: string }).id, amount, markRefunded)
     revalidatePath('/admin/applications')
     revalidatePath('/admin/settlements')
     return { ok: true }
@@ -143,6 +156,12 @@ export async function setApplicationWaitlist(id: string, waitlisted: boolean): P
       .update({ is_waitlisted: waitlisted, updated_at: new Date().toISOString() })
       .eq('id', id)
     if (error) throw error
+    // 예비 승인 시각 — 입금기한(자동취소) 기준. 열 미적용(32_auto_cancel.sql 전)이어도 승인은 유지되도록 별도 best-effort.
+    if (!waitlisted) {
+      const { error: wErr } = await supabaseAdmin
+        .from('applications').update({ waitlist_released_at: new Date().toISOString() }).eq('id', id)
+      if (wErr) console.error('[applications] waitlist_released_at:', wErr.code)
+    }
     revalidatePath('/admin/applications')
     return { ok: true }
   } catch (e) {
@@ -161,13 +180,19 @@ export async function confirmDuePayment(id: string): Promise<ActionResult> {
       .from('applications').select('due_amount').eq('id', id).maybeSingle()
     if (gErr) throw gErr
     if (!app || (app.due_amount ?? 0) <= 0) return { ok: false, error: '추가입금 대기 상태가 아닙니다.' }
-    const { error } = await supabaseAdmin
+    // 조건부 확정 — 읽은 부족분 그대로일 때만(버튼 재클릭·동시 요청의 이중 확정·이중 발급 방지).
+    const { data: upd, error } = await supabaseAdmin
       .from('applications')
       .update({ due_amount: 0, due_settled_amount: app.due_amount, due_claimed_at: null, updated_at: new Date().toISOString() })
       .eq('id', id)
+      .eq('due_amount', app.due_amount)
+      .select('id')
     if (error) throw error
+    if (!upd || upd.length === 0) return { ok: false, error: '이미 처리되었거나 추가입금 금액이 변경되었습니다. 새로고침 후 확인해 주세요.' }
     // 추가입금분 현금영수증 추가 발급(면세 총액=추가확정액). [[cash-receipt-spec]]
     await issueCashReceipt(id, app.due_amount)
+    // 추가입금 확인 문자 — 저장 성공 후, 최초 입금확인과 구분된 안내.
+    await notifyDepositAdditional(id, app.due_amount)
     revalidatePath('/admin/applications')
     revalidatePath('/admin/settlements')
     return { ok: true }
@@ -387,21 +412,39 @@ export async function confirmRefundFromRequest(
   try {
     await requireAdmin()
     if (!Number.isInteger(amount) || amount < 0) return { ok: false, error: '환불 금액이 올바르지 않습니다.' }
+    // 요청을 먼저 조건부로 완료 처리(미처리 건만) — 버튼 재클릭·동시 요청이 금액 반영·영수증 취소·완료 문자를 반복하지 않게.
+    const { data: before, error: bErr } = await supabaseAdmin
+      .from('refund_requests').select('status, refund_account').eq('id', reqId).maybeSingle()
+    if (bErr) throw bErr
+    if (!before || (before.status !== 'requested' && before.status !== 'confirmed'))
+      return { ok: false, error: '이미 처리된 환불요청입니다. 새로고침 후 확인해 주세요.' }
+    const reqPatch: Record<string, unknown> = { status: 'completed', updated_at: new Date().toISOString() }
+    const acct = refundAccount?.trim()
+    if (acct) reqPatch.refund_account = acct
+    const { data: claimed, error: rErr } = await supabaseAdmin
+      .from('refund_requests')
+      .update(reqPatch)
+      .eq('id', reqId)
+      .eq('status', before.status)
+      .select('id')
+    if (rErr) throw rErr
+    if (!claimed || claimed.length === 0) return { ok: false, error: '이미 처리된 환불요청입니다. 새로고침 후 확인해 주세요.' }
     // 전액환불이면 status=refunded, 부분환불이면 status 유지(refunded_amount만 반영 → 정산 자동 차감).
     const appPatch: Record<string, unknown> = { refunded_amount: amount, updated_at: new Date().toISOString() }
     if (markRefunded) appPatch.status = 'refunded'
     const { error: aErr } = await supabaseAdmin.from('applications').update(appPatch).eq('id', appId)
-    if (aErr) throw aErr
-    const reqPatch: Record<string, unknown> = { status: 'completed', updated_at: new Date().toISOString() }
-    const acct = refundAccount?.trim()
-    if (acct) reqPatch.refund_account = acct
-    const { error: rErr } = await supabaseAdmin
-      .from('refund_requests')
-      .update(reqPatch)
-      .eq('id', reqId)
-    if (rErr) throw rErr
+    if (aErr) {
+      // 신청 반영 실패 → 요청을 원래 상태로 복구(완료 문자 미발송).
+      await supabaseAdmin
+        .from('refund_requests')
+        .update({ status: before.status, refund_account: before.refund_account, updated_at: new Date().toISOString() })
+        .eq('id', reqId)
+      throw aErr
+    }
     // 환불 = 현금영수증 취소발급(부분환불이면 부분취소, amount 만큼). [[cash-receipt-spec]]
     await cancelCashReceipt(appId, amount)
+    // 환불완료 문자 — 환불 확정(송금 완료 처리) 저장 성공 후. 환불 건(reqId)당 1회.
+    await notifyRefundCompleted(reqId, amount, markRefunded)
     revalidatePath('/admin/applications')
     revalidatePath('/admin/settlements')
     return { ok: true }
@@ -608,10 +651,11 @@ export async function applyModification(id: string, adminReply: string): Promise
       updated_at: new Date().toISOString(),
     }
     let routeNote = ''
+    let createdRefundId: string | null = null
     if (delta !== 0 && paidLike) {
       if (delta < 0) {
         const refund = -delta
-        const { error } = await supabaseAdmin.from('refund_requests').insert({
+        const { data: ins, error } = await supabaseAdmin.from('refund_requests').insert({
           application_id: app.id,
           phone: app.phone,
           origin: 'modification',
@@ -619,8 +663,9 @@ export async function applyModification(id: string, adminReply: string): Promise
           modification_request_id: id,
           reason: '수정 반영에 따른 부분환불',
           status: 'requested',
-        })
+        }).select('id').single()
         if (error) throw error
+        createdRefundId = (ins as { id: string }).id
         routeNote = `부분환불 ${refund.toLocaleString()}원이 환불요청으로 접수되었습니다. 담당자 확인 후 환불됩니다.`
       } else {
         appPatch.due_amount = (app.due_amount ?? 0) + delta
@@ -639,6 +684,9 @@ export async function applyModification(id: string, adminReply: string): Promise
       .update({ status: 'completed', admin_reply: reply, updated_at: new Date().toISOString() })
       .eq('id', id)
     if (cErr) throw cErr
+
+    // 부분환불 접수 문자 — 수정 반영 저장이 모두 성공한 뒤. 환불 건당 1회.
+    if (createdRefundId) await notifyRefundReceived(createdRefundId)
 
     revalidatePath('/admin/applications')
     revalidatePath('/admin/settlements')
