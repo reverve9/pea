@@ -11,7 +11,7 @@ import { MODIFICATION_FIELD_LABEL, modificationValueLabel } from '@/lib/display'
 import {
   notifyDepositInitial,
   notifyDepositAdditional,
-  notifyDepositNotice,
+  notifyWaitlistDepositNotice,
   notifyDueNotice,
   notifyRefundReceived,
   notifyRefundCompleted,
@@ -183,8 +183,8 @@ export async function setApplicationWaitlist(id: string, waitlisted: boolean): P
       const { error: wErr } = await supabaseAdmin
         .from('applications').update({ waitlist_released_at: releasedAt }).eq('id', id)
       if (wErr) console.error('[applications] waitlist_released_at:', wErr.code)
-      // 예비 → 정원 편입된 미입금 건에 접수완료·입금안내(입금기한 = 편입 시각 기준). 신청당 1회.
-      if (before?.is_waitlisted && before.status === 'pending') await notifyDepositNotice(id, releasedAt)
+      // 예비 → 정원 편입된 미입금 건에 예비접수 입금 안내(입금기한 = 편입 시각 기준). 신청당 1회.
+      if (before?.is_waitlisted && before.status === 'pending') await notifyWaitlistDepositNotice(id, releasedAt)
     }
     revalidatePath('/admin/applications')
     return { ok: true }

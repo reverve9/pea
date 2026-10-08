@@ -1,61 +1,68 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createHmac } from 'node:crypto'
-import { SMS_TEMPLATES, renderSms, fmtAmount, fmtAccount, fmtSchedule, kstDate, smsBytes, type SmsVars } from '../templates'
+import { SMS_TEMPLATES, ALIMTALK_MAX_CHARS, renderSms, fmtAmount, fmtAccount, fmtSchedule, kstDate, type SmsVars } from '../templates'
 import type { SmsKind } from '../types'
 import { authHeader, createSolapiProvider } from '../solapi'
 import { readSmsConfig } from '../config'
+import { ALIMTALK_TEMPLATE_IDS, KAKAO_PFID } from '../alimtalk'
+import { existsSync, readFileSync } from 'node:fs'
+import path from 'node:path'
 
 // 샘플값 — 실제 신청 아님(합성).
 export const SAMPLE_COMMON: SmsVars = {
   신청자명: '홍길동',
+  신청자: '홍길동',
   신청번호: 'SJ-27-00007',
   신청차수: '직무 1차수',
   일정: fmtSchedule('2027-01-11', '2027-01-13', 2),
 }
 export const SAMPLE: Record<SmsKind, SmsVars> = {
   deposit_notice: { 결제금액: fmtAmount(350000), 계좌정보: fmtAccount({ bank: '국민은행', account: '123456-01-234567', holder: '체육교육회' }), 입금기한: kstDate('2026-10-17T14:59:59Z'), 입금자명: '홍길동' },
-  waitlist_notice: {},
+  waitlist_notice: { 예비번호: '3' },
+  waitlist_deposit_notice: { 결제금액: fmtAmount(350000), 계좌정보: fmtAccount({ bank: '국민은행', account: '123456-01-234567', holder: '체육교육회' }), 입금기한: kstDate('2026-10-17T14:59:59Z'), 입금자명: '홍길동' },
   deposit_initial: { 확인금액: fmtAmount(350000), 참가상태: '확정' },
-  due_notice: { 추가금액: fmtAmount(20000), 계좌정보: fmtAccount({ bank: '국민은행', account: '123456-01-234567', holder: '체육교육회' }), 총결제금액: fmtAmount(370000), 입금기한: '2026.10.24' },
+  due_notice: { 추가금액: fmtAmount(20000), 계좌정보: fmtAccount({ bank: '국민은행', account: '123456-01-234567', holder: '체육교육회' }), 추가결제금액: fmtAmount(370000), 입금기한: '2026.10.24' },
   deposit_additional: { 추가금액: fmtAmount(20000), 총결제금액: fmtAmount(370000) },
   refund_received: { 환불구분: '전체', 요청금액: fmtAmount(350000), 접수일: kstDate('2026-10-03T15:30:00Z') },
   refund_completed: { 환불구분: '부분', 환불금액: fmtAmount(15000), 처리일: kstDate('2026-10-05T01:00:00Z') },
   auto_cancelled: { 취소일: kstDate('2026-10-18T15:10:00Z'), 취소사유: '입금기한 경과' },
-  event_reminder: { 공지URL: 'https://www.pea2025.co.kr/community/notices/00000000-0000-0000-0000-000000000001' },
+  event_reminder: { 홈페이지차수별안내사항url주소: 'https://www.pea2025.co.kr/community/notices/00000000-0000-0000-0000-000000000001' },
 }
 const KINDS = Object.keys(SMS_TEMPLATES) as SmsKind[]
 
-test('문안 9종: 샘플값 전부 치환 · 미치환 변수 없음 · 금액 단위 중복 없음 · LMS 범위', () => {
-  assert.equal(KINDS.length, 9)
+test('문안 10종: 샘플값 전부 치환 · 미치환 변수 없음 · 금액 단위 중복 없음 · 알림톡 길이·변수', () => {
+  assert.equal(KINDS.length, 10)
   for (const k of KINDS) {
     const { message, missing } = renderSms(k, { ...SAMPLE_COMMON, ...SAMPLE[k] })
     assert.deepEqual(missing, [], k)
     assert.doesNotMatch(message.text, /#\{/, `${k} 미치환`)
     assert.doesNotMatch(message.text, /원원|,원|\d원원/, `${k} 금액 단위 중복`)
     assert.match(message.text, /^안녕하세요\. 체육교육회입니다\./, k)
-    assert.match(message.text, /문의: 홈페이지 ‘1:1 문의’\nwww\.pea2025\.co\.kr\n\n감사합니다\.$/, k)
-    assert.equal(message.type, 'LMS', k)
-    assert.ok(smsBytes(message.text) < 2000, k)
-    assert.ok(smsBytes(message.subject ?? '') <= 40, k)
+    assert.match(message.text, /www\.pea2025\.co\.kr\n\n감사합니다\.$/, k)
+    assert.equal(message.type, 'ATA', k)
+    assert.ok(message.text.length <= ALIMTALK_MAX_CHARS, k)
+    assert.deepEqual(Object.keys(message.variables).sort(), [...SMS_TEMPLATES[k].vars].sort(), k)
+    for (const [v, val] of Object.entries(message.variables)) assert.equal(val, (({ ...SAMPLE_COMMON, ...SAMPLE[k] })[v] ?? '').trim(), `${k} ${v}`)
   }
 })
 
 test('문안 변수명이 정의와 정확히 일치(본문 토큰 = 필수 변수)', () => {
   const expected: Record<SmsKind, string[]> = {
-    deposit_notice: ['결제금액', '계좌정보', '입금기한', '입금자명'],
-    waitlist_notice: [],
-    deposit_initial: ['확인금액', '참가상태'],
-    due_notice: ['추가금액', '계좌정보', '총결제금액', '입금기한'],
-    deposit_additional: ['추가금액', '총결제금액'],
-    refund_received: ['환불구분', '요청금액', '접수일'],
-    refund_completed: ['환불구분', '환불금액', '처리일'],
-    auto_cancelled: ['취소일', '취소사유'],
-    event_reminder: ['공지URL'],
+    deposit_notice: ['신청자명', '일정', '결제금액', '계좌정보', '입금기한', '입금자명'],
+    waitlist_notice: ['신청자명', '예비번호'],
+    waitlist_deposit_notice: ['신청자명', '일정', '결제금액', '계좌정보', '입금기한', '입금자명'],
+    deposit_initial: ['신청자명', '일정', '확인금액', '참가상태'],
+    due_notice: ['신청자', '일정', '추가금액', '계좌정보', '추가결제금액', '입금기한'],
+    deposit_additional: ['신청자명', '일정', '추가금액', '총결제금액'],
+    refund_received: ['신청자명', '일정', '환불구분', '요청금액', '접수일'],
+    refund_completed: ['신청자명', '일정', '환불구분', '환불금액', '처리일'],
+    auto_cancelled: ['신청자명', '일정', '취소일', '취소사유'],
+    event_reminder: ['신청자명', '일정', '홈페이지차수별안내사항url주소'],
   }
   for (const k of KINDS) {
     const tokens = [...new Set([...SMS_TEMPLATES[k].body.matchAll(/#\{([^}]+)\}/g)].map((m) => m[1]))]
-    assert.deepEqual(tokens.sort(), ['신청자명', '신청번호', '신청차수', '일정', ...expected[k]].sort(), k)
+    assert.deepEqual(tokens.sort(), ['신청번호', '신청차수', ...expected[k]].sort(), k)
     assert.deepEqual([...SMS_TEMPLATES[k].vars].sort(), tokens.sort(), k)
   }
 })
@@ -71,18 +78,34 @@ test('치환 결과 예시: 금액 쉼표+원, 날짜 YYYY.MM.DD, 일정 기간,
   assert.match(r, /접수일: 2026\.10\.04\n/) // KST
 })
 
-test('예비접수 안내: 금액·계좌·입금기한 없음, 편입 후 입금안내 예정 명시', () => {
-  const t = renderSms('waitlist_notice', SAMPLE_COMMON).message.text
-  assert.match(t, /참가 신청이 예비로 접수되었습니다/)
-  assert.match(t, /추후 정원 편입이 확정되면 입금안내를 보내드리겠습니다/)
+test('예비 접수 완료: 예비번호 포함, 금액·계좌·입금기한 없음', () => {
+  const t = renderSms('waitlist_notice', { ...SAMPLE_COMMON, ...SAMPLE.waitlist_notice }).message.text
+  assert.match(t, /예비 신청이 접수되었습니다/)
+  assert.match(t, /예비번호: 3\n/)
   assert.doesNotMatch(t, /원\n|계좌|입금기한|참가비/)
+})
+
+// 솔라피 콘솔 스냅샷(_ref)이 있으면 본문·변수가 한 글자도 다르지 않은지 대조한다(없으면 건너뜀).
+test('문안 = 카카오 등록 템플릿(_ref 스냅샷)과 글자 단위 일치 · 템플릿 ID 일치', (t) => {
+  const file = path.resolve(__dirname, '../../../../../_ref/솔라피_알림톡_10종_2026-10-05.json')
+  if (!existsSync(file)) return t.skip('스냅샷 없음')
+  const snap = JSON.parse(readFileSync(file, 'utf8')) as { channelId: string; templates: { templateId: string; body: string; variables: string[] }[] }
+  assert.equal(KAKAO_PFID, snap.channelId)
+  assert.equal(snap.templates.length, KINDS.length)
+  for (const k of KINDS) {
+    const id = ALIMTALK_TEMPLATE_IDS[k]
+    const s = snap.templates.find((x) => x.templateId === id)
+    assert.ok(s, `${k} 템플릿 ID 없음`)
+    assert.equal(SMS_TEMPLATES[k].body, s!.body, k)
+    assert.deepEqual([...SMS_TEMPLATES[k].vars].sort(), [...s!.variables].sort(), k)
+  }
 })
 
 test('필수 변수 누락 → missing 목록, 해당 자리는 #{이름} 그대로', () => {
   const { message, missing } = renderSms('deposit_notice', { ...SAMPLE_COMMON, ...SAMPLE.deposit_notice, 계좌정보: null, 입금기한: '  ' })
   assert.deepEqual(missing, ['계좌정보', '입금기한'])
   assert.match(message.text, /계좌정보: #\{계좌정보\}/)
-  assert.deepEqual(renderSms('event_reminder', { ...SAMPLE_COMMON }).missing, ['공지URL'])
+  assert.deepEqual(renderSms('event_reminder', { ...SAMPLE_COMMON }).missing, ['홈페이지차수별안내사항url주소'])
   assert.deepEqual(renderSms('deposit_initial', {}).missing, ['신청자명', '신청번호', '신청차수', '일정', '확인금액', '참가상태'])
 })
 
@@ -95,17 +118,19 @@ test('값 서식: 금액·계좌 자리표시 판정·일정·날짜', () => {
   assert.equal(fmtAccount({ bank: '국민은행', account: '123-45', holder: '' }), null)
   assert.equal(fmtSchedule('2027-01-15', '2027-01-15', 0), '2027.01.15')
   assert.equal(fmtSchedule(null, '2027-01-15', 1), null)
-  assert.equal(smsBytes('ab가'), 4)
   assert.equal(kstDate('2026-10-03T14:59:59Z'), '2026.10.03')
   assert.equal(kstDate('2026-10-03T15:00:00Z'), '2026.10.04')
 })
 
-test('설정 읽기: 키 이름만, 발신번호 숫자 정규화, 허용번호', () => {
-  const c = readSmsConfig({ SMS_ENABLED: 'TRUE', SOLAPI_API_KEY: 'k', SOLAPI_API_SECRET: 's', SOLAPI_SENDER: '070-1234-5678', SMS_TEST_ALLOWLIST: '010-1111-2222, 01033334444' })
+test('설정 읽기: 키 이름만, 발신번호 선택·숫자 정규화, 채널 ID 필수, 허용번호', () => {
+  const kakao = { pfId: 'KA01PF-X', templateIds: Object.fromEntries(KINDS.map((k) => [k, null])) as Record<SmsKind, string | null> }
+  const c = readSmsConfig({ SMS_ENABLED: 'TRUE', SOLAPI_API_KEY: 'k', SOLAPI_API_SECRET: 's', SOLAPI_SENDER: '070-1234-5678', SMS_TEST_ALLOWLIST: '010-1111-2222, 01033334444' }, kakao)
   assert.equal(c.enabled, true)
   assert.equal(c.sender, '07012345678')
   assert.deepEqual(c.allowlist, ['01011112222', '01033334444'])
   assert.deepEqual(c.missing, [])
+  assert.deepEqual(readSmsConfig({ SOLAPI_API_KEY: 'k', SOLAPI_API_SECRET: 's' }, kakao).missing, []) // 발신번호 없어도 됨
+  assert.deepEqual(readSmsConfig({ SOLAPI_API_KEY: 'k', SOLAPI_API_SECRET: 's' }, { ...kakao, pfId: null }).missing, ['KAKAO_PFID'])
   assert.equal(readSmsConfig({}).enabled, false)
 })
 
@@ -127,7 +152,7 @@ function fakeFetch(res: { status: number; body: unknown } | Error) {
   }
   return { fn, calls }
 }
-const MSG = { type: 'LMS' as const, subject: '제목', text: '본문' }
+const MSG = { pfId: 'KA01PF-X', templateId: 'KA01TP-Y', variables: { 신청자명: '홍길동', 확인금액: '350,000' } }
 
 test('솔라피 발송: 요청 형식·접수 응답 해석', async () => {
   const f = fakeFetch({
@@ -135,12 +160,17 @@ test('솔라피 발송: 요청 형식·접수 응답 해석', async () => {
     body: { failedMessageList: [], groupInfo: { groupId: 'G1', count: {} }, messageList: [{ messageId: 'M1', statusCode: '2000', statusMessage: '정상 접수' }] },
   })
   const p = createSolapiProvider({ apiKey: 'K', apiSecret: 'S', fetch: f.fn })
-  const r = await p.send({ to: '01012345678', from: '0700000000', message: MSG, notificationId: 'n1' })
+  const r = await p.send({ to: '01012345678', from: null, ...MSG, notificationId: 'n1' })
   assert.deepEqual(r, { kind: 'accepted', messageId: 'M1', groupId: 'G1', statusCode: '2000', statusMessage: '정상 접수' })
   assert.equal(f.calls[0].url, 'https://api.solapi.com/messages/v4/send-many/detail')
   assert.equal(f.calls[0].method, 'POST')
   const body = JSON.parse(f.calls[0].body ?? '{}')
-  assert.deepEqual(body.messages[0], { to: '01012345678', from: '0700000000', type: 'LMS', text: '본문', subject: '제목', customFields: { notificationId: 'n1' } })
+  assert.deepEqual(body.messages[0], {
+    to: '01012345678',
+    type: 'ATA',
+    kakaoOptions: { pfId: 'KA01PF-X', templateId: 'KA01TP-Y', variables: { '#{신청자명}': '홍길동', '#{확인금액}': '350,000' }, disableSms: true },
+    customFields: { notificationId: 'n1' },
+  })
   assert.match(f.calls[0].headers.Authorization, /^HMAC-SHA256 apiKey=K, /)
   assert.doesNotMatch(JSON.stringify(f.calls[0]), /apiSecret|"S"/)
 })
@@ -159,7 +189,7 @@ test('솔라피 발송: 접수 실패·4xx = rejected / 5xx·네트워크·시�
   ]
   for (const [res, kind] of cases) {
     const p = createSolapiProvider({ apiKey: 'K', apiSecret: 'S', fetch: fakeFetch(res).fn })
-    const r = await p.send({ to: '01012345678', from: '0700000000', message: MSG, notificationId: 'n1' })
+    const r = await p.send({ to: '01012345678', from: '0700000000', ...MSG, notificationId: 'n1' })
     assert.equal(r.kind, kind, JSON.stringify(res instanceof Error ? res.message : res))
   }
 })

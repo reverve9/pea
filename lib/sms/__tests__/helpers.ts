@@ -1,5 +1,5 @@
 // 시험용 메모리 저장소·모의 솔라피 — DB 고유 제약/조건부 갱신과 같은 규칙.
-import type { LookupOutcome, SendOutcome, SmsConfig, SmsLog, SmsProvider, SmsStore } from '../types'
+import type { LookupOutcome, SendOutcome, SmsConfig, SmsKind, SmsLog, SmsProvider, SmsStore } from '../types'
 
 export function memoryStore(): SmsStore & { rows: SmsLog[]; failInsert?: string } {
   const rows: SmsLog[] = []
@@ -56,11 +56,16 @@ export function mockProvider(script: { send?: SendOutcome[]; lookup?: LookupOutc
   return { provider, calls }
 }
 
+const KINDS: SmsKind[] = ['deposit_notice', 'waitlist_notice', 'deposit_initial', 'due_notice', 'deposit_additional', 'refund_received', 'refund_completed', 'auto_cancelled', 'event_reminder']
+export const TEMPLATE_IDS = Object.fromEntries(KINDS.map((k) => [k, `KA01TP-${k}`])) as Record<SmsKind, string | null>
+
 export const LIVE: SmsConfig = {
   enabled: true,
   apiKey: 'k',
   apiSecret: 's',
-  sender: '0700000000',
+  sender: null,
+  pfId: 'KA01PF-TEST',
+  templateIds: TEMPLATE_IDS,
   allowlist: null,
   missing: [],
 }

@@ -1,11 +1,13 @@
-// 문자 발송 핵심 흐름 — 저장/외부 호출은 포트로 주입(서버: Supabase+솔라피, 시험: 메모리+모의).
+// 알림톡 발송 핵심 흐름 — 저장/외부 호출은 포트로 주입(서버: Supabase+솔라피, 시험: 메모리+모의).
 // 규칙:
 //  · dedupe_key 등록에 성공한 요청만 발송한다(중복 등록 = 발송 안 함). 등록 실패(DB 오류·미적용)도 발송 안 함.
 //  · 발송 직전 sending + attempts 를 기록하고, 결과는 같은 status·attempts 일 때만 반영(늦은 결과가 덮어쓰지 않음).
 //  · unknown(결과 불명확)은 재발송 금지 — 조회로 미발송이 확인되거나 관리자가 미발송을 확인한 뒤에만 failed → 재발송.
 //  · 필수 변수 누락(missing)은 발송하지 않고 held + missing_vars:항목 으로 남긴다. 이 이력은 재발송 불가(문안이 불완전).
+//  · 템플릿 ID 가 없는 종류는 held(template_missing). ID 등록 후 재발송하면 그때의 ID 로 보낸다(변수는 저장값).
+//  · 알림톡 전환 전 문자(SMS/LMS) 이력은 변수 스냅샷이 없어 재발송하지 않는다.
 //  · 어떤 경우에도 예외를 호출측(업무 저장)으로 던지지 않는다.
-import { holdReason, isValidRecipient, digits } from './config'
+import { holdReason, isValidRecipient, digits, templateIdFor } from './config'
 import type { SendOutcome, SmsConfig, SmsKind, SmsLog, SmsMessage, SmsProvider, SmsStatus, SmsStore } from './types'
 
 export const MISSING_PREFIX = 'missing_vars:'
@@ -64,13 +66,18 @@ export function createDispatcher(deps: {
   async function attempt(row: SmsLog): Promise<SmsLog> {
     let out: SendOutcome
     try {
-      if (!provider || !config.sender) throw new Error('provider_unavailable')
-      out = await provider.send({
-        to: row.recipient,
-        from: config.sender,
-        message: { type: row.msg_type, subject: row.subject, text: row.body },
-        notificationId: row.id,
-      })
+      if (!provider || !config.pfId || !row.template_id || !row.variables) {
+        out = { kind: 'rejected', statusCode: null, statusMessage: null, error: 'provider_unavailable' } // 호출 전 — 미발송 확정
+      } else {
+        out = await provider.send({
+          to: row.recipient,
+          from: config.sender,
+          pfId: config.pfId,
+          templateId: row.template_id,
+          variables: row.variables,
+          notificationId: row.id,
+        })
+      }
     } catch {
       out = { kind: 'unknown', error: 'send_exception' }
     }
@@ -83,7 +90,7 @@ export function createDispatcher(deps: {
       const to = digits(input.recipient)
       const invalid = !isValidRecipient(to)
       const missing = input.missing?.length ? `${MISSING_PREFIX}${input.missing.join(',')}` : null
-      const hold = invalid ? null : missing ?? holdReason(config, to)
+      const hold = invalid ? null : missing ?? holdReason(config, to, input.kind)
       const status: SmsStatus = invalid ? 'failed' : hold ? 'held' : 'sending'
       const ins = await store.insert({
         dedupe_key: input.dedupeKey,
@@ -92,8 +99,10 @@ export function createDispatcher(deps: {
         refund_request_id: input.refundRequestId,
         recipient: to,
         msg_type: input.message.type,
-        subject: input.message.subject,
+        subject: null,
         body: input.message.text,
+        template_id: templateIdFor(config, input.kind),
+        variables: input.message.variables,
         status,
         attempts: status === 'sending' ? 1 : 0,
         last_error: invalid ? 'invalid_recipient' : hold,
@@ -112,13 +121,14 @@ export function createDispatcher(deps: {
   async function resend(id: string): Promise<ActionOutcome> {
     const row = await store.get(id)
     if (!row) return { ok: false, error: '발송 이력을 찾을 수 없습니다.' }
-    if (row.status === 'sent') return { ok: false, error: '이미 발송된 문자입니다.' }
+    if (row.status === 'sent') return { ok: false, error: '이미 발송된 알림톡입니다.' }
+    if (row.msg_type !== 'ATA' || !row.variables) return { ok: false, error: '알림톡 전환 전 문자 이력이라 재발송할 수 없습니다.' }
     if (row.last_error?.startsWith(MISSING_PREFIX))
       return { ok: false, error: `${holdMessage(row.last_error)} 문안이 완성되지 않아 재발송할 수 없습니다.` }
     if (row.status === 'unknown' || row.status === 'sending')
       return { ok: false, error: '발송 결과가 확인되지 않았습니다. 먼저 결과 조회(또는 미발송 확인)를 해 주세요.' }
     if (!isValidRecipient(row.recipient)) return { ok: false, error: '수신번호가 올바르지 않아 발송할 수 없습니다.' }
-    const hold = holdReason(config, row.recipient)
+    const hold = holdReason(config, row.recipient, row.kind)
     if (hold) {
       await store.update(id, { status: [row.status], attempts: row.attempts }, { last_error: hold })
       return { ok: false, error: holdMessage(hold) }
@@ -126,7 +136,7 @@ export function createDispatcher(deps: {
     const claimed = await store.update(
       id,
       { status: [row.status], attempts: row.attempts },
-      { status: 'sending', attempts: row.attempts + 1, last_error: null },
+      { status: 'sending', attempts: row.attempts + 1, last_error: null, template_id: templateIdFor(config, row.kind) },
     )
     if (!claimed) return { ok: false, error: '다른 요청이 이미 처리 중입니다. 새로고침 후 확인해 주세요.' }
     const done = await attempt(claimed)
@@ -142,7 +152,7 @@ export function createDispatcher(deps: {
     const t = now()
     const checkable = row.status === 'unknown' || row.status === 'sent' || isStaleSending(row, t)
     if (!checkable) return { ok: false, error: '조회 대상이 아닙니다.' }
-    if (!provider || !config.sender) return { ok: false, error: holdMessage(`config_missing:${config.missing.join(',')}`) }
+    if (!provider) return { ok: false, error: holdMessage(`config_missing:${config.missing.join(',')}`) }
     const since = new Date(new Date(row.created_at).getTime() - 60_000).toISOString()
     let out
     try {
@@ -206,10 +216,11 @@ export function createDispatcher(deps: {
 
 // 관리자 화면용 사유 문구 — 비밀값 없이 키 이름만.
 export function holdMessage(reason: string): string {
-  if (reason.startsWith('config_missing:')) return `문자 설정이 없어 발송하지 않았습니다. 필요한 설정: ${reason.slice(15)}`
+  if (reason.startsWith('config_missing:')) return `알림톡 설정이 없어 발송하지 않았습니다. 필요한 설정: ${reason.slice(15)}`
+  if (reason === 'template_missing') return '알림톡 템플릿 ID 가 등록되지 않아 발송하지 않았습니다(lib/sms/alimtalk.ts).'
   if (reason.startsWith(MISSING_PREFIX))
     return `필수 항목이 비어 발송하지 않았습니다: ${reason.slice(MISSING_PREFIX.length).split(',').map((k) => `#{${k}}`).join(', ')}.`
-  if (reason === 'disabled') return '문자 발송이 꺼져 있어(SMS_ENABLED) 발송하지 않았습니다.'
+  if (reason === 'disabled') return '알림톡 발송이 꺼져 있어(SMS_ENABLED) 발송하지 않았습니다.'
   if (reason === 'not_in_allowlist') return '테스트 허용번호(SMS_TEST_ALLOWLIST)에 없는 번호라 발송하지 않았습니다.'
   return reason
 }
@@ -217,12 +228,13 @@ export function holdMessage(reason: string): string {
 export function errorLabel(row: Pick<SmsLog, 'last_error' | 'provider_status_code' | 'provider_status_message'>): string {
   const e = row.last_error ?? ''
   if (!e) return row.provider_status_message ?? '-'
-  if (e.startsWith('config_missing:') || e.startsWith(MISSING_PREFIX) || e === 'disabled' || e === 'not_in_allowlist') return holdMessage(e)
+  if (e.startsWith('config_missing:') || e.startsWith(MISSING_PREFIX) || e === 'disabled' || e === 'not_in_allowlist' || e === 'template_missing') return holdMessage(e)
   const map: Record<string, string> = {
     invalid_recipient: '수신번호 형식 오류',
     timeout: '응답 시간 초과(결과 불명확)',
     network_error: '네트워크 오류(결과 불명확)',
     send_exception: '발송 처리 오류(결과 불명확)',
+    provider_unavailable: '발송 설정 없음(미발송)',
     unexpected_response: '응답 해석 불가(결과 불명확)',
     registration_failed: '솔라피 접수 실패',
     lookup_not_found: '조회 결과 미발송 확인',

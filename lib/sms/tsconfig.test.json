@@ -10,5 +10,5 @@
     "rootDir": ".",
     "outDir": "../../node_modules/.cache/sms-test"
   },
-  "include": ["./types.ts", "./templates.ts", "./config.ts", "./solapi.ts", "./dispatcher.ts", "./__tests__/**/*.ts"]
+  "include": ["./types.ts", "./templates.ts", "./config.ts", "./solapi.ts", "./dispatcher.ts", "./alimtalk.ts", "./__tests__/**/*.ts"]
 }

@@ -13,11 +13,12 @@ import {
   type SmsViewStatus,
 } from './smsActions'
 
-// 문자(솔라피) 발송 이력 — 신청 상세 하단 + 신청관리 상단 '확인 필요' 안내. 기존 화면 구성은 그대로 두고 덧붙이기만 한다.
+// 알림톡(솔라피) 발송 이력 — 신청 상세 하단 + 신청관리 상단 '확인 필요' 안내. 기존 화면 구성은 그대로 두고 덧붙이기만 한다.
 
 const KIND_LABEL: Record<SmsRowView['kind'], string> = {
   deposit_notice: '접수완료·입금안내',
-  waitlist_notice: '예비접수 안내',
+  waitlist_notice: '예비 접수 완료',
+  waitlist_deposit_notice: '예비 편입 입금안내',
   deposit_initial: '입금확인',
   due_notice: '추가입금 안내',
   deposit_additional: '추가입금 확인',
@@ -74,7 +75,7 @@ export function SmsHistory({ applicationId }: { applicationId: string }) {
 
   return (
     <div className="mt-4">
-      <p className="mb-2 text-[12.5px] font-[500] text-[#8a94a0]">문자 발송</p>
+      <p className="mb-2 text-[12.5px] font-[500] text-[#8a94a0]">알림톡 발송</p>
       {rows.map((r) => {
         const st = STATUS_VIEW[r.status]
         const canResend = (r.status === 'failed' || r.status === 'held') && !r.incomplete
@@ -86,7 +87,7 @@ export function SmsHistory({ applicationId }: { applicationId: string }) {
               <Badge color={st.color} size="sm">{st.label}</Badge>
               <span className="font-[500] text-[#4b5563]">{KIND_LABEL[r.kind]}</span>
               <span className="font-[300] tabular-nums text-[#6b7280]">
-                {r.msg_type} · {r.recipient} · {fmt(r.sent_at ?? r.created_at)}
+                {r.msg_type === 'ATA' ? '알림톡' : r.msg_type} · {r.recipient} · {fmt(r.sent_at ?? r.created_at)}
                 {r.attempts > 1 && ` · 시도 ${r.attempts}회`}
               </span>
               <span className="ml-auto flex gap-2">
@@ -104,7 +105,7 @@ export function SmsHistory({ applicationId }: { applicationId: string }) {
                       type="button"
                       disabled={busy === r.id}
                       onClick={() => {
-                        if (!confirm('솔라피 발송내역에서 이 문자가 발송된 것을 확인했습니까? "발송"으로 표시합니다.')) return
+                        if (!confirm('솔라피 발송내역에서 이 알림톡이 발송된 것을 확인했습니까? "발송"으로 표시합니다.')) return
                         void act(r.id, () => resolveSms(r.id, 'sent'))
                       }}
                       className="text-[11.5px] font-[400] text-[#3f6a99] underline-offset-2 hover:underline disabled:opacity-40"
@@ -115,7 +116,7 @@ export function SmsHistory({ applicationId }: { applicationId: string }) {
                       type="button"
                       disabled={busy === r.id}
                       onClick={() => {
-                        if (!confirm('솔라피 발송내역에 이 문자가 없는 것을 확인했습니까? "미발송"으로 표시하면 재발송할 수 있습니다.')) return
+                        if (!confirm('솔라피 발송내역에 이 알림톡이 없는 것을 확인했습니까? "미발송"으로 표시하면 재발송할 수 있습니다.')) return
                         void act(r.id, () => resolveSms(r.id, 'failed'))
                       }}
                       className="text-[11.5px] font-[400] text-[#a86a5c] underline-offset-2 hover:underline disabled:opacity-40"
@@ -129,7 +130,7 @@ export function SmsHistory({ applicationId }: { applicationId: string }) {
                     type="button"
                     disabled={busy === r.id}
                     onClick={() => {
-                      if (!confirm(`${KIND_LABEL[r.kind]} 문자를 ${r.recipient} 로 재발송할까요? (저장된 문안 그대로)`)) return
+                      if (!confirm(`${KIND_LABEL[r.kind]} 알림톡을 ${r.recipient} 로 재발송할까요? (저장된 문안 그대로)`)) return
                       void act(r.id, () => resendSms(r.id))
                     }}
                     className="text-[11.5px] font-[500] text-[#1e3a5f] underline-offset-2 hover:underline disabled:opacity-40"
@@ -150,7 +151,7 @@ export function SmsHistory({ applicationId }: { applicationId: string }) {
   )
 }
 
-// 신청관리 상단 — 문자 실패·보류·결과 불명확 건이 있을 때만 노출. 신청번호를 누르면 상세(문자 이력)로.
+// 신청관리 상단 — 알림톡 실패·보류·결과 불명확 건이 있을 때만 노출. 신청번호를 누르면 상세(알림톡 이력)로.
 export function SmsAttentionBanner({
   applications,
   onOpen,
@@ -178,7 +179,7 @@ export function SmsAttentionBanner({
 
   return (
     <div className="mb-3 ml-auto flex w-fit max-w-full flex-wrap items-center gap-2 rounded-[8px] bg-[#f3f6f9] px-3.5 py-2.5 text-[12.5px]">
-      <Badge color="terracotta" size="sm">문자 확인 필요</Badge>
+      <Badge color="terracotta" size="sm">알림톡 확인 필요</Badge>
       <span className="text-[14px] font-[700] tabular-nums text-[#1e3a5f]">{rows.length}건</span>
       <span className="font-[400] text-[#4b5563]">실패 · 보류 · 결과 확인 필요</span>
       <span className="flex flex-wrap gap-1.5">

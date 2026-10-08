@@ -10,8 +10,8 @@ import { createSupabaseSmsStore } from './store'
 import { SMS_SITE_HOST, fmtAccount, fmtAmount, fmtSchedule, kstDate, renderSms, type SmsVars } from './templates'
 import type { SmsKind } from './types'
 
-// 업무 처리(접수·입금확인·환불) 저장 성공 후, 또는 오전 10시 일괄 안내(lib/dailyNotices)에서 호출하는 문자 안내 진입점.
-// ⚠ 반드시 저장 성공 뒤에만 호출. 모든 함수는 예외를 던지지 않는다(문자 실패가 업무 결과를 되돌리지 않음).
+// 업무 처리(접수·입금확인·환불) 저장 성공 후, 또는 오전 10시 일괄 안내(lib/dailyNotices)에서 호출하는 알림톡 안내 진입점.
+// ⚠ 반드시 저장 성공 뒤에만 호출. 모든 함수는 예외를 던지지 않는다(알림톡 실패가 업무 결과를 되돌리지 않음).
 // 변수 값은 호출 시점에 DB 에 저장된 신청·입금·환불 정보를 다시 읽어 만든다. 비는 값은 추정하지 않고 보류한다.
 
 export function smsDispatcher() {
@@ -42,6 +42,8 @@ interface AppRow {
   refunded_amount: number
   due_amount: number
   is_waitlisted: boolean | null
+  session_id: string | null
+  created_at: string
   session: { label: string; starts_on: string; ends_on: string; nights: number } | null
 }
 
@@ -49,7 +51,7 @@ async function loadApp(appId: string): Promise<{ row: AppRow; common: SmsVars } 
   const { data, error } = await supabaseAdmin
     .from('applications')
     .select(
-      'id, application_no, applicant_name, payer_name, phone, total_amount, refunded_amount, due_amount, is_waitlisted, ' +
+      'id, application_no, applicant_name, payer_name, phone, total_amount, refunded_amount, due_amount, is_waitlisted, session_id, created_at, ' +
         'session:sessions(label, starts_on, ends_on, nights)',
     )
     .eq('id', appId)
@@ -62,6 +64,7 @@ async function loadApp(appId: string): Promise<{ row: AppRow; common: SmsVars } 
     row,
     common: {
       신청자명: row.applicant_name,
+      신청자: row.applicant_name, // 추가입금 안내 템플릿만 #{신청자}
       신청번호: row.application_no,
       신청차수: s?.label ?? null,
       일정: s ? fmtSchedule(s.starts_on, s.ends_on, s.nights) : null,
@@ -113,10 +116,19 @@ function send(
 // 1. 접수완료·입금안내 — 신청 저장 직후(예비 제외), 예비는 정원 편입(승인) 시. 신청당 1회.
 //    deadlineBaseIso = 입금기한 기준 시각(신청 시각 또는 편입 시각) — 자동취소와 같은 계산.
 export async function notifyDepositNotice(appId: string, deadlineBaseIso: string): Promise<void> {
-  await safe('deposit_notice', appId, async () => {
+  await depositNotice('deposit_notice', appId, deadlineBaseIso)
+}
+
+// 1-2. 예비접수 입금 안내 — 예비 → 정원 편입(승인) 시. 내용은 접수완료·입금안내와 같고 템플릿만 다르다. 신청당 1회.
+export async function notifyWaitlistDepositNotice(appId: string, releasedAtIso: string): Promise<void> {
+  await depositNotice('waitlist_deposit_notice', appId, releasedAtIso)
+}
+
+async function depositNotice(kind: 'deposit_notice' | 'waitlist_deposit_notice', appId: string, deadlineBaseIso: string) {
+  await safe(kind, appId, async () => {
     const a = await loadApp(appId)
     if (!a) return null
-    return send('deposit_notice', `deposit_notice:${appId}`, a, {
+    return send(kind, `${kind}:${appId}`, a, {
       결제금액: fmtAmount(a.row.total_amount),
       계좌정보: depositAccount(),
       입금기한: kstDate(depositDeadline(deadlineBaseIso).toISOString()),
@@ -125,13 +137,28 @@ export async function notifyDepositNotice(appId: string, deadlineBaseIso: string
   })
 }
 
-// 1-1. 예비접수 안내 — 정원 초과(예비)로 신청 저장 직후. 금액·계좌·입금기한 없음. 신청당 1회.
-//      정원 편입 확정 시에는 접수완료·입금안내(notifyDepositNotice)가 따로 나간다.
+// #{예비번호} — 같은 차수에서 아직 예비(진행 중 상태)인 신청 가운데 이 신청의 순번(먼저 접수한 순, 1부터).
+// 앞선 예비가 취소·편입되면 이후 접수자의 번호가 당겨진다. 안내 시점 값이며 이력에 그대로 남는다. 조회 실패면 null(보류).
+async function waitlistNumber(row: AppRow): Promise<string | null> {
+  if (!row.session_id || !row.is_waitlisted) return null
+  const { count, error } = await supabaseAdmin
+    .from('applications')
+    .select('id', { count: 'exact', head: true })
+    .eq('session_id', row.session_id)
+    .eq('is_waitlisted', true)
+    .in('status', ['pending', 'paid', 'completed'])
+    .lte('created_at', row.created_at)
+  if (error || !count) return null
+  return String(count)
+}
+
+// 1-1. 예비 접수 완료 — 정원 초과(예비)로 신청 저장 직후. 금액·계좌·입금기한 없음, 예비번호 포함. 신청당 1회.
+//      정원 편입 확정 시에는 예비접수 입금 안내(notifyWaitlistDepositNotice)가 따로 나간다.
 export async function notifyWaitlistNotice(appId: string): Promise<void> {
   await safe('waitlist_notice', appId, async () => {
     const a = await loadApp(appId)
     if (!a) return null
-    return send('waitlist_notice', `waitlist_notice:${appId}`, a, {})
+    return send('waitlist_notice', `waitlist_notice:${appId}`, a, { 예비번호: await waitlistNumber(a.row) })
   })
 }
 
@@ -150,6 +177,7 @@ export async function notifyDepositInitial(appId: string): Promise<void> {
 
 // 3. 추가입금 안내 — 수정 반영으로 입금확정 건에 부족분이 생긴 뒤(연수 직전 수정 포함). 수정요청 건당 1회.
 //    #{추가금액} = 반영 후 미납 부족분(due_amount) — 입금확인(confirmDuePayment)이 이 금액 전체를 확인한다.
+//    #{추가결제금액} = 수정 후 총 참가비(total_amount). #{신청자} = 신청자명(이 템플릿만 변수명이 다름).
 //    #{입금기한} = 추가납부 시작일 + 7일. 시작일 = 부족분이 0 에서 처음 생긴 안내 시각(applications.due_started_at).
 //                 미납 중 추가 수정으로 금액이 늘어도 첫 기한을 유지한다(연장 없음). 열이 없거나 비면 이번 안내 시각.
 //                 문안과 함께 이력에 저장 → 재발송해도 기한 그대로.
@@ -161,7 +189,7 @@ export async function notifyDueNotice(appId: string, modificationRequestId: stri
     return send('due_notice', `due_notice:${appId}:${modificationRequestId}`, a, {
       추가금액: a.row.due_amount > 0 ? fmtAmount(a.row.due_amount) : null,
       계좌정보: depositAccount(),
-      총결제금액: fmtAmount(a.row.total_amount),
+      추가결제금액: fmtAmount(a.row.total_amount), // 수정 후 총 참가비(2026-10-05 사용자 결정 — 예전 '총 참가비' 자리)
       입금기한: kstDate(dueDeadline(startedAt ?? noticeIso).toISOString()),
     })
   })
@@ -197,7 +225,7 @@ async function loadRefund(refundId: string): Promise<RefundRow | null> {
   return data as RefundRow
 }
 
-// 5. 환불접수 — 환불 요청 건당 1회. 관리자 직접 환불(접수 즉시 완료)은 완료 문자만 보낸다.
+// 5. 환불접수 — 환불 요청 건당 1회. 관리자 직접 환불(접수 즉시 완료)은 완료 안내만 보낸다.
 //    #{환불구분}: 수정 감액 자동 접수 = 부분, 고객 환불(신청 취소) 요청 = 전체.
 //    #{요청금액}: 요청 건에 금액이 있으면 그 값(수정 감액분). 고객 요청은 금액 입력이 없어 현재 환불 가능 금액 전액
 //                 (받은 돈 − 이미 환불한 금액, lib/refundMath)을 요청금액으로 본다 — 최종 금액은 규정에 따라 달라질 수 있음(문안 명시).
@@ -261,6 +289,6 @@ export async function notifyEventReminder(appId: string, startsOn: string, notic
   await safe('event_reminder', appId, async () => {
     const a = await loadApp(appId)
     if (!a) return null
-    return send('event_reminder', `event_reminder:${appId}:${startsOn}`, a, { 공지URL: noticeUrl })
+    return send('event_reminder', `event_reminder:${appId}:${startsOn}`, a, { 홈페이지차수별안내사항url주소: noticeUrl })
   })
 }

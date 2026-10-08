@@ -1,4 +1,5 @@
-// 솔라피 REST v4 최소 클라이언트 — SDK 의존성 없이 발송(send-many/detail)·조회(list)만.
+// 솔라피 REST v4 최소 클라이언트 — SDK 의존성 없이 알림톡 발송(send-many/detail)·조회(list)만.
+// 알림톡(ATA)은 대체문자를 보내지 않는다(disableSms). 본문은 솔라피가 승인 템플릿 + variables 로 만든다.
 // 인증: HMAC-SHA256(apiSecret, date+salt). 키·서명은 로그/오류 문자열에 넣지 않는다.
 // 결과 분류: 4xx·접수실패 = 미발송 확정(rejected) / 5xx·네트워크·시간초과·해석 불가 = 불명확(unknown).
 import { createHmac, randomBytes } from 'node:crypto'
@@ -52,17 +53,21 @@ export function createSolapiProvider(opts: {
   }
 
   return {
-    async send({ to, from, message, notificationId }): Promise<SendOutcome> {
+    async send({ to, from, pfId, templateId, variables, notificationId }): Promise<SendOutcome> {
       let r: { status: number; json: Record<string, unknown> | null }
       try {
         r = await call('POST', '/messages/v4/send-many/detail', {
           messages: [
             {
               to,
-              from,
-              type: message.type,
-              text: message.text,
-              ...(message.subject ? { subject: message.subject } : {}),
+              ...(from ? { from } : {}),
+              type: 'ATA',
+              kakaoOptions: {
+                pfId,
+                templateId,
+                variables: Object.fromEntries(Object.entries(variables).map(([k, v]) => [`#{${k}}`, v])),
+                disableSms: true,
+              },
               customFields: { notificationId },
             },
           ],
@@ -99,7 +104,7 @@ export function createSolapiProvider(opts: {
       if (messageId) q.set('messageId', messageId)
       else {
         q.set('to', to)
-        q.set('from', from)
+        if (from) q.set('from', from)
         q.set('dateType', 'CREATED')
         q.set('startDate', since)
         q.set('limit', '100')

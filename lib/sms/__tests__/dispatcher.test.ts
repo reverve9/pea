@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createDispatcher, errorLabel, type DispatchInput } from '../dispatcher'
 import { readSmsConfig } from '../config'
-import { LIVE, PHONE, memoryStore, mockProvider } from './helpers'
+import { LIVE, PHONE, TEMPLATE_IDS, memoryStore, mockProvider } from './helpers'
 import type { SmsConfig } from '../types'
 
 const input = (over: Partial<DispatchInput> = {}): DispatchInput => ({
@@ -11,7 +11,7 @@ const input = (over: Partial<DispatchInput> = {}): DispatchInput => ({
   applicationId: 'app-1',
   refundRequestId: null,
   recipient: '010-1234-5678',
-  message: { type: 'LMS', subject: '[체육교육회] 입금 확인 안내', text: '본문' },
+  message: { type: 'ATA', text: '본문', variables: { 신청자명: '홍길동', 확인금액: '350,000' } },
   ...over,
 })
 const later = (ms: number) => () => new Date(Date.now() + ms)
@@ -24,8 +24,13 @@ test('정상 발송: 접수 → sent, 수신번호 숫자 정규화, 식별값 �
   assert.equal(r.outcome, 'sent')
   assert.equal(calls.send.length, 1)
   assert.equal(calls.send[0].to, PHONE)
-  assert.equal(calls.send[0].from, LIVE.sender)
+  assert.equal(calls.send[0].from, null) // 대체문자 없음 → 발신번호 불필요
+  assert.equal(calls.send[0].pfId, 'KA01PF-TEST')
+  assert.equal(calls.send[0].templateId, 'KA01TP-deposit_initial')
+  assert.deepEqual(calls.send[0].variables, { 신청자명: '홍길동', 확인금액: '350,000' })
   assert.equal(calls.send[0].notificationId, store.rows[0].id)
+  assert.equal(store.rows[0].msg_type, 'ATA')
+  assert.equal(store.rows[0].template_id, 'KA01TP-deposit_initial')
   assert.equal(store.rows[0].attempts, 1)
   assert.equal(store.rows[0].provider_message_id, 'M1')
   assert.ok(store.rows[0].sent_at)
@@ -70,7 +75,7 @@ test('설정 없음 → held(미발송), 필요한 키 이름만 기록', async 
   const r = await d.dispatch(input())
   assert.equal(r.outcome, 'held')
   assert.equal(calls.send.length, 0)
-  assert.equal(store.rows[0].last_error, 'config_missing:SOLAPI_API_KEY,SOLAPI_API_SECRET,SOLAPI_SENDER')
+  assert.equal(store.rows[0].last_error, 'config_missing:SOLAPI_API_KEY,SOLAPI_API_SECRET')
   assert.equal(store.rows[0].attempts, 0)
   void provider
 })
@@ -126,7 +131,7 @@ test('발송 거절 → failed → 재발송 성공(같은 문안, 시도 2회)'
   const rr = await d.resend(store.rows[0].id)
   assert.equal(rr.ok, true)
   assert.equal(calls.send.length, 2)
-  assert.equal(calls.send[1].message.text, '본문')
+  assert.deepEqual(calls.send[1].variables, calls.send[0].variables)
   assert.equal(store.rows[0].status, 'sent')
   assert.equal(store.rows[0].attempts, 2)
   assert.equal((await d.resend(store.rows[0].id)).ok, false) // 이미 발송
@@ -270,5 +275,34 @@ test('필수 변수 누락 → held(missing_vars), 외부 발송 없음, 재발�
   const re = await d.resend(store.rows[0].id)
   assert.equal(re.ok, false)
   assert.match((re as { error: string }).error, /#\{계좌정보\}.*재발송할 수 없습니다/)
+  assert.equal(calls.send.length, 0)
+})
+
+test('템플릿 ID 없음 → held(template_missing), ID 등록 후 재발송은 그때의 ID 로', async () => {
+  const store = memoryStore()
+  const { provider, calls } = mockProvider()
+  const noId: SmsConfig = { ...LIVE, templateIds: { ...TEMPLATE_IDS, deposit_initial: null } }
+  const r = await createDispatcher({ store, config: noId, provider }).dispatch(input())
+  assert.equal(r.outcome, 'held')
+  assert.equal(store.rows[0].last_error, 'template_missing')
+  assert.equal(store.rows[0].template_id, null)
+  assert.match(errorLabel(store.rows[0]), /템플릿 ID/)
+  const still = await createDispatcher({ store, config: noId, provider }).resend(store.rows[0].id)
+  assert.equal(still.ok, false)
+  assert.equal(calls.send.length, 0)
+  const on = await createDispatcher({ store, config: LIVE, provider }).resend(store.rows[0].id)
+  assert.equal(on.ok, true)
+  assert.equal(calls.send[0].templateId, 'KA01TP-deposit_initial')
+  assert.equal(store.rows[0].template_id, 'KA01TP-deposit_initial')
+})
+
+test('알림톡 전환 전 문자(LMS) 이력은 재발송하지 않음', async () => {
+  const store = memoryStore()
+  const { provider, calls } = mockProvider()
+  await createDispatcher({ store, config: { ...LIVE, enabled: false }, provider }).dispatch(input())
+  Object.assign(store.rows[0], { msg_type: 'LMS', variables: null, template_id: null })
+  const re = await createDispatcher({ store, config: LIVE, provider }).resend(store.rows[0].id)
+  assert.equal(re.ok, false)
+  assert.match((re as { error: string }).error, /전환 전 문자 이력/)
   assert.equal(calls.send.length, 0)
 })

@@ -6,7 +6,7 @@ import { smsDispatcher } from '@/lib/sms'
 import { MISSING_PREFIX, errorLabel, isStaleSending } from '@/lib/sms/dispatcher'
 import type { SmsKind, SmsLog, SmsStatus } from '@/lib/sms/types'
 
-// 문자 발송 이력·재발송·결과 조회(관리자). requireAdmin 후 service_role.
+// 알림톡 발송 이력·재발송·결과 조회(관리자). requireAdmin 후 service_role.
 // 테이블 미적용(31_sms_notifications.sql 전)이면 unavailable 로 조용히 비운다(발송도 일어나지 않음).
 
 export type SmsViewStatus = SmsStatus | 'stale'
@@ -61,7 +61,7 @@ export async function listSmsForApplication(applicationId: string): Promise<SmsL
     return { ok: true, rows: ((data as unknown as SmsLog[]) ?? []).map((r) => view(r, now)) }
   } catch (e) {
     console.error('[sms] list:', e)
-    return { ok: false, error: '문자 이력을 불러오지 못했습니다.' }
+    return { ok: false, error: '알림톡 이력을 불러오지 못했습니다.' }
   }
 }
 
@@ -84,7 +84,7 @@ export async function listSmsAttention(): Promise<SmsListResult> {
     return { ok: true, rows }
   } catch (e) {
     console.error('[sms] attention:', e)
-    return { ok: false, error: '문자 확인 목록을 불러오지 못했습니다.' }
+    return { ok: false, error: '알림톡 확인 목록을 불러오지 못했습니다.' }
   }
 }
 

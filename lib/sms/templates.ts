@@ -1,29 +1,23 @@
-// 솔라피 문자 문안 — 문구 수정은 이 파일에서만 한다. (2026-10-03 사용자 확정 문안 8종 + 예비접수 안내)
-// 문안 안의 #{변수} 표기는 알림톡 템플릿 변수명과 같게 유지한다(알림톡 등록 시 그대로 사용).
-// 규칙: 필수 변수가 하나라도 비면 문자를 보내지 않는다 → 호출측이 '보류(누락 항목)'로 이력만 남긴다.
+// 알림톡 문안 — 카카오 검수 템플릿 10종(2026-10-05 등록). 문구 수정은 이 파일에서만 한다.
+// ⚠ 본문은 카카오 승인 템플릿과 글자·줄바꿈까지 같아야 한다(템플릿 ID 는 alimtalk.ts). #{변수} 이름도 승인본과 같게.
+// 규칙: 필수 변수가 하나라도 비면 보내지 않는다 → 호출측이 '보류(누락 항목)'로 이력만 남긴다.
 //       금액 변수는 천 단위 쉼표 숫자만('원'은 문안에 포함), 날짜는 YYYY.MM.DD.
 import type { SmsKind, SmsMessage } from './types'
 
-export const SMS_ORG = '체육교육회'
-// 문안 하단·공지 링크 기준 주소. 공지URL 은 NEXT_PUBLIC_SITE_URL(https)이 있으면 그것을 쓴다.
+// 공지 링크 기준 주소. 공지 URL 은 NEXT_PUBLIC_SITE_URL(https)이 있으면 그것을 쓴다.
 export const SMS_SITE_HOST = 'www.pea2025.co.kr'
 
-const COMMON = ['신청자명', '신청번호', '신청차수', '일정'] as const
-
-const HELLO = `안녕하세요. ${SMS_ORG}입니다.`
-const FOOTER = `문의: 홈페이지 ‘1:1 문의’\n${SMS_SITE_HOST}\n\n감사합니다.`
-
 interface Template {
-  subject: string // LMS 제목
-  vars: readonly string[] // 필수 변수(공통 포함)
+  vars: readonly string[] // 필수 변수 = 본문의 #{변수} 전부
   body: string
 }
 
+// 아래 본문은 _ref/솔라피_알림톡_10종_2026-10-05.json(솔라피 콘솔 스냅샷)에서 그대로 옮겼다. 손으로 고치지 말고 승인본이 바뀌면 다시 옮긴다.
 export const SMS_TEMPLATES: Record<SmsKind, Template> = {
+  // PEA 접수완료·입금안내 (KA01TP261004042413184qfiYDBON09g)
   deposit_notice: {
-    subject: '참가 신청 접수 안내',
-    vars: [...COMMON, '결제금액', '계좌정보', '입금기한', '입금자명'],
-    body: `${HELLO}
+    vars: ['신청자명', '신청번호', '신청차수', '일정', '결제금액', '계좌정보', '입금기한', '입금자명'],
+    body: `안녕하세요. 체육교육회입니다.
 
 #{신청자명}님의 참가 신청이 접수되었습니다.
 
@@ -41,27 +35,61 @@ export const SMS_TEMPLATES: Record<SmsKind, Template> = {
 ※ 신청 수정: 마이페이지 ‘신청 확인’
 ※ 해당 회차 연수 시작 2주 전부터 수정 불가
 
-${FOOTER}`,
-  },
-  waitlist_notice: {
-    subject: '예비 접수 안내',
-    vars: [...COMMON],
-    body: `${HELLO}
+문의: 홈페이지 ‘1:1 문의’
+www.pea2025.co.kr
 
-#{신청자명}님의 참가 신청이 예비로 접수되었습니다.
+감사합니다.`,
+  },
+  // PEA 예비 접수 완료 (KA01TP261004044330788K2YqGpY0AAe)
+  waitlist_notice: {
+    vars: ['신청자명', '신청번호', '신청차수', '예비번호'],
+    body: `안녕하세요. 체육교육회입니다.
+
+#{신청자명}님의 예비 신청이 접수되었습니다.
+
+신청번호: #{신청번호}
+신청차수: #{신청차수}
+예비번호: #{예비번호}
+
+추후 정원 편입 시 입금 안내드릴
+예정입니다.
+
+문의: 홈페이지 ‘1:1 문의’
+www.pea2025.co.kr
+
+감사합니다.`,
+  },
+  // PEA 예비접수 입금 안내 (KA01TP261004044604261DFFrJaTlq76)
+  waitlist_deposit_notice: {
+    vars: ['신청자명', '신청차수', '신청번호', '일정', '결제금액', '계좌정보', '입금기한', '입금자명'],
+    body: `안녕하세요. 체육교육회입니다.
+
+#{신청자명}님께서 #{신청차수} 
+정원 편입되어 안내드립니다.
 
 신청번호: #{신청번호}
 신청차수: #{신청차수}
 일정: #{일정}
+참가비: #{결제금액}원
+계좌정보: #{계좌정보}
+입금기한: #{입금기한}
+입금자명: #{입금자명}
 
-추후 정원 편입이 확정되면 입금안내를 보내드리겠습니다.
+기한 내 참가비를 입금해 주세요.
+입금 확인 후 참가 상태를 안내드립니다.
 
-${FOOTER}`,
+※ 신청 수정: 마이페이지 ‘신청 확인’
+※ 해당 회차 연수 시작 2주 전부터 수정 불가
+
+문의: 홈페이지 ‘1:1 문의’
+www.pea2025.co.kr
+
+감사합니다.`,
   },
+  // PEA 입금확인 (KA01TP261004042707814Q0tN8tHytee)
   deposit_initial: {
-    subject: '입금 확인 안내',
-    vars: [...COMMON, '확인금액', '참가상태'],
-    body: `${HELLO}
+    vars: ['신청자명', '신청번호', '신청차수', '일정', '확인금액', '참가상태'],
+    body: `안녕하세요. 체육교육회입니다.
 
 #{신청자명}님의 참가비 입금이 확인되었습니다.
 
@@ -76,14 +104,17 @@ ${FOOTER}`,
 ※ 환불 요청: 마이페이지
 ※ 요청 전 홈페이지 환불 규정 확인
 
-${FOOTER}`,
-  },
-  due_notice: {
-    subject: '추가입금 안내',
-    vars: [...COMMON, '추가금액', '계좌정보', '총결제금액', '입금기한'],
-    body: `${HELLO}
+문의: 홈페이지 ‘1:1 문의’
+www.pea2025.co.kr
 
-#{신청자명}님의 신청내용 수정으로 인해
+감사합니다.`,
+  },
+  // PEA 추가입금 안내 (KA01TP261004043105950Fmu5mNe0dCN)
+  due_notice: {
+    vars: ['신청자', '신청번호', '신청차수', '일정', '추가금액', '계좌정보', '추가결제금액', '입금기한'],
+    body: `안녕하세요. 체육교육회입니다.
+
+#{신청자}님의 신청내용 수정으로
 추가납부 금액이 발생했습니다.
 
 신청번호: #{신청번호}
@@ -91,17 +122,20 @@ ${FOOTER}`,
 일정: #{일정}
 추가금액: #{추가금액}원
 계좌정보: #{계좌정보}
-총 참가비: #{총결제금액}원
+추가결제금액: #{추가결제금액}원
 입금기한: #{입금기한}
 
 기한 내 추가금액을 입금해 주세요.
 
-${FOOTER}`,
+문의: 홈페이지 ‘1:1 문의’
+www.pea2025.co.kr
+
+감사합니다.`,
   },
+  // PEA 추가입금 확인 (KA01TP261004043252072hposLJWEBPv)
   deposit_additional: {
-    subject: '추가입금 확인 안내',
-    vars: [...COMMON, '추가금액', '총결제금액'],
-    body: `${HELLO}
+    vars: ['신청자명', '신청번호', '신청차수', '일정', '추가금액', '총결제금액'],
+    body: `안녕하세요. 체육교육회입니다.
 
 #{신청자명}님의 추가입금이 확인되었습니다.
 
@@ -109,14 +143,17 @@ ${FOOTER}`,
 신청차수: #{신청차수}
 일정: #{일정}
 추가금액: #{추가금액}원
-총 참가비: #{총결제금액}원
+총결제금액: #{총결제금액}원
 
-${FOOTER}`,
+문의: 홈페이지 ‘1:1 문의’
+www.pea2025.co.kr
+
+감사합니다.`,
   },
+  // PEA 환불접수 (KA01TP2610040435013229rOVkrNDHzb)
   refund_received: {
-    subject: '환불 요청 접수 안내',
-    vars: [...COMMON, '환불구분', '요청금액', '접수일'],
-    body: `${HELLO}
+    vars: ['신청자명', '신청번호', '신청차수', '일정', '환불구분', '요청금액', '접수일'],
+    body: `안녕하세요. 체육교육회입니다.
 
 #{신청자명}님의 환불 요청이 접수되었습니다.
 
@@ -130,12 +167,15 @@ ${FOOTER}`,
 환불 규정에 따라 확인 후 처리하며, 완료 시 다시 안내드립니다.
 최종 환불금액은 요청금액과 다를 수 있습니다.
 
-${FOOTER}`,
+문의: 홈페이지 ‘1:1 문의’
+www.pea2025.co.kr
+
+감사합니다.`,
   },
+  // PEA 환불완료 (KA01TP261004043626135y1en89WTLwR)
   refund_completed: {
-    subject: '환불 완료 안내',
-    vars: [...COMMON, '환불구분', '환불금액', '처리일'],
-    body: `${HELLO}
+    vars: ['신청자명', '신청번호', '신청차수', '일정', '환불구분', '환불금액', '처리일'],
+    body: `안녕하세요. 체육교육회입니다.
 
 #{신청자명}님의 환불이 완료되었습니다.
 
@@ -148,12 +188,15 @@ ${FOOTER}`,
 
 입금 내역을 확인해 주세요.
 
-${FOOTER}`,
+문의: 홈페이지 ‘1:1 문의’
+www.pea2025.co.kr
+
+감사합니다.`,
   },
+  // PEA 자동취소 (KA01TP261004043811412wlf4nRetFiH)
   auto_cancelled: {
-    subject: '신청 취소 안내',
-    vars: [...COMMON, '취소일', '취소사유'],
-    body: `${HELLO}
+    vars: ['신청자명', '신청번호', '신청차수', '일정', '취소일', '취소사유'],
+    body: `안녕하세요. 체육교육회입니다.
 
 #{신청자명}님의 참가 신청이 취소되었습니다.
 
@@ -163,24 +206,29 @@ ${FOOTER}`,
 취소일: #{취소일}
 취소사유: #{취소사유}
 
-${FOOTER}`,
-  },
-  event_reminder: {
-    subject: '연수 일주일 전 안내',
-    vars: [...COMMON, '공지URL'],
-    body: `${HELLO}
+문의: 홈페이지 ‘1:1 문의’
+www.pea2025.co.kr
 
-#{신청자명}님, 행사 일정이 일주일 앞으로 다가왔습니다.
+감사합니다.`,
+  },
+  // PEA 차수별 1주일 전 안내 (KA01TP261004044130789cmQlbI72rRQ)
+  event_reminder: {
+    vars: ['신청자명', '신청번호', '신청차수', '일정', '홈페이지차수별안내사항url주소'],
+    body: `안녕하세요. 체육교육회입니다.
+
+#{신청자명}님
+행사 일정이 일주일 앞으로 다가왔습니다.
 
 신청번호: #{신청번호}
 신청차수: #{신청차수}
 일정: #{일정}
+안내사항 : 일정, 집결시간, 장소, 준비물 등
+공지바로가기: #{홈페이지차수별안내사항url주소}
 
-집결시간·장소·준비물 등 차수별 안내사항을 반드시 확인해 주세요.
+문의사항 : 홈페이지 내 ‘1:1 문의’ 이용
+www.pea2025.co.kr
 
-공지 바로가기: #{공지URL}
-
-${FOOTER}`,
+감사합니다.`,
   },
 }
 
@@ -192,17 +240,18 @@ export interface Rendered {
 }
 
 // 변수 치환. 누락 변수는 #{이름} 그대로 남겨 보류 이력에서 어디가 비었는지 보이게 한다.
+// variables = 솔라피에 보내는 값(필수 변수 전부, 누락은 빈 문자열 — 누락 건은 발송하지 않는다).
 export function renderSms(kind: SmsKind, vars: SmsVars): Rendered {
   const t = SMS_TEMPLATES[kind]
-  const missing = t.vars.filter((k) => !(vars[k] ?? '').trim())
-  const text = t.body.replace(/#\{([^}]+)\}/g, (all, k: string) => {
-    const v = (vars[k] ?? '').trim()
-    return v || all
-  })
-  const message: SmsMessage =
-    smsBytes(text) <= 90 ? { type: 'SMS', subject: null, text } : { type: 'LMS', subject: `[${SMS_ORG}] ${t.subject}`, text }
-  return { message, missing }
+  const val = (k: string) => (vars[k] ?? '').trim()
+  const missing = t.vars.filter((k) => !val(k))
+  const text = t.body.replace(/#\{([^}]+)\}/g, (all, k: string) => val(k) || all)
+  const variables = Object.fromEntries(t.vars.map((k) => [k, val(k)]))
+  return { message: { type: 'ATA', text, variables }, missing }
 }
+
+// 알림톡 본문 상한(카카오) — 변수 치환 후 1,000자.
+export const ALIMTALK_MAX_CHARS = 1000
 
 // ── 값 서식 ──
 
@@ -234,11 +283,4 @@ export function fmtAccount(a: { bank?: string | null; account?: string | null; h
   const holder = a.holder?.trim()
   if (!bank || !account || !holder || /^[0\-\s]+$/.test(account)) return null
   return `${bank} ${account} (예금주: ${holder})`
-}
-
-// 문자 바이트 수(EUC-KR 기준 근사: ASCII 1, 그 외 2). SMS 90바이트 초과 시 LMS.
-export function smsBytes(text: string): number {
-  let n = 0
-  for (const ch of text) n += ch.charCodeAt(0) <= 0x7f ? 1 : 2
-  return n
 }

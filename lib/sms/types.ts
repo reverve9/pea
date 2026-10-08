@@ -1,10 +1,12 @@
-// 솔라피 문자 발송 공통 타입 — 앱(서버)과 단위 시험이 함께 쓴다. 런타임 의존성 없음.
+// 솔라피 알림톡 발송 공통 타입(모듈 이름은 기존 sms 유지) — 앱(서버)과 단위 시험이 함께 쓴다. 런타임 의존성 없음.
 
-// deposit_notice=접수완료·입금안내, waitlist_notice=예비접수 안내, due_notice=추가입금 안내(수정 반영 시),
+// deposit_notice=접수완료·입금안내, waitlist_notice=예비 접수 완료, waitlist_deposit_notice=예비→정원 편입 입금 안내,
+// due_notice=추가입금 안내(수정 반영 시),
 // event_reminder=차수 1주일 전 행사 안내.
 export type SmsKind =
   | 'deposit_notice'
   | 'waitlist_notice'
+  | 'waitlist_deposit_notice'
   | 'deposit_initial'
   | 'due_notice'
   | 'deposit_additional'
@@ -13,12 +15,14 @@ export type SmsKind =
   | 'auto_cancelled'
   | 'event_reminder'
 export type SmsStatus = 'sending' | 'sent' | 'failed' | 'unknown' | 'held'
-export type SmsMsgType = 'SMS' | 'LMS'
+// ATA = 카카오 알림톡(현행). SMS·LMS 는 알림톡 전환(2026-10-05) 전 이력에만 남는다.
+export type SmsMsgType = 'SMS' | 'LMS' | 'ATA'
 
+// 알림톡 1건 — text 는 치환된 본문(이력·화면용), variables 는 솔라피에 보내는 #{변수} 값.
 export interface SmsMessage {
-  type: SmsMsgType
-  subject: string | null // LMS 제목(SMS 는 null)
+  type: 'ATA'
   text: string
+  variables: Record<string, string>
 }
 
 // 발송 이력 1행(sms_notifications).
@@ -32,6 +36,8 @@ export interface SmsLog {
   msg_type: SmsMsgType
   subject: string | null
   body: string
+  template_id: string | null // 발송에 쓴(쓸) 알림톡 템플릿 ID
+  variables: Record<string, string> | null // 알림톡 변수 스냅샷(재발송도 같은 값)
   status: SmsStatus
   attempts: number
   provider_message_id: string | null
@@ -58,15 +64,17 @@ export type LookupOutcome =
   | { kind: 'error'; error: string }
 
 export interface SmsProvider {
-  send(input: { to: string; from: string; message: SmsMessage; notificationId: string }): Promise<SendOutcome>
-  lookup(input: { messageId: string | null; to: string; from: string; notificationId: string; since: string }): Promise<LookupOutcome>
+  send(input: { to: string; from: string | null; pfId: string; templateId: string; variables: Record<string, string>; notificationId: string }): Promise<SendOutcome>
+  lookup(input: { messageId: string | null; to: string; from: string | null; notificationId: string; since: string }): Promise<LookupOutcome>
 }
 
 export interface SmsConfig {
   enabled: boolean // SMS_ENABLED=true 일 때만 실발송
   apiKey: string | null
   apiSecret: string | null
-  sender: string | null // 등록된 발신번호(숫자)
+  sender: string | null // (선택) 등록된 발신번호(숫자) — 대체문자를 보내지 않으므로 필수 아님
+  pfId: string | null // 카카오 채널 ID(KA01PF…, lib/sms/alimtalk.ts)
+  templateIds: Record<SmsKind, string | null> // 종류별 알림톡 템플릿 ID(KA01TP…), 없으면 그 종류는 보류
   allowlist: string[] | null // 지정 시 이 번호들만 실발송(테스트용), 나머지 held
   missing: string[] // 비어 있는 필수 키 이름
 }
@@ -84,6 +92,8 @@ export interface SmsStore {
     msg_type: SmsMsgType
     subject: string | null
     body: string
+    template_id: string | null
+    variables: Record<string, string> | null
     status: SmsStatus
     attempts: number
     last_error: string | null
