@@ -4,9 +4,9 @@ import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { verifyMyToken } from '@/lib/serverCrypto'
 import { updateParticipantDetail } from '@/lib/participantDetail'
-import { notifyRefundReceived } from '@/lib/sms'
+import { notifyRefundReceived, notifyUserCancelled } from '@/lib/sms'
 
-// 마이페이지 신청건 액션 — 환불신청(refund) / 수정요청(modification).
+// 마이페이지 신청건 액션 — 환불신청(refund) / 수정요청(modification) / 입금 전 신청취소(cancel).
 // 토큰으로 본인확인 후, 대상 신청이 그 사람 소유(phone+name)인지 검증하고 insert.
 // 비밀글 기본(is_secret) · 관리자 상태·답글은 어드민 연동 Phase에서 처리.
 export const runtime = 'nodejs'
@@ -44,6 +44,7 @@ const schema = z.discriminatedUnion('type', [
   }),
   z.object({ ...base, type: z.literal('payment'), payerName: z.string().trim().min(1).max(100) }),
   z.object({ ...base, type: z.literal('due_payment') }), // 추가입금(수정 증액) 완료 신고 — 금액은 서버 due_amount 기준
+  z.object({ ...base, type: z.literal('cancel') }), // 입금 전 신청취소 — 요청이 아니라 즉시 취소
 ])
 
 export async function POST(req: Request) {
@@ -141,6 +142,27 @@ export async function POST(req: Request) {
       console.error('[my/requests] modification insert:', error)
       return NextResponse.json({ error: '수정 요청 저장 중 오류가 발생했습니다.' }, { status: 500 })
     }
+  } else if (body.type === 'cancel') {
+    // 입금 전 신청취소 — 돈이 오간 적 없는 건만 즉시 cancelled. 입금 확인 요청(신고)을 했거나 입금확인 이력이 있으면
+    // 이미 입금했을 수 있으므로 거절(환불신청 경로). 조건부 갱신이라 관리자 입금확인과 겹쳐도 한쪽만 성립.
+    const cancelledAt = new Date().toISOString()
+    const { data: upd, error } = await supabaseAdmin
+      .from('applications')
+      .update({ status: 'cancelled', updated_at: cancelledAt })
+      .eq('id', body.applicationId)
+      .eq('status', 'pending')
+      .is('payment_claimed_at', null)
+      .is('deposit_confirmed_at', null)
+      .select('id')
+    if (error) {
+      console.error('[my/requests] cancel:', error)
+      return NextResponse.json({ error: '신청 취소 처리 중 오류가 발생했습니다.' }, { status: 500 })
+    }
+    if (!upd || upd.length === 0) {
+      return NextResponse.json({ error: '이미 처리되었거나 취소할 수 없는 상태입니다. 입금하셨다면 환불신청을 이용해 주세요.' }, { status: 409 })
+    }
+    // 취소 안내 알림톡 — 저장 성공 후. 실패해도 취소는 유지.
+    await notifyUserCancelled(body.applicationId, cancelledAt)
   } else if (body.type === 'due_payment') {
     // 추가입금 완료 신고 — 최초 입금과 별개(due_claimed_at). due_amount>0(추가입금 대기) 건에만, 1회.
     // status·total 은 안 바꾼다(어드민 confirmDuePayment 가 due_amount=0 + due_claimed_at=null 로 소비).

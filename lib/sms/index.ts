@@ -284,6 +284,19 @@ export async function notifyAutoCancelled(appId: string, cancelledAtIso: string)
   })
 }
 
+// 7-1. 신청자 직접 취소(입금 전, 마이페이지) — 승인된 취소 템플릿(auto_cancelled) 재사용, 사유만 다르게. 신청당 1회.
+// dedupe 키를 자동취소와 분리 — 관리자가 되돌린 뒤 나중에 자동취소되면 그 안내는 따로 나가야 한다.
+export async function notifyUserCancelled(appId: string, cancelledAtIso: string): Promise<void> {
+  await safe('auto_cancelled', appId, async () => {
+    const a = await loadApp(appId)
+    if (!a) return null
+    return send('auto_cancelled', `user_cancelled:${appId}`, a, {
+      취소일: kstDate(cancelledAtIso),
+      취소사유: '신청자 요청',
+    })
+  })
+}
+
 // 8. 행사 1주일 전 안내 — 오전 10시 일괄(D-7) 또는 시작 7일 미만 시점의 늦은 입금확인 시(lib/dailyNotices). 신청·차수 시작일 단위 1회. noticeUrl 없으면 보류.
 export async function notifyEventReminder(appId: string, startsOn: string, noticeUrl: string | null): Promise<void> {
   await safe('event_reminder', appId, async () => {

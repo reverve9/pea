@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ShieldCheck, Smartphone, FileText, RefreshCcw, Pencil, CheckCircle2 } from 'lucide-react'
+import { ShieldCheck, Smartphone, FileText, RefreshCcw, Pencil, CheckCircle2, XCircle } from 'lucide-react'
 import AppShell from '@/components/layout/AppShell'
 import ExtendedHeader from '@/components/layout/ExtendedHeader'
 import SectionTitle from '@/components/common/SectionTitle'
@@ -653,9 +653,10 @@ function ModificationForm({ app, token, onDone }: { app: MyApplicationRow; token
 
 // 신청 상세(디테일) — 데스크탑 우측 페인 / 모바일 모달 공용. refundBody = site_contents refund_policy(어드민 편집).
 // 수정요청·환불신청 = 토큰으로 소유권 검증 후 접수(/api/my/requests). 수료증은 준비 중.
-function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; refundBody: string | null; token: string }) {
+// 입금 전(입금 확인 요청도 안 한) 건은 환불신청 대신 신청취소 — 요청이 아니라 즉시 취소. onCancelled 로 목록 상태 갱신.
+function ApplicationDetail({ app, refundBody, token, onCancelled }: { app: MyApplicationRow; refundBody: string | null; token: string; onCancelled: (id: string) => void }) {
   const st = statusView(app)
-  const [open, setOpen] = useState<null | 'modification' | 'refund' | 'payment'>(null)
+  const [open, setOpen] = useState<null | 'modification' | 'refund' | 'payment' | 'cancel'>(null)
   const [refundAccount, setRefundAccount] = useState('')
   const [reason, setReason] = useState('')
   const [paymentName, setPaymentName] = useState(app.payer_name ?? app.applicant_name)
@@ -685,7 +686,24 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
     ['신청일', app.created_at],
   ]
 
-  const toggle = (k: 'modification' | 'refund' | 'payment') => {
+  // 신청취소 가능 = 입금대기 + 입금 확인 요청 전. 그 외(입금했을 수 있는 건)는 환불신청.
+  const canCancel = app.status === 'pending' && !app.payment_claimed && !done.payment
+
+  const cancelApplication = async () => {
+    setError(null)
+    setSubmitting(true)
+    try {
+      await submitMyRequest({ token, applicationId: app.id, type: 'cancel' })
+      setOpen(null)
+      onCancelled(app.id)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '요청 처리 중 오류가 발생했습니다.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const toggle = (k: 'modification' | 'refund' | 'payment' | 'cancel') => {
     setError(null)
     setOpen((o) => (o === k ? null : k))
   }
@@ -855,9 +873,15 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
         <Button variant="primary" size="sm" onClick={() => toggle('modification')} disabled={done.modification}>
           <Pencil size={13} className="mr-1" />{done.modification ? '요청됨' : '수정요청'}
         </Button>
-        <Button variant="primary" size="sm" onClick={() => toggle('refund')} disabled={done.refund}>
-          <RefreshCcw size={13} className="mr-1" />{done.refund ? '신청됨' : '환불신청'}
-        </Button>
+        {canCancel ? (
+          <Button variant="primary" size="sm" onClick={() => toggle('cancel')}>
+            <XCircle size={13} className="mr-1" />신청취소
+          </Button>
+        ) : (
+          <Button variant="primary" size="sm" onClick={() => toggle('refund')} disabled={done.refund}>
+            <RefreshCcw size={13} className="mr-1" />{done.refund ? '신청됨' : '환불신청'}
+          </Button>
+        )}
         <Button variant="primary" size="sm" disabled><FileText size={13} className="mr-1" />수료증</Button>
       </div>
 
@@ -871,6 +895,19 @@ function ApplicationDetail({ app, refundBody, token }: { app: MyApplicationRow; 
             setOpen(null)
           }}
         />
+      )}
+
+      {/* 신청취소 확인 — 입금 전이라 환불 절차 없이 즉시 취소. */}
+      {open === 'cancel' && canCancel && (
+        <div className="mt-3 rounded-[10px] border border-[#e5eaef] bg-white p-4">
+          <Text variant="label" className="text-[#374151]">신청 취소</Text>
+          <Text variant="caption" as="p" className="mt-1 text-[#9ca3af]">입금 전 신청이라 바로 취소됩니다. 취소 후에는 직접 되돌릴 수 없으며, 다시 참가하려면 새로 신청해 주세요.</Text>
+          <Text variant="caption" as="p" className="mt-1 text-[#c0685a]">※ 이미 입금하셨다면 취소하지 말고 ‘입금 확인 요청’ 후 환불신청을 이용해 주세요.</Text>
+          {error && <p className="mt-2 rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{error}</p>}
+          <Button variant="primary" size="md" onClick={cancelApplication} disabled={submitting} className="mt-2 w-full">
+            {submitting ? '처리 중…' : '신청 취소하기'}
+          </Button>
+        </div>
       )}
 
       {/* 환불 신청 폼 */}
@@ -1000,6 +1037,10 @@ export default function MyPage() {
     }
   }
 
+  // 신청취소 성공 → 목록의 해당 건만 취소 상태로(재조회 없이 배지·버튼 갱신).
+  const markCancelled = (id: string) =>
+    setApps((list) => list && list.map((a) => (a.id === id ? { ...a, status: 'cancelled' as const } : a)))
+
   // 1) 조회 게이트
   if (!session) {
     return (
@@ -1055,7 +1096,7 @@ export default function MyPage() {
               renderCard={(a, { selected }) => ApplicationCard(a, selected)}
               emptyLabel="조회된 신청 내역이 없습니다."
             />
-            <MasterDetailDetail items={apps} getKey={(a) => a.id} renderDetail={(a) => <ApplicationDetail key={a.id} app={a} refundBody={refundBody} token={session.token} />} variant="mobile" />
+            <MasterDetailDetail items={apps} getKey={(a) => a.id} renderDetail={(a) => <ApplicationDetail key={a.id} app={a} refundBody={refundBody} token={session.token} onCancelled={markCancelled} />} variant="mobile" />
           </div>
         }
         extended={
@@ -1063,7 +1104,7 @@ export default function MyPage() {
             <ExtendedHeader title="마이페이지" eyebrow="MY PAGE" />
             <SectionTitle title="신청 상세" />
             <WhiteBox className="p-6">
-              <MasterDetailDetail items={apps} getKey={(a) => a.id} renderDetail={(a) => <ApplicationDetail key={a.id} app={a} refundBody={refundBody} token={session.token} />} variant="desktop" />
+              <MasterDetailDetail items={apps} getKey={(a) => a.id} renderDetail={(a) => <ApplicationDetail key={a.id} app={a} refundBody={refundBody} token={session.token} onCancelled={markCancelled} />} variant="desktop" />
             </WhiteBox>
           </div>
         }

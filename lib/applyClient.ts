@@ -27,6 +27,7 @@ export type MyRequestBody =
       birthBackParticipantId?: string
     }
   | { token: string; applicationId: string; type: 'payment'; payerName: string }
+  | { token: string; applicationId: string; type: 'cancel' } // 입금 전 신청취소(즉시)
   | { token: string; applicationId: string; type: 'due_payment' }
 
 export async function submitMyRequest(body: MyRequestBody): Promise<void> {
