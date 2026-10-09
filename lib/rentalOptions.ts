@@ -2,8 +2,9 @@
 // 품목/단가는 price_items(DB)가 진실원천이나, 사이즈 목록·귀속 UI 라벨은 여기서 관리(수량·비용 무관 메타).
 // 용품세트(equipment=스키/스노보드)는 기본 제공이라 별도 유료옵션 아님 — lib/lessonOptions.EQUIPMENT_TYPES.
 
-export const APPAREL_SIZES = ['S', 'M', 'L', 'XL', '2XL'] as const // 의류(스키복)
-export const GEAR_SIZES = ['S', 'M', 'L'] as const // 보호대·장갑
+export const APPAREL_SIZES = ['S', 'M', 'L', 'XL', '2XL', '3XL'] as const // 의류(스키복) — 3XL 4차 추가요청
+export const GEAR_SIZES = ['S', 'M', 'L'] as const // 보호대
+export const GLOVE_SIZES = ['S', 'M', 'L', 'XL'] as const // 장갑 — XL 4차 추가요청
 // 유아용 의류 — 자율패키지 전용(3차 수정). 정확한 사이즈는 특이사항(rentals.apparel_note)에 기재.
 export const INFANT_APPAREL_SIZE = '유아용'
 export const JAYUL_APPAREL_SIZES = [...APPAREL_SIZES, INFANT_APPAREL_SIZE] as const
@@ -23,5 +24,5 @@ export const RENTAL_OPTIONS: RentalOptionMeta[] = [
   { key: 'apparel', label: '의류', sizes: APPAREL_SIZES, sizeField: 'apparelSize', rentalSizeKey: 'apparel_size' },
   { key: 'protector', label: '보호대', sizes: GEAR_SIZES, sizeField: 'protectorSize', rentalSizeKey: 'protector_size' },
   { key: 'goggle', label: '고글', sizes: null, sizeField: null, rentalSizeKey: null },
-  { key: 'glove', label: '장갑', sizes: GEAR_SIZES, sizeField: 'gloveSize', rentalSizeKey: 'glove_size' },
+  { key: 'glove', label: '장갑', sizes: GLOVE_SIZES, sizeField: 'gloveSize', rentalSizeKey: 'glove_size' },
 ]

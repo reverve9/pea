@@ -24,15 +24,16 @@ const JIKMU_BASE_FALLBACK = 303000 // price_items 로드 전 폴백
 const DRAFT_KEY = 'pea:draft:application:jikmu'
 
 // 강습 수준(종목·반) 정의는 lib/lessonOptions 로 이관 — 신청폼·어드민 공용 진실원천. [[jikmu-form-is-componentization-source]]
-const APPAREL_SIZES = ['S', 'M', 'L', 'XL', '2XL'] // 의류(스키복) 사이즈
-const GEAR_SIZES = ['S', 'M', 'L'] // 보호대·장갑 사이즈
+const APPAREL_SIZES = ['S', 'M', 'L', 'XL', '2XL', '3XL'] // 의류(스키복) 사이즈
+const GEAR_SIZES = ['S', 'M', 'L'] // 보호대 사이즈
+const GLOVE_SIZES = ['S', 'M', 'L', 'XL'] // 장갑 사이즈
 // 렌탈 항목 — item_key = price_items 매칭. sizeField 있으면 선택 시 사이즈 부속 노출(고글만 사이즈 없음).
 type SizeField = 'apparelSize' | 'protectorSize' | 'gloveSize'
 const RENTAL_ITEMS: { key: string; field: keyof RentalSel; sizeField?: SizeField; sizes?: string[] }[] = [
   { key: 'apparel', field: 'apparel', sizeField: 'apparelSize', sizes: APPAREL_SIZES },
   { key: 'protector', field: 'protector', sizeField: 'protectorSize', sizes: GEAR_SIZES },
   { key: 'goggle', field: 'goggle' },
-  { key: 'glove', field: 'glove', sizeField: 'gloveSize', sizes: GEAR_SIZES },
+  { key: 'glove', field: 'glove', sizeField: 'gloveSize', sizes: GLOVE_SIZES },
 ]
 
 interface RentalSel {

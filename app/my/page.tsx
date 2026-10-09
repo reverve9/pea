@@ -63,7 +63,7 @@ function MyHero() {
   return (
     <p className="hidden px-4 md:px-8 pt-1 pb-7 text-center font-score text-[clamp(0.9375rem,3.4cqi,1.0625rem)] font-[300] leading-[1.85] text-[#4b5563] md:block">
       본인 확인 후 <span className="font-[500] text-[#1e3a5f]">신청 내역</span>을 조회하고,<br />
-      정보 수정 · 환불 · 수료증 발급을 요청할 수 있습니다.
+      정보 수정 · 환불 · 이체확인서 발급을 요청할 수 있습니다.
     </p>
   )
 }
@@ -371,8 +371,9 @@ function CompanionFill({ applicationId, token, startsOn }: { applicationId: stri
 // 수정요청 정형 폼 — 참가자별 항목 현재값→변경값(자유텍스트 폐기). 렌탈=직무만(자율 렌탈은 배정 매트릭스).
 // 요금 영향(직무 렌탈)은 어드민 반영 시 부분환불/추가결제로 자동 라우팅. 회차 변경은 대상 아님(취소 후 재신청).
 // 렌탈 사이즈 — 최초 접수(JikmuApplyForm)와 동일 옵션. 고글은 사이즈 없음.
-const MOD_APPAREL_SIZES = ['S', 'M', 'L', 'XL', '2XL']
+const MOD_APPAREL_SIZES = ['S', 'M', 'L', 'XL', '2XL', '3XL']
 const MOD_GEAR_SIZES = ['S', 'M', 'L']
+const MOD_GLOVE_SIZES = ['S', 'M', 'L', 'XL']
 
 type ModFieldDef = {
   field: ModificationField
@@ -393,7 +394,7 @@ const MOD_FIELDS: ModFieldDef[] = [
   { field: 'rental_apparel', label: '렌탈·의류', input: 'rental', only: 'jikmu', sizeField: 'rental_apparel_size', sizes: MOD_APPAREL_SIZES },
   { field: 'rental_protector', label: '렌탈·보호대', input: 'rental', only: 'jikmu', sizeField: 'rental_protector_size', sizes: MOD_GEAR_SIZES },
   { field: 'rental_goggle', label: '렌탈·고글', input: 'rental', only: 'jikmu' },
-  { field: 'rental_glove', label: '렌탈·장갑', input: 'rental', only: 'jikmu', sizeField: 'rental_glove_size', sizes: MOD_GEAR_SIZES },
+  { field: 'rental_glove', label: '렌탈·장갑', input: 'rental', only: 'jikmu', sizeField: 'rental_glove_size', sizes: MOD_GLOVE_SIZES },
 ]
 
 function rawCurrent(p: MyRosterParticipant, f: ModificationField): string {
@@ -652,7 +653,7 @@ function ModificationForm({ app, token, onDone }: { app: MyApplicationRow; token
 }
 
 // 신청 상세(디테일) — 데스크탑 우측 페인 / 모바일 모달 공용. refundBody = site_contents refund_policy(어드민 편집).
-// 수정요청·환불신청 = 토큰으로 소유권 검증 후 접수(/api/my/requests). 수료증은 준비 중.
+// 수정요청·환불신청 = 토큰으로 소유권 검증 후 접수(/api/my/requests). 이체확인서(4차 추가요청, 구 수료증)는 준비 중.
 // 입금 전(입금 확인 요청도 안 한) 건은 환불신청 대신 신청취소 — 요청이 아니라 즉시 취소. onCancelled 로 목록 상태 갱신.
 function ApplicationDetail({ app, refundBody, token, onCancelled }: { app: MyApplicationRow; refundBody: string | null; token: string; onCancelled: (id: string) => void }) {
   const st = statusView(app)
@@ -882,7 +883,7 @@ function ApplicationDetail({ app, refundBody, token, onCancelled }: { app: MyApp
             <RefreshCcw size={13} className="mr-1" />{done.refund ? '신청됨' : '환불신청'}
           </Button>
         )}
-        <Button variant="primary" size="sm" disabled><FileText size={13} className="mr-1" />수료증</Button>
+        <Button variant="primary" size="sm" disabled><FileText size={13} className="mr-1" />이체확인서</Button>
       </div>
 
       {/* 수정 요청 — 정형 폼(항목별 현재값→변경값). 차수 변경은 대상 아님(취소 후 재신청). */}
@@ -926,7 +927,7 @@ function ApplicationDetail({ app, refundBody, token, onCancelled }: { app: MyApp
 
       {done.modification && <p className="mt-3 rounded-[8px] bg-[#eaf4ec] px-3 py-2 font-score text-[13px] text-[#2f803a]">수정 요청이 접수되었습니다. 담당자 확인 후 반영됩니다.</p>}
       {done.refund && <p className="mt-3 rounded-[8px] bg-[#eaf4ec] px-3 py-2 font-score text-[13px] text-[#2f803a]">환불 신청이 접수되었습니다. 담당자 확인 후 처리됩니다.</p>}
-      <Text variant="caption" as="p" className="mt-2 text-center text-[#b6bcc4]">수료증 발급은 준비 중입니다.</Text>
+      <Text variant="caption" as="p" className="mt-2 text-center text-[#b6bcc4]">이체확인서 발급은 준비 중입니다.</Text>
 
       {/* 환불 규정 — site_contents(refund_policy) 실데이터. 환불신청 맥락에서 노출. */}
       <div className="mt-4 rounded-[10px] border border-[#e5eaef] bg-[#f7f9fb] p-4">
@@ -1051,7 +1052,7 @@ export default function MyPage() {
             <ExtendedHeader title="마이페이지" eyebrow="MY PAGE" />
             <SectionTitle title="이용 안내" />
             <WhiteBox className="p-6">
-              <Text variant="body" className="text-[#4b5563]">본인 확인 후 신청 내역 조회 · 정보 수정요청 · 환불 신청 · 수료증 발급을 이용할 수 있습니다.</Text>
+              <Text variant="body" className="text-[#4b5563]">본인 확인 후 신청 내역 조회 · 정보 수정요청 · 환불 신청 · 이체확인서 발급을 이용할 수 있습니다.</Text>
             </WhiteBox>
           </div>
         }

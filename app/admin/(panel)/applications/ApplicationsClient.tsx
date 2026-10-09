@@ -12,7 +12,7 @@ import { formatDate, formatKRW, APPLICATION_STATUS, SCHEDULE_TYPE, MODIFICATION_
 import { isDetailFillClosed, detailFillDeadline } from '@/lib/fillDeadline'
 import { exportToExcelMultiSheet } from '@/lib/excel'
 import { lessonLevelLabel, lessonSportLabel, equipmentLabel, lessonSlotLabel, JAYUL_LESSONS, EQUIPMENT_TYPES, LESSON_CLASSES, LESSON_SPORTS } from '@/lib/lessonOptions'
-import { APPAREL_SIZES, JAYUL_APPAREL_SIZES, GEAR_SIZES } from '@/lib/rentalOptions'
+import { APPAREL_SIZES, JAYUL_APPAREL_SIZES, GEAR_SIZES, GLOVE_SIZES } from '@/lib/rentalOptions'
 import { PROGRAMS, OPEN_PROGRAMS } from '@/lib/programs'
 import type { ParticipantDetailInput } from '@/lib/participantDetail'
 import type {
@@ -1616,7 +1616,7 @@ function ParticipantEditModal({
               <span className={labelClass}>장갑 사이즈</span>
               <select value={gloveSize} onChange={(e) => setGloveSize(e.target.value)} className={inputClass}>
                 <option value="">선택</option>
-                {GEAR_SIZES.map((s) => (
+                {GLOVE_SIZES.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>

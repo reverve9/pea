@@ -305,7 +305,6 @@ export default function JayulApplyForm() {
       : a.phone.length !== 11 ? '휴대폰 번호 11자리를 정확히 입력해 주세요.'
       : a.birthFront.length !== 6 ? '생년월일 6자리를 입력해 주세요.'
       : !a.lessonClass ? '기초 단체 강습을 선택해 주세요.'
-      : !a.equipment ? '대여 장비를 선택해 주세요.'
       : a.cashReceiptType === 'business' && a.cashReceiptBizno.length !== 10 ? '현금영수증 지출증빙용 사업자등록번호 10자리를 입력해 주세요.'
       : !a.privacyConsent || !a.confirmChecked ? '필수 동의 항목을 확인해 주세요.'
       : selectedFull && !waitlistAck ? '정원이 마감된 차수입니다. 예비(대기) 신청 확인에 동의해 주세요.'
@@ -489,10 +488,11 @@ export default function JayulApplyForm() {
             )}
           </Field>
         )}
-        <Field label="대여 장비" required hint="사용할 장비 세트를 선택하세요.">
+        {/* 4차 추가요청: 필수 → 선택. 미선택 = 대여 안 함, 선택한 항목을 다시 누르면 해제. */}
+        <Field label="대여 장비 (선택)" hint="장비 대여가 필요한 경우에만 선택하세요. 선택한 항목을 다시 누르면 해제됩니다.">
           <div className="grid grid-cols-2 gap-2">
             {EQUIPMENT_TYPES.map((eq) => (
-              <OptionRow key={eq.key} selected={form.equipment === eq.key} onClick={() => set('equipment', eq.key as 'ski' | 'board')}>
+              <OptionRow key={eq.key} selected={form.equipment === eq.key} onClick={() => set('equipment', form.equipment === eq.key ? '' : (eq.key as 'ski' | 'board'))}>
                 <span className="block">{eq.label}</span>
                 <span className="mt-0.5 block text-[11.5px] font-[300] text-[#8a94a0]">{eq.detail}</span>
               </OptionRow>

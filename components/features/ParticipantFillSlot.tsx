@@ -155,7 +155,7 @@ export default function ParticipantFillSlot({
             ))}
           </select>
           <select className={`${fieldCls} mt-2`} value={equipment} onChange={(e) => setEquipment(e.target.value)}>
-            <option value="">용품세트(대여장비) 선택</option>
+            <option value="">용품세트(대여장비) 선택 (선택사항)</option>
             {EQUIPMENT_TYPES.map((eq) => (
               <option key={eq.key} value={eq.key}>{eq.label}</option>
             ))}
