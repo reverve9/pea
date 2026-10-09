@@ -83,11 +83,6 @@ export interface NoticeAdmin extends Notice {
   updated_at: string
 }
 
-export interface FaqAdmin extends Faq {
-  is_published: boolean
-  updated_at: string
-}
-
 export type InquiryStatus = 'open' | 'answered'
 
 export interface InquiryAdmin {

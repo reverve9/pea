@@ -5,7 +5,6 @@ import { formatPeriod, SCHEDULE_TYPE } from './display'
 import { extractRentalQty, extractPrivateLesson } from './pricing'
 import type {
   NoticeAdmin,
-  FaqAdmin,
   InquiryAdmin,
   ApplicationAdmin,
   ParticipantAdmin,
@@ -51,17 +50,6 @@ export async function getAllNotices(): Promise<NoticeAdmin[]> {
     .order('created_at', { ascending: false })
   if (error) console.warn('[adminQueries] getAllNotices:', error)
   return (data as NoticeAdmin[]) ?? []
-}
-
-// FAQ 전체(미공개 포함). 정렬 순서 → 최신순.
-export async function getAllFaqs(): Promise<FaqAdmin[]> {
-  const { data, error } = await supabaseAdmin
-    .from('faqs')
-    .select('id, question, content, sort_order, is_published, updated_at')
-    .order('sort_order', { ascending: true })
-    .order('updated_at', { ascending: false })
-  if (error) console.warn('[adminQueries] getAllFaqs:', error)
-  return (data as FaqAdmin[]) ?? []
 }
 
 // 문의 전체(비밀글 원문·연락처 포함). 최신순.

@@ -28,7 +28,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     title: '설정',
     items: [
       { href: '/admin/sessions', label: '연수 관리', icon: 'CalendarDays' },
-      { href: '/admin/board', label: '공지·FAQ', icon: 'Megaphone' },
+      { href: '/admin/board', label: '공지사항', icon: 'Megaphone' },
     ],
   },
 ]

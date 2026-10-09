@@ -12,6 +12,7 @@ import type {
   Faq,
   SiteContent,
 } from './types'
+import { FAQS } from './faqs'
 
 // 콘솔에 원인만 남기고 호출부엔 안전한 기본값을 돌려준다.
 function warn(scope: string, error: unknown) {
@@ -88,14 +89,9 @@ export async function getNotices(): Promise<Notice[]> {
   return (data as Notice[]) ?? []
 }
 
-// FAQ (RLS 가 is_published=true 만 노출). sort_order 순
+// FAQ — 코드(lib/faqs.ts)에서 읽는다(2026-10-09 DB → 코드 이전). 호출부 호환 위해 async 유지.
 export async function getFaqs(): Promise<Faq[]> {
-  const { data, error } = await supabase
-    .from('faqs')
-    .select('id, question, content, sort_order')
-    .order('sort_order', { ascending: true })
-  warn('getFaqs', error)
-  return (data as Faq[]) ?? []
+  return FAQS
 }
 
 // 특정 key 의 CMS 콘텐츠 1건 (없으면 null)
