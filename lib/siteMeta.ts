@@ -22,7 +22,7 @@ export const PLACEHOLDER_ORG = {
   accountHolder: '체육교육회',
   privacyOfficer: '유영호', // 3차 수정 확정값
   privacyEmail: 'info@pea2025.co.kr', // 3차 수정 확정값(방침 문서와 통일)
-  tel: '070-7728-7947', // 3차 수정 확정값
+  tel: '02-532-7944', // 4차 이후 변경(2026-10-09)
   telHours: '평일 10:00~18:00', // 연결 가능 시간
   fax: '02-000-0001',
   email: 'info@pea2025.co.kr', // 3차 수정 확정값

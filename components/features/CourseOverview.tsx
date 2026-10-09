@@ -16,7 +16,7 @@ const GREEN = '#2f803a'
 // 연수 개요 — 정의 목록(라벨 2글자 통일)
 const FACTS: { label: string; value: string; sub?: string; url?: string }[] = [
   { label: '기관', value: '체육교육회' },
-  { label: '문의', value: '홈페이지 내 1:1 문의 · 02-7728-7947', sub: '연결 가능 시간 : 평일 10:00~17:00' },
+  { label: '문의', value: '홈페이지 내 1:1 문의 · 02-532-7944', sub: '연결 가능 시간 : 평일 10:00~17:00' },
   {
     label: '장소',
     value: '알펜시아 리조트',
