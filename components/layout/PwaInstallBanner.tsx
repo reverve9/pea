@@ -60,7 +60,7 @@ export default function PwaInstallBanner() {
   return (
     <div className="md:hidden flex items-center gap-2.5 border-b border-[#e5eaef] bg-[#f4f7fb] px-4 py-2.5">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/icons/icon-192.png" alt="" className="h-7 w-7 shrink-0 rounded-[7px]" />
+      <img src="/icons/icon-192.png?v=2" alt="" className="h-7 w-7 shrink-0 rounded-[7px]" />
       <div className="min-w-0 flex-1">
         <p className="font-score text-[13px] font-[500] leading-tight text-[#1e3a5f]">홈 화면에 추가하고 앱처럼 이용하세요</p>
         {platform === 'ios' ? (

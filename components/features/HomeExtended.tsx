@@ -15,10 +15,10 @@ export default function HomeExtended() {
         {/* 브랜드 로고 (마크 + 체육교육회 + 영문 가로형) */}
         <div className="mb-9">
           <Image
-            src="/logo/pea-logo-mono.png"
+            src="/logo/pea-logo-navy.png"
             alt="체육교육회 — Physical Education Association"
-            width={1890}
-            height={400}
+            width={1600}
+            height={391}
             priority
             className="w-[340px] h-auto"
           />

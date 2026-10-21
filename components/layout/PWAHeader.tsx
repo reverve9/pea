@@ -25,10 +25,10 @@ export default function PWAHeader({ variant = 'mobile' }: PWAHeaderProps) {
     >
       <Link href="/" className="flex items-center min-w-0" aria-label="체육교육회 홈">
         <Image
-          src="/logo/pea-logo-header.png"
+          src="/logo/pea-logo-white.png"
           alt="체육교육회 — Physical Education Association"
-          width={1890}
-          height={400}
+          width={1600}
+          height={391}
           priority
           className={`w-auto ${isDesktop ? 'h-[40px]' : 'h-[38px]'}`}
         />

@@ -19,10 +19,10 @@ export default function SlimFooter() {
     <footer className="mt-20 border-t border-black/[0.06] px-4 py-5">
       <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] font-[300] text-[#9ca3af]">
         <Image
-          src="/logo/pea-logo-mono.png"
+          src="/logo/pea-logo-navy.png"
           alt={ORG.name}
-          width={1890}
-          height={400}
+          width={1600}
+          height={391}
           className="h-[15px] w-auto opacity-60"
         />
         <span aria-hidden className="text-black/10">|</span>

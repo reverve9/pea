@@ -30,10 +30,10 @@ export default function HomeFooter() {
               style={{ background: 'radial-gradient(circle, rgba(30,58,95,0.12) 0%, rgba(30,58,95,0) 70%)' }}
             />
             <Image
-              src="/logo/pea-logo-mono.png"
+              src="/logo/pea-logo-navy.png"
               alt="체육교육회 — Physical Education Association"
-              width={1890}
-              height={400}
+              width={1600}
+              height={391}
               className="relative w-[clamp(130px,32cqi,160px)] h-auto opacity-90"
             />
           </div>
