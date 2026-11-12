@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   try {
     const { data, error } = await supabaseAdmin
       .from('applications')
-      .select('id, applicant_name, payer_name, session:sessions(label, schedule_type, starts_on, ends_on), participants(id)')
+      .select('id, application_no, applicant_name, payer_name, session:sessions(label, schedule_type, starts_on, ends_on), participants(id)')
       .eq('id', parsed.data.applicationId)
       .eq('phone', claims.phone)
       .eq('applicant_name', claims.name)
@@ -34,6 +34,7 @@ export async function POST(req: Request) {
 
     type Row = {
       id: string
+      application_no: string | null
       applicant_name: string
       payer_name: string | null
       session: { label: string | null; schedule_type: string; starts_on: string; ends_on: string } | null
@@ -49,6 +50,7 @@ export async function POST(req: Request) {
       sessionLabel: r.session?.label ?? null,
       startsOn: r.session?.starts_on ?? null,
       endsOn: r.session?.ends_on ?? null,
+      applicationNo: r.application_no ?? '',
       applicantName: r.applicant_name,
       payerName: r.payer_name,
       headcount: r.participants?.length || 1,

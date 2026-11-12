@@ -30,6 +30,7 @@ export interface PayConfirmSource {
   sessionLabel: string | null
   startsOn: string | null // 'YYYY-MM-DD'
   endsOn: string | null
+  applicationNo: string // 확인서 번호 = 신청번호(2026-11-12 사용자 결정)
   applicantName: string
   payerName: string | null
   headcount: number
@@ -37,6 +38,7 @@ export interface PayConfirmSource {
 }
 
 export interface PayConfirmDoc {
+  docNo: string
   programName: string
   period: string
   place: string
@@ -101,6 +103,7 @@ export function buildPayConfirm(s: PayConfirmSource, now: Date): PayConfirmDoc {
   if (s.scheduleType !== 'jikmu' && s.headcount > 1) notes.push(`참가 인원 ${s.headcount}명`)
   if (refunded > 0) notes.push(`환불 ${won(refunded)} 반영 (입금 ${won(receivedAmount(s.ledger))})`)
   return {
+    docNo: s.applicationNo,
     programName: programName(s.scheduleType, s.sessionLabel),
     period: s.startsOn && s.endsOn ? `${formatDay(s.startsOn)} ~ ${formatDay(s.endsOn)}` : '',
     place: PAY_CONFIRM.place,

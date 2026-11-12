@@ -8,6 +8,7 @@ const src = (over: Partial<PayConfirmSource> = {}): PayConfirmSource => ({
   sessionLabel: '직무 2차수',
   startsOn: '2026-01-11',
   endsOn: '2026-01-13',
+  applicationNo: 'SCT-26-00012',
   applicantName: '노승환',
   payerName: null,
   headcount: 1,
@@ -26,6 +27,7 @@ test('양식 예시와 같은 값', () => {
   assert.equal(d.method, '은행 계좌이체')
   assert.equal(d.issuedText, '2026년 1월 14일')
   assert.equal(d.note, '')
+  assert.equal(d.docNo, 'SCT-26-00012')
 })
 
 test('요일 계산', () => {

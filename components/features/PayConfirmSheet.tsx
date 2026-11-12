@@ -127,11 +127,11 @@ export default function PayConfirmSheet({ doc, seal, onClose }: { doc: PayConfir
             boxSizing: 'border-box',
           }}
         >
-          {/* 상단 정보 띠 — 좌 로고 / 우 문서명 작고 연하게 */}
+          {/* 상단 정보 띠 — 좌 로고 / 우 확인서 번호(신청번호) 작고 연하게 */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: u(14), borderBottom: `${u(0.75)} solid ${LINE}` }}>
             {/* eslint-disable-next-line @next/next/no-img-element -- 인쇄 시트 내 고정 크기 로고 */}
             <img src="/logo/pea-logo-navy.png" alt="체육교육회" style={{ height: u(24), width: 'auto' }} />
-            <span style={{ fontSize: u(8.5), fontWeight: 500, color: '#9AA3B2', letterSpacing: '0.12em' }}>CONFIRMATION OF TRANSFER</span>
+            <span style={{ fontSize: u(9), fontWeight: 500, color: '#9AA3B2', letterSpacing: '0.02em', fontVariantNumeric: 'tabular-nums' }}>No. {doc.docNo}</span>
           </div>
 
           {/* 제목 */}
