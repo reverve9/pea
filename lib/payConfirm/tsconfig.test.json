@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "types": ["node"],
+    "rootDir": "..",
+    "outDir": "../../node_modules/.cache/payconfirm-test"
+  },
+  "include": ["./index.ts", "../refundMath.ts", "./__tests__/**/*.ts"]
+}

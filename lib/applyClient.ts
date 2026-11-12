@@ -1,6 +1,7 @@
 // 폼 → 제출 파이프라인(/api/applications) 호출 헬퍼. 클라 전용(fetch).
 import type { ApplyPayload, ApplyResult, MyParticipantInput, MyRosterParticipant, RosterSummary, RosterResult, RentalAssignmentInput } from './applicationTypes'
 import type { ModificationChange } from './types'
+import type { PayConfirmDoc } from './payConfirm'
 
 export async function submitApplication(payload: ApplyPayload): Promise<ApplyResult> {
   const res = await fetch('/api/applications', {
@@ -50,6 +51,18 @@ export async function fetchMyRoster(token: string, applicationId: string): Promi
   const json = (await res.json().catch(() => ({}))) as { roster?: MyRosterParticipant[]; rentalQty?: RosterResult['rentalQty']; error?: string }
   if (!res.ok || !json.roster || !json.rentalQty) throw new Error(json.error || '참가자 정보를 불러오지 못했습니다.')
   return { roster: json.roster, rentalQty: json.rentalQty }
+}
+
+// 마이페이지 이체확인서 — 서버가 계산한 값 + 직인. 발급 불가면 사유 문구를 에러로.
+export async function fetchMyPayConfirm(token: string, applicationId: string): Promise<{ doc: PayConfirmDoc; seal: string }> {
+  const res = await fetch('/api/my/pay-confirm', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, applicationId }),
+  })
+  const json = (await res.json().catch(() => ({}))) as { doc?: PayConfirmDoc; seal?: string; error?: string }
+  if (!res.ok || !json.doc || !json.seal) throw new Error(json.error || '이체확인서를 불러오지 못했습니다.')
+  return { doc: json.doc, seal: json.seal }
 }
 
 // 대표 렌탈 배정 저장 — 참가자별 옵션 귀속 + 보험. 서버가 소유권·정합성(구매수량 초과 차단) 검증.

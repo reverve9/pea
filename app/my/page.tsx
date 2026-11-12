@@ -15,7 +15,9 @@ import { useQuery } from '@/lib/useQuery'
 import { getSiteContent } from '@/lib/queries'
 import { formatDate, modificationValueLabel } from '@/lib/display'
 import { isDetailFillClosed, detailFillDeadline } from '@/lib/fillDeadline'
-import { submitMyRequest, fetchMyRoster, submitMyParticipant, requestMyFillLink, assignParticipantOptions } from '@/lib/applyClient'
+import { submitMyRequest, fetchMyRoster, submitMyParticipant, requestMyFillLink, assignParticipantOptions, fetchMyPayConfirm } from '@/lib/applyClient'
+import PayConfirmSheet from '@/components/features/PayConfirmSheet'
+import { payConfirmStatusBlock, PAY_CONFIRM_BLOCK_TEXT, type PayConfirmDoc } from '@/lib/payConfirm'
 import ParticipantFillSlot from '@/components/features/ParticipantFillSlot'
 import { RENTAL_OPTIONS, type RentalOptionKey } from '@/lib/rentalOptions'
 import { JAYUL_LESSONS, EQUIPMENT_TYPES } from '@/lib/lessonOptions'
@@ -653,7 +655,7 @@ function ModificationForm({ app, token, onDone }: { app: MyApplicationRow; token
 }
 
 // 신청 상세(디테일) — 데스크탑 우측 페인 / 모바일 모달 공용. refundBody = site_contents refund_policy(어드민 편집).
-// 수정요청·환불신청 = 토큰으로 소유권 검증 후 접수(/api/my/requests). 이체확인서(4차 추가요청, 구 수료증)는 준비 중.
+// 수정요청·환불신청 = 토큰으로 소유권 검증 후 접수(/api/my/requests). 이체확인서(구 수료증, 양식=참가 및 이체확인서) = 입금확인·연수완료 + 추가입금 없음(직무·자율), 서버 계산값으로 출력(/api/my/pay-confirm).
 // 입금 전(입금 확인 요청도 안 한) 건은 환불신청 대신 신청취소 — 요청이 아니라 즉시 취소. onCancelled 로 목록 상태 갱신.
 function ApplicationDetail({ app, refundBody, token, onCancelled }: { app: MyApplicationRow; refundBody: string | null; token: string; onCancelled: (id: string) => void }) {
   const st = statusView(app)
@@ -665,6 +667,21 @@ function ApplicationDetail({ app, refundBody, token, onCancelled }: { app: MyApp
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState({ modification: false, refund: false, payment: false, due: false })
   const [dueError, setDueError] = useState<string | null>(null)
+  const [payConfirm, setPayConfirm] = useState<{ doc: PayConfirmDoc; seal: string } | null>(null)
+  const [pcLoading, setPcLoading] = useState(false)
+  const [pcError, setPcError] = useState<string | null>(null)
+  const pcBlock = payConfirmStatusBlock(app)
+  const openPayConfirm = async () => {
+    setPcError(null)
+    setPcLoading(true)
+    try {
+      setPayConfirm(await fetchMyPayConfirm(token, app.id))
+    } catch (e) {
+      setPcError(e instanceof Error ? e.message : '이체확인서를 불러오지 못했습니다.')
+    } finally {
+      setPcLoading(false)
+    }
+  }
 
   // 추가입금 완료 신고 — 별도 폼 없이 단일 버튼. due_amount>0 건에만, 1회(어드민이 대조 후 소비).
   const submitDue = async () => {
@@ -883,7 +900,9 @@ function ApplicationDetail({ app, refundBody, token, onCancelled }: { app: MyApp
             <RefreshCcw size={13} className="mr-1" />{done.refund ? '신청됨' : '환불신청'}
           </Button>
         )}
-        <Button variant="primary" size="sm" disabled><FileText size={13} className="mr-1" />이체확인서</Button>
+        <Button variant="primary" size="sm" onClick={openPayConfirm} disabled={pcBlock !== null || pcLoading}>
+          <FileText size={13} className="mr-1" />{pcLoading ? '불러오는 중' : '이체확인서'}
+        </Button>
       </div>
 
       {/* 수정 요청 — 정형 폼(항목별 현재값→변경값). 차수 변경은 대상 아님(취소 후 재신청). */}
@@ -927,7 +946,10 @@ function ApplicationDetail({ app, refundBody, token, onCancelled }: { app: MyApp
 
       {done.modification && <p className="mt-3 rounded-[8px] bg-[#eaf4ec] px-3 py-2 font-score text-[13px] text-[#2f803a]">수정 요청이 접수되었습니다. 담당자 확인 후 반영됩니다.</p>}
       {done.refund && <p className="mt-3 rounded-[8px] bg-[#eaf4ec] px-3 py-2 font-score text-[13px] text-[#2f803a]">환불 신청이 접수되었습니다. 담당자 확인 후 처리됩니다.</p>}
-      <Text variant="caption" as="p" className="mt-2 text-center text-[#b6bcc4]">이체확인서 발급은 준비 중입니다.</Text>
+      {pcError && <p className="mt-3 rounded-[8px] bg-[#fbecea] px-3 py-2 font-score text-[13px] text-[#b4483a]">{pcError}</p>}
+      {pcBlock && pcBlock !== 'status' && <Text variant="caption" as="p" className="mt-2 text-center text-[#b6bcc4]">{PAY_CONFIRM_BLOCK_TEXT[pcBlock]}</Text>}
+      {pcBlock === 'status' && app.status === 'pending' && <Text variant="caption" as="p" className="mt-2 text-center text-[#b6bcc4]">{PAY_CONFIRM_BLOCK_TEXT.status}</Text>}
+      {payConfirm && <PayConfirmSheet doc={payConfirm.doc} seal={payConfirm.seal} onClose={() => setPayConfirm(null)} />}
 
       {/* 환불 규정 — site_contents(refund_policy) 실데이터. 환불신청 맥락에서 노출. */}
       <div className="mt-4 rounded-[10px] border border-[#e5eaef] bg-[#f7f9fb] p-4">
